@@ -1,0 +1,19 @@
+{
+  "name": "financial-dashboard",
+  "version": "1.0.0",
+  "description": "Dylan's Financial Dashboard - Client Policy Manager",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node setup.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.6",
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.3",
+    "node-fetch": "^3.3.2",
+    "sql.js": "^1.14.0"
+  }
+}
