@@ -61,6 +61,14 @@ async function initDb() {
   try { db.run(`ALTER TABLE clients ADD COLUMN role TEXT DEFAULT 'client'`); } catch {}
   try { db.run(`ALTER TABLE policies ADD COLUMN policy_number TEXT DEFAULT ''`); } catch {}
 
+  // Auto-seed admin if not exists
+  const adminExists = dbGet(`SELECT id FROM clients WHERE role='admin'`);
+  if (!adminExists) {
+    const hash = bcrypt.hashSync(process.env.ADMIN_PASSWORD || 'admin2026', 10);
+    db.run(`INSERT INTO clients (id,username,password_hash,name,role) VALUES ('ADMIN001','admin',?,'Dylan Ho','admin')`, [hash]);
+    console.log('✅ Admin user seeded');
+  }
+
   saveDb();
   console.log('✅ Database ready');
 }
