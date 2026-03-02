@@ -108,6 +108,9 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Version / health ping — update this to confirm new deploys
+app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v4-2026-03-03', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client'] }));
+
 function authenticate(req, res, next) {
   const token = (req.headers.authorization || '').split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
@@ -232,7 +235,8 @@ app.get('/api/admin/coverage-gaps', authenticate, requireAdmin, (req, res) => {
       const current = covByType[type] || 0;
       const gap = Math.max(0, recommended - current);
       const pct = recommended > 0 ? Math.min(100, Math.round(current / recommended * 100)) : 100;
-      return { type, current, recommended, gap, pct };
+      const status = pct >= 100 ? 'adequate' : pct >= 40 ? 'partial' : 'critical';
+      return { type, current, recommended, gap, pct, status };
     }).filter(g => g.gap > 0);
 
     const totalGap = gaps.reduce((s, g) => s + g.gap, 0);
