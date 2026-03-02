@@ -15,5 +15,8 @@
     "jsonwebtoken": "^9.0.3",
     "node-fetch": "^3.3.2",
     "sql.js": "^1.14.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

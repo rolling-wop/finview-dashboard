@@ -1,57 +1,56 @@
-// Setup script - creates the demo client with sample data
-const https = require('https');
+const fetch = (...args) => import('node-fetch').then(m => m.default(...args));
+const BASE = 'http://localhost:3847/api';
 
-const BASE = 'http://localhost:3847';
+async function setup() {
+  // 1. Bootstrap admin
+  console.log('Creating admin account...');
+  const admin = await fetch(`${BASE}/bootstrap`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminPassword: 'admin2026' }) });
+  const adminRes = await admin.json();
+  console.log('Admin:', adminRes.error || '✅ admin / admin2026');
 
-async function post(path, body, headers = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify(body)
-  });
-  return res.json();
-}
+  // 2. Get admin token
+  const loginRes = await fetch(`${BASE}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin', password: 'admin2026' }) });
+  const { token } = await loginRes.json();
+  const H = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-admin-key': 'dylan-admin-2026' };
 
-async function main() {
-  const adminKey = { 'x-admin-key': 'dylan-admin-2026' };
-
+  // 3. Create demo client
   console.log('Creating demo client...');
-  const r = await post('/api/admin/clients', {
-    id: 'C001',
-    username: 'sarah.tan',
-    password: 'secure123',
-    name: 'Sarah Tan',
-    age: 35,
-    gender: 'Female',
-    occupation: 'Marketing Manager',
-    annual_income: 120000,
-    dependents: 2,
-    email: 'sarah.tan@example.com',
-    phone: '+65 9123 4567'
-  }, adminKey);
-  console.log('Client:', r);
+  const clientRes = await fetch(`${BASE}/admin/clients`, { method: 'POST', headers: H, body: JSON.stringify({ username: 'sarah.tan', password: 'secure123', name: 'Sarah Tan Wei Lin', age: 29, gender: 'Female', occupation: 'Software Engineer', annual_income: 84000, dependents: 0, email: 'sarah.tan@email.com', phone: '+65 9123 4567' }) });
+  const client = await clientRes.json();
+  console.log('Client:', client.error || `✅ ${client.name} (${client.id})`);
+  if (!client.id) { console.log('Client may already exist, skipping seed.'); return; }
 
-  console.log('Seeding data...');
-  const s = await post('/api/admin/seed/C001', {
-    policies: [
-      { type: 'Death / Life', product_name: 'PRUActive Protect', insurer: 'Prudential', product_type: 'Term Life', coverage: 500000, premium: 1200, start_date: '2020-01-01', end_date: '2050-12-31', status: 'Active', recommended: 1200000, notes: 'Convertible term with cash value option' },
-      { type: 'Early Critical Illness', product_name: 'PRUEarly Stage Crisis Cover', insurer: 'Prudential', product_type: 'Early CI', coverage: 300000, premium: 1800, start_date: '2022-01-01', end_date: '2052-12-31', status: 'Active', recommended: 600000, notes: 'Multi-stage crisis coverage' },
-      { type: 'TPD', product_name: 'PRUActive Protect', insurer: 'Prudential', product_type: 'Term Life', coverage: 200000, premium: 600, start_date: '2022-01-01', end_date: '2032-12-31', status: 'Active', recommended: 1200000, notes: 'Bundled with death benefit' },
-      { type: 'Savings Plan', product_name: 'PRUSave Endowment', insurer: 'Prudential', product_type: 'Endowment', coverage: 150000, premium: 3600, start_date: '2021-06-01', end_date: '2041-06-01', status: 'Active', recommended: 150000, notes: '10-year endowment savings plan' }
-    ],
-    investments: [
-      { name: 'PRULink Growth Fund', type: 'ILP', invested: 50000, value_now: 65000, target: 150000, goal_by: '2040-01-01', contribution: 1000 },
-      { name: 'PRULink Asia Equity', type: 'ILP', invested: 25000, value_now: 22000, target: 70000, goal_by: '2035-01-01', contribution: 500 },
-      { name: 'SRS Account', type: 'SRS', invested: 25000, value_now: 28000, target: 80000, goal_by: '2042-01-01', contribution: 600 }
-    ],
-    snapshots: [
-      { year: 2023, snapshot_date: '2023-12-31', total_coverage: 800000, total_investment_value: 80000, notes: 'Foundation set' },
-      { year: 2024, snapshot_date: '2024-12-31', total_coverage: 1000000, total_investment_value: 100000, notes: 'Added critical illness coverage' },
-      { year: 2025, snapshot_date: '2025-12-31', total_coverage: 1150000, total_investment_value: 115000, notes: 'Added savings plan, steady growth' }
-    ]
-  }, adminKey);
-  console.log('Seed:', s);
-  console.log('\n✅ Setup complete. Login with: sarah.tan / secure123');
+  // 4. Seed policies
+  const policies = [
+    { type: 'Death / Life', product_name: 'PRUActive Protect', policy_number: 'PRU-20240001', insurer: 'Prudential', product_type: 'Term Life', coverage: 500000, premium: 1440, start_date: '2024-01-01', end_date: '2054-01-01', status: 'Active', recommended: 840000, notes: '10x income cover' },
+    { type: 'Early Critical Illness', product_name: 'PRUEarly Stage Crisis Cover', policy_number: 'PRU-20240002', insurer: 'Prudential', product_type: 'Early CI', coverage: 300000, premium: 2160, start_date: '2024-01-01', end_date: '2054-01-01', status: 'Active', recommended: 300000, notes: '' },
+    { type: 'Savings Plan', product_name: 'PRUSave Endowment', policy_number: 'PRU-20240003', insurer: 'Prudential', product_type: 'Endowment', coverage: 150000, premium: 6000, start_date: '2024-01-01', end_date: '2039-01-01', status: 'Active', recommended: 150000, notes: '15-yr endowment' },
+    { type: 'TPD', product_name: 'PRUActive Protect (TPD Rider)', policy_number: 'PRU-20240001R', insurer: 'Prudential', product_type: 'TPD', coverage: 200000, premium: 480, start_date: '2024-01-01', end_date: '2054-01-01', status: 'Active', recommended: 200000, notes: 'Rider on term policy' },
+  ];
+  for (const p of policies) await fetch(`${BASE}/clients/${client.id}/policies`, { method: 'POST', headers: H, body: JSON.stringify(p) });
+  console.log(`✅ ${policies.length} policies seeded`);
+
+  // 5. Seed investments
+  const investments = [
+    { name: 'PRULink Growth Fund', type: 'ILP', invested: 24000, value_now: 28400, target: 80000, goal_by: '2034-01-01', contribution: 500 },
+    { name: 'CPF Savings (SA)', type: 'CPF-SA', invested: 42000, value_now: 46800, target: 200000, goal_by: '2055-01-01', contribution: 1200 },
+    { name: 'IBKR S&P 500 ETF', type: 'ETF', invested: 18000, value_now: 22600, target: 100000, goal_by: '2040-01-01', contribution: 800 },
+  ];
+  for (const i of investments) await fetch(`${BASE}/clients/${client.id}/investments`, { method: 'POST', headers: H, body: JSON.stringify(i) });
+  console.log(`✅ ${investments.length} investments seeded`);
+
+  // 6. Seed snapshots
+  const snapshots = [
+    { year: 2022, snapshot_date: '2022-12-31', total_coverage: 800000, total_investment_value: 52000, notes: 'Started financial planning' },
+    { year: 2023, snapshot_date: '2023-12-31', total_coverage: 950000, total_investment_value: 74000, notes: 'Added CI cover' },
+    { year: 2024, snapshot_date: '2024-12-31', total_coverage: 1150000, total_investment_value: 97800, notes: 'Added TPD rider + ETF portfolio' },
+  ];
+  for (const s of snapshots) await fetch(`${BASE}/clients/${client.id}/snapshots`, { method: 'POST', headers: H, body: JSON.stringify(s) });
+  console.log(`✅ ${snapshots.length} snapshots seeded`);
+
+  console.log('\n✅ Setup complete!');
+  console.log('   Admin:  admin / admin2026');
+  console.log('   Client: sarah.tan / secure123\n');
 }
 
-main().catch(console.error);
+setup().catch(console.error);

@@ -3,785 +3,921 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Financial Dashboard</title>
+<title>FinView Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#F1F5F9;
-  --surface:#FFFFFF;
-  --surface-2:#F8FAFC;
-  --border:#E2E8F0;
-  --border-2:#CBD5E1;
-  --sidebar-bg:#0F172A;
-  --sidebar-hover:rgba(255,255,255,0.07);
-  --sidebar-active:rgba(14,165,233,0.15);
-  --sidebar-text:rgba(255,255,255,0.6);
-  --sidebar-text-active:#FFFFFF;
-  --text:#0F172A;
-  --text-2:#475569;
-  --text-3:#94A3B8;
-  --primary:#0EA5E9;
-  --primary-dark:#0284C7;
-  --primary-light:rgba(14,165,233,0.1);
-  --success:#10B981;
-  --success-light:rgba(16,185,129,0.1);
-  --warning:#F59E0B;
-  --warning-light:rgba(245,158,11,0.1);
-  --danger:#EF4444;
-  --danger-light:rgba(239,68,68,0.1);
-  --purple:#8B5CF6;
-  --shadow-sm:0 1px 2px rgba(0,0,0,0.04),0 1px 3px rgba(0,0,0,0.03);
+  --bg:#F1F5F9;--surface:#FFFFFF;--surface-2:#F8FAFC;--border:#E2E8F0;--border-2:#CBD5E1;
+  --sidebar-bg:#0F172A;--sidebar-hover:rgba(255,255,255,0.07);--sidebar-active:rgba(14,165,233,0.18);
+  --sidebar-text:rgba(255,255,255,0.55);--sidebar-text-active:#FFFFFF;
+  --text:#0F172A;--text-2:#475569;--text-3:#94A3B8;
+  --primary:#0EA5E9;--primary-dark:#0284C7;--primary-light:rgba(14,165,233,0.1);
+  --success:#10B981;--success-light:rgba(16,185,129,0.1);
+  --warning:#F59E0B;--warning-light:rgba(245,158,11,0.1);
+  --danger:#EF4444;--danger-light:rgba(239,68,68,0.1);
+  --purple:#8B5CF6;--purple-light:rgba(139,92,246,0.1);
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.04);
   --shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 12px rgba(0,0,0,0.06);
   --shadow-md:0 4px 6px rgba(0,0,0,0.04),0 10px 30px rgba(0,0,0,0.08);
-  --shadow-lg:0 20px 60px rgba(0,0,0,0.12);
-  --radius:8px;
-  --radius-lg:12px;
-  --radius-xl:16px;
-  --sidebar-width:240px;
-  --header-height:64px;
-  --transition:150ms cubic-bezier(0.16,1,0.3,1);
+  --shadow-lg:0 20px 60px rgba(0,0,0,0.14);
+  --radius:8px;--radius-lg:12px;--radius-xl:16px;
+  --sidebar-width:240px;--transition:150ms cubic-bezier(0.16,1,0.3,1);
 }
-html,body{height:100%;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;font-size:14px;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
 
 /* ── Login ── */
-.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0F172A 0%,#1E293B 50%,#0F172A 100%)}
-.login-page::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 80% at 50% -20%,rgba(14,165,233,0.15),transparent);pointer-events:none}
-.login-card{background:var(--surface);border-radius:var(--radius-xl);padding:40px;width:100%;max-width:400px;box-shadow:var(--shadow-lg);position:relative}
-.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
-.login-logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--primary),#6366F1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
-.login-logo-text{font-size:16px;font-weight:700;color:var(--text)}
-.login-logo-sub{font-size:12px;color:var(--text-2);margin-top:1px}
-.login-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px}
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0F172A 0%,#1E293B 60%,#0F172A 100%)}
+.login-page::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(14,165,233,0.18),transparent);pointer-events:none}
+.login-card{background:var(--surface);border-radius:var(--radius-xl);padding:44px 40px;width:100%;max-width:420px;box-shadow:var(--shadow-lg);position:relative}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px}
+.login-logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--primary),#6366F1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.login-logo-name{font-size:18px;font-weight:700;color:var(--text)}
+.login-logo-sub{font-size:11px;color:var(--text-3);margin-top:1px}
+.login-title{font-size:22px;font-weight:700;margin-bottom:6px}
 .login-sub{font-size:14px;color:var(--text-2);margin-bottom:28px}
+.login-error{background:var(--danger-light);border:1px solid rgba(239,68,68,0.25);color:var(--danger);font-size:13px;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px}
+
+/* ── Forms ── */
 .field{margin-bottom:16px}
-.field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
 .field input,.field select,.field textarea{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;color:var(--text);background:var(--surface);transition:border-color var(--transition),box-shadow var(--transition);outline:none}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(14,165,233,0.12)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:var(--radius);font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;border:none;transition:all var(--transition);text-decoration:none;white-space:nowrap}
-.btn-primary{background:var(--primary);color:#fff}
-.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 4px 12px rgba(14,165,233,0.3)}
-.btn-primary:active{transform:translateY(0)}
-.btn-secondary{background:var(--surface);color:var(--text);border:1.5px solid var(--border)}
-.btn-secondary:hover{background:var(--surface-2);border-color:var(--border-2)}
-.btn-ghost{background:transparent;color:var(--text-2);border:none;padding:8px 12px}
-.btn-ghost:hover{background:var(--surface-2);color:var(--text)}
-.btn-danger{background:var(--danger-light);color:var(--danger);border:1px solid rgba(239,68,68,0.2)}
-.btn-danger:hover{background:var(--danger);color:#fff}
-.btn-success{background:var(--success-light);color:var(--success);border:1px solid rgba(16,185,129,0.2)}
-.btn-success:hover{background:var(--success);color:#fff}
-.btn-sm{padding:6px 12px;font-size:13px}
-.btn-full{width:100%}
-.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none!important}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px 16px}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;border:none;transition:all var(--transition);white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark);box-shadow:0 4px 12px rgba(14,165,233,0.3);transform:translateY(-1px)}
+.btn-secondary{background:var(--surface);color:var(--text);border:1.5px solid var(--border)}.btn-secondary:hover{background:var(--surface-2);border-color:var(--border-2)}
+.btn-ghost{background:transparent;color:var(--text-2);border:none;padding:7px 10px}.btn-ghost:hover{background:var(--surface-2);color:var(--text)}
+.btn-danger{background:var(--danger-light);color:var(--danger);border:1px solid rgba(239,68,68,0.2)}.btn-danger:hover{background:var(--danger);color:#fff}
+.btn-success{background:var(--success-light);color:var(--success);border:1px solid rgba(16,185,129,0.2)}.btn-success:hover{background:var(--success);color:#fff}
+.btn-warning{background:var(--warning-light);color:var(--warning);border:1px solid rgba(245,158,11,0.2)}.btn-warning:hover{background:var(--warning);color:#fff}
+.btn-sm{padding:5px 10px;font-size:12px}.btn-full{width:100%}.btn:disabled{opacity:0.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.btn-icon{width:32px;height:32px;padding:0;border-radius:var(--radius)}
 
 /* ── Layout ── */
 .app{display:flex;min-height:100vh}
-.sidebar{width:var(--sidebar-width);background:var(--sidebar-bg);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:50;transition:transform var(--transition)}
-.sidebar-header{padding:20px 16px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.sidebar{width:var(--sidebar-width);background:var(--sidebar-bg);display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:50}
+.sidebar-header{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,0.06)}
 .sidebar-logo{display:flex;align-items:center;gap:10px}
-.sidebar-logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--primary),#6366F1);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sidebar-logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--primary),#6366F1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .sidebar-logo-text{font-size:14px;font-weight:700;color:#fff}
 .sidebar-logo-sub{font-size:11px;color:var(--sidebar-text)}
-.sidebar-client{padding:16px;margin:12px 8px;background:rgba(255,255,255,0.05);border-radius:var(--radius);border:1px solid rgba(255,255,255,0.08)}
-.sidebar-client-name{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px}
+.sidebar-client{padding:12px;margin:10px 8px;background:rgba(255,255,255,0.05);border-radius:var(--radius);border:1px solid rgba(255,255,255,0.08)}
+.sidebar-client-name{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sidebar-client-role{font-size:11px;color:var(--sidebar-text)}
 .sidebar-nav{flex:1;padding:8px;overflow-y:auto}
-.nav-group-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.3);padding:12px 8px 6px}
+.nav-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.28);padding:12px 8px 6px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;color:var(--sidebar-text);cursor:pointer;transition:all var(--transition);margin-bottom:1px;font-size:13px;font-weight:500;border:none;background:none;width:100%;text-align:left}
 .nav-item:hover{background:var(--sidebar-hover);color:#fff}
 .nav-item.active{background:var(--sidebar-active);color:var(--primary);font-weight:600}
-.nav-item .nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
-.nav-item .nav-badge{margin-left:auto;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px}
-.sidebar-footer{padding:12px 8px;border-top:1px solid rgba(255,255,255,0.06)}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sidebar-footer{padding:10px 8px;border-top:1px solid rgba(255,255,255,0.06)}
 
 /* ── Main ── */
-.main{margin-left:var(--sidebar-width);flex:1;display:flex;flex-direction:column;min-width:0}
-.topbar{height:var(--header-height);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px;position:sticky;top:0;z-index:40}
-.topbar-title{font-size:18px;font-weight:700;color:var(--text);flex:1}
-.topbar-sub{font-size:13px;color:var(--text-3);margin-top:2px}
-.topbar-actions{display:flex;align-items:center;gap:8px}
+.main{margin-left:var(--sidebar-width);flex:1;display:flex;flex-direction:column;min-width:0;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;gap:12px;flex-wrap:nowrap}
+.topbar-left{display:flex;flex-direction:column;min-width:0}
+.page-title{font-size:17px;font-weight:700;color:var(--text);white-space:nowrap}
+.page-sub{font-size:12px;color:var(--text-3);margin-top:1px}
+.topbar-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .content{padding:28px;flex:1}
-.page{display:none}
-.page.active{display:block}
 
-/* ── Cards ── */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;box-shadow:var(--shadow-sm)}
-.card+.card{margin-top:16px}
-.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
-.card-title{font-size:16px;font-weight:600;color:var(--text)}
-.card-sub{font-size:13px;color:var(--text-2);margin-top:3px}
-
-/* ── Metric Cards ── */
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px}
-.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:box-shadow var(--transition)}
-.metric:hover{box-shadow:var(--shadow)}
-.metric-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
-.metric-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:10px}
-.metric-value{font-size:26px;font-weight:700;color:var(--text);letter-spacing:-0.5px;margin-bottom:8px}
-.metric-change{font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px}
+/* ── Metric cards ── */
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.metric{background:var(--surface);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);border:1px solid var(--border);position:relative;overflow:hidden}
+.metric-accent{position:absolute;top:0;left:0;right:0;height:3px}
+.metric-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-3);margin-bottom:8px}
+.metric-value{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.metric-change{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;margin-top:6px;padding:2px 7px;border-radius:99px}
 .metric-change.up{background:var(--success-light);color:var(--success)}
 .metric-change.down{background:var(--danger-light);color:var(--danger)}
 .metric-change.neutral{background:var(--surface-2);color:var(--text-3)}
+.metric-change.warn{background:var(--warning-light);color:var(--warning)}
 
-/* ── Badges & Pills ── */
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
+/* ── Cards ── */
+.card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.card-title{font-size:14px;font-weight:600;color:var(--text)}
+.card-sub{font-size:12px;color:var(--text-3);margin-top:2px}
+.card-body{padding:20px}
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin-bottom:24px}
+.chart-wrap{height:240px;position:relative}
+
+/* ── Alerts ── */
+.alert{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:var(--radius);margin-bottom:10px;font-size:13px}
+.alert-warning{background:var(--warning-light);border:1px solid rgba(245,158,11,0.25);color:#92400E}
+.alert-danger{background:var(--danger-light);border:1px solid rgba(239,68,68,0.25);color:#991B1B}
+.alert-success{background:var(--success-light);border:1px solid rgba(16,185,129,0.25);color:#065F46}
+.alert-info{background:var(--primary-light);border:1px solid rgba(14,165,233,0.25);color:#0C4A6E}
+.alert-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.alert-body strong{display:block;margin-bottom:2px;font-weight:600}
+
+/* ── Coverage gauge ── */
+.coverage-row{display:grid;grid-template-columns:140px 1fr 44px;align-items:center;gap:12px;margin-bottom:10px}
+.coverage-label{font-size:12px;color:var(--text-2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.coverage-track{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.coverage-fill{height:100%;border-radius:99px;transition:width 0.6s ease}
+.coverage-pct{font-size:12px;font-weight:600;text-align:right}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
 .badge-active{background:var(--success-light);color:var(--success)}
-.badge-warning{background:var(--warning-light);color:var(--warning)}
-.badge-danger{background:var(--danger-light);color:var(--danger)}
-.badge-info{background:var(--primary-light);color:var(--primary)}
+.badge-lapsed{background:var(--danger-light);color:var(--danger)}
+.badge-pending{background:var(--warning-light);color:var(--warning)}
 .badge-gray{background:var(--surface-2);color:var(--text-3)}
+.badge-admin{background:linear-gradient(135deg,var(--primary),#6366F1);color:#fff}
 
-/* ── Tables ── */
-.table-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:1px solid var(--border)}
-table{width:100%;border-collapse:collapse}
-thead th{padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);background:var(--surface-2);border-bottom:1px solid var(--border);white-space:nowrap;text-align:left}
-tbody td{padding:13px 16px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border)}
-tbody tr:last-child td{border-bottom:none}
-tbody tr{transition:background var(--transition)}
-tbody tr:hover{background:var(--surface-2)}
-
-/* ── Charts ── */
-.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px;margin-bottom:16px}
-.chart-wrap{position:relative;height:280px;margin-top:16px}
-
-/* ── Progress ── */
-.progress{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-top:8px}
-.progress-bar{height:100%;border-radius:99px;transition:width 0.6s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden}
-.progress-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent);animation:shimmer 2s infinite}
-@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+/* ── Policy accordion ── */
+.policy-group{border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:12px;overflow:hidden}
+.policy-group-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;background:var(--surface);user-select:none;gap:8px}
+.policy-group-header:hover{background:var(--surface-2)}
+.policy-group-title{font-size:14px;font-weight:600;color:var(--text)}
+.policy-group-meta{display:flex;align-items:center;gap:16px;flex-shrink:0}
+.policy-group-body{border-top:1px solid var(--border)}
+.policy-group-body.hidden{display:none}
+.policy-row{padding:16px 18px;border-bottom:1px solid var(--border)}
+.policy-row:last-child{border-bottom:none}
+.policy-row-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.policy-row-name{font-size:14px;font-weight:600;color:var(--text)}
+.policy-row-meta{font-size:12px;color:var(--text-3);margin-top:3px}
+.policy-number{font-size:11px;color:var(--primary);font-weight:500;margin-top:2px}
+.policy-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
 
 /* ── Timeline ── */
 .timeline-row{margin-bottom:20px}
-.timeline-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.timeline-label{font-size:13px;font-weight:500;color:var(--text)}
-.timeline-dates{font-size:12px;color:var(--text-3)}
-.timeline-track{position:relative;height:28px;background:var(--surface-2);border-radius:6px;overflow:hidden}
-.timeline-fill{position:absolute;top:0;height:100%;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
-.timeline-now{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:0.3}
+.timeline-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px}
+.timeline-label{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.timeline-dates{font-size:11px;color:var(--text-3);flex-shrink:0}
+.timeline-track{height:28px;background:var(--surface-2);border-radius:var(--radius);overflow:hidden;position:relative;border:1px solid var(--border)}
+.timeline-fill{position:absolute;top:0;bottom:0;border-radius:var(--radius);display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.95);overflow:hidden;white-space:nowrap;min-width:4px}
+.timeline-now{position:absolute;top:0;bottom:0;width:2px;background:rgba(239,68,68,0.7)}
 .timeline-ages{display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px}
 
-/* ── Calculator ── */
-.calc-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-top:16px}
-.calc-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px}
-.calc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px}
-.calc-result{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:none}
-.calc-result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
-.calc-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px}
-.calc-stat-value{font-size:16px;font-weight:700;color:var(--text)}
+/* ── Investment calc ── */
+.calc-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-top:12px}
+.calc-title{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:12px}
+.calc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.calc-result{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:10px}
+.calc-result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px}
+.calc-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px}
+.calc-stat-value{font-size:15px;font-weight:700;color:var(--text)}
+
+/* ── Progress ── */
+.progress{height:6px;background:var(--surface-2);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.progress-bar{height:100%;border-radius:99px;transition:width 0.5s ease}
+
+/* ── Table ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);padding:10px 14px;border-bottom:2px solid var(--border);background:var(--surface-2);white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface-2)}
+
+/* ── Admin client table ── */
+.client-row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition)}
+.client-row:last-child{border-bottom:none}
+.client-row:hover{background:var(--surface-2)}
+.client-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366F1);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
+.client-info{flex:1;min-width:0}
+.client-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-meta{font-size:12px;color:var(--text-3);margin-top:2px}
+.client-stats{display:flex;gap:20px;flex-shrink:0}
+.client-stat{text-align:right}
+.client-stat-label{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px}
+.client-stat-value{font-size:13px;font-weight:600;color:var(--text);margin-top:1px}
+
+/* ── Stat overview (admin) ── */
+.admin-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.admin-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);text-align:center}
+.admin-stat-icon{font-size:28px;margin-bottom:8px}
+.admin-stat-value{font-size:26px;font-weight:700;color:var(--text)}
+.admin-stat-label{font-size:12px;color:var(--text-3);margin-top:4px}
 
 /* ── Modal ── */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;animation:fadeIn 0.15s ease}
-.modal-bg.hidden{display:none}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.modal{background:var(--surface);border-radius:var(--radius-xl);padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
-.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
-.modal-title{font-size:18px;font-weight:700;color:var(--text)}
-.modal-close{width:32px;height:32px;border-radius:8px;border:none;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--text-2);transition:all var(--transition)}
-.modal-close:hover{background:var(--border);color:var(--text)}
-.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
-.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.hidden{display:none}
+.modal-box{background:var(--surface);border-radius:var(--radius-xl);width:100%;max-width:580px;max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:16px;font-weight:700}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-3);line-height:1;padding:4px;border-radius:var(--radius)}
+.modal-close:hover{color:var(--text);background:var(--surface-2)}
+.modal-body{padding:24px;overflow-y:auto;flex:1}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:48px 24px;color:var(--text-3)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-title{font-size:15px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+.empty-sub{font-size:13px;margin-bottom:16px}
+
+/* ── Search ── */
+.search-wrap{position:relative}
+.search-wrap input{padding-left:34px;background:var(--surface-2)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:14px;pointer-events:none}
 
 /* ── Toast ── */
-.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
-.toast{padding:12px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:var(--shadow-md);animation:slideIn 0.2s ease;display:flex;align-items:center;gap:8px;max-width:320px}
-@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
-.toast-success{background:var(--success);color:#fff}
-.toast-error{background:var(--danger);color:#fff}
-.toast-info{background:var(--primary);color:#fff}
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--text);color:#fff;padding:12px 18px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);animation:slideUp 0.25s ease;max-width:320px}
+.toast.success{background:#065F46;border:1px solid var(--success)}
+.toast.error{background:#7F1D1D;border:1px solid var(--danger)}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── Empty State ── */
-.empty{text-align:center;padding:48px 24px;color:var(--text-3)}
-.empty-icon{font-size:40px;margin-bottom:14px;opacity:0.5}
-.empty-title{font-size:16px;font-weight:600;color:var(--text-2);margin-bottom:6px}
-.empty-sub{font-size:13px;margin-bottom:20px}
-
-/* ── Divider ── */
+/* ── Misc ── */
 .divider{height:1px;background:var(--border);margin:20px 0}
-
-/* ── Alert ── */
-.alert{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:var(--radius);margin-bottom:12px;font-size:13px}
-.alert-icon{font-size:16px;flex-shrink:0;margin-top:1px}
-.alert-body strong{display:block;font-weight:600;margin-bottom:3px}
-.alert-warning{background:var(--warning-light);border:1px solid rgba(245,158,11,0.2);color:#92400E}
-.alert-success{background:var(--success-light);border:1px solid rgba(16,185,129,0.2);color:#065F46}
-.alert-danger{background:var(--danger-light);border:1px solid rgba(239,68,68,0.2);color:#991B1B}
-
-/* ── Sync bar ── */
-.sync-bar{display:flex;align-items:center;justify-content:between;gap:12px;padding:10px 16px;background:linear-gradient(135deg,rgba(14,165,233,0.08),rgba(99,102,241,0.08));border:1px solid rgba(14,165,233,0.15);border-radius:var(--radius);margin-bottom:16px;font-size:13px}
-.sync-bar-text{flex:1;color:var(--text-2)}
-
-/* ── Policy accordion ── */
-.policy-group{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:12px}
-.policy-group-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;background:var(--surface);transition:background var(--transition);gap:12px;flex-wrap:wrap}
-.policy-group-header:hover{background:var(--surface-2)}
-.policy-group-title{font-size:15px;font-weight:600;color:var(--text)}
-.policy-group-meta{display:flex;align-items:center;gap:12px}
-.policy-group-body{border-top:1px solid var(--border);padding:0}
-.policy-group-body.hidden{display:none}
-.policy-row{padding:16px 20px;border-bottom:1px solid var(--border);transition:background var(--transition)}
-.policy-row:last-child{border-bottom:none}
-.policy-row:hover{background:var(--surface-2)}
-.policy-row-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
-.policy-row-name{font-size:14px;font-weight:600;color:var(--text)}
-.policy-row-meta{font-size:12px;color:var(--text-3);margin-top:2px}
-
-/* ── Coverage bar ── */
-.coverage-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.coverage-label{font-size:12px;color:var(--text-2);width:140px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.coverage-track{flex:1;height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden}
-.coverage-fill{height:100%;border-radius:99px}
-.coverage-pct{font-size:12px;font-weight:600;color:var(--text);width:36px;text-align:right;flex-shrink:0}
-
-/* ── Responsive ── */
-@media(max-width:768px){
-  .sidebar{transform:translateX(-100%)}
-  .sidebar.open{transform:translateX(0)}
-  .main{margin-left:0}
-  .content{padding:16px}
-  .chart-grid{grid-template-columns:1fr}
-  .metrics{grid-template-columns:1fr 1fr}
-  .form-grid{grid-template-columns:1fr}
-}
+.section-title{font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px}
 .hidden{display:none!important}
-select option{background:var(--surface);color:var(--text)}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500;background:var(--surface-2);color:var(--text-2)}
 </style>
 </head>
 <body>
 
-<!-- Toast Container -->
-<div class="toast-container" id="toasts"></div>
-
-<!-- Login -->
-<div id="loginPage">
-  <div class="login-page">
-    <div class="login-card">
-      <div class="login-logo">
-        <div class="login-logo-icon">💼</div>
-        <div>
-          <div class="login-logo-text">FinView</div>
-          <div class="login-logo-sub">Financial Dashboard</div>
-        </div>
-      </div>
-      <div class="login-title">Welcome back</div>
-      <div class="login-sub">Sign in to view your financial overview</div>
-      <form id="loginForm">
-        <div class="field"><label>Username</label><input id="loginUser" type="text" placeholder="your.username" required autocomplete="username"></div>
-        <div class="field"><label>Password</label><input id="loginPass" type="password" placeholder="••••••••" required autocomplete="current-password"></div>
-        <div style="color:var(--danger);font-size:13px;margin-bottom:12px;min-height:20px" id="loginErr"></div>
-        <button type="submit" class="btn btn-primary btn-full" id="loginBtn">Sign In</button>
-      </form>
-      <div style="margin-top:20px;padding:12px;background:var(--surface-2);border-radius:var(--radius);font-size:12px;color:var(--text-3);">
-        🔒 Personal &amp; Confidential — Do not share your credentials
-      </div>
+<!-- ══ LOGIN ═══════════════════════════════════════════════════════ -->
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">💎</div>
+      <div><div class="login-logo-name">FinView</div><div class="login-logo-sub">by Prudential · Dylan Ho</div></div>
     </div>
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Sign in to your financial dashboard</div>
+    <div id="loginError" class="login-error hidden"></div>
+    <div class="field"><label>Username</label><input type="text" id="loginUser" placeholder="Enter username" autocomplete="username"></div>
+    <div class="field"><label>Password</label><input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password"></div>
+    <button class="btn btn-primary btn-full" id="loginBtn" style="margin-top:8px;padding:12px">Sign In →</button>
   </div>
 </div>
 
-<!-- Dashboard App -->
-<div id="appPage" class="hidden">
-  <div class="app">
+<!-- ══ APP ════════════════════════════════════════════════════════ -->
+<div id="appRoot" class="app hidden">
 
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">
-          <div class="sidebar-logo-icon">💼</div>
-          <div>
-            <div class="sidebar-logo-text">FinView</div>
-            <div class="sidebar-logo-sub">Financial Dashboard</div>
-          </div>
-        </div>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">💎</div>
+        <div><div class="sidebar-logo-text">FinView</div><div class="sidebar-logo-sub">Financial Dashboard</div></div>
       </div>
-      <div class="sidebar-client" id="sidebarClient">
-        <div class="sidebar-client-name" id="sidebarName">Loading...</div>
-        <div class="sidebar-client-role" id="sidebarRole">Client</div>
-      </div>
-      <nav class="sidebar-nav">
-        <div class="nav-group-label">Overview</div>
-        <button class="nav-item active" data-page="overview"><span class="nav-icon">📊</span>Dashboard</button>
-        <div class="nav-group-label">Protection</div>
-        <button class="nav-item" data-page="insurance"><span class="nav-icon">🛡️</span>Insurance Policies</button>
-        <div class="nav-group-label">Wealth</div>
-        <button class="nav-item" data-page="investments"><span class="nav-icon">💰</span>Investments</button>
-        <div class="nav-group-label">Analytics</div>
-        <button class="nav-item" data-page="history"><span class="nav-icon">📈</span>Progress History</button>
-      </nav>
-      <div class="sidebar-footer">
-        <button class="nav-item" id="syncBtn"><span class="nav-icon">🔄</span>Sync to Notion</button>
-        <button class="nav-item" id="logoutBtn"><span class="nav-icon">🚪</span>Sign Out</button>
-      </div>
-    </aside>
-
-    <!-- Main -->
-    <div class="main">
-      <header class="topbar">
-        <div>
-          <div class="topbar-title" id="topbarTitle">Dashboard</div>
-          <div class="topbar-sub" id="topbarSub"></div>
-        </div>
-        <div class="topbar-actions">
-          <button class="btn btn-secondary btn-sm" id="snapshotBtn">📸 Save Snapshot</button>
-          <button class="btn btn-primary btn-sm" id="topAddBtn"></button>
-        </div>
-      </header>
-
-      <main class="content" id="mainContent">
-
-        <!-- Overview Page -->
-        <div class="page active" id="page-overview">
-          <div class="metrics" id="overviewMetrics"></div>
-          <div class="chart-grid" id="overviewCharts">
-            <div class="card">
-              <div class="card-header"><div><div class="card-title">Coverage Distribution</div><div class="card-sub">By policy type</div></div></div>
-              <div class="chart-wrap"><canvas id="chartCoverageDonut"></canvas></div>
-            </div>
-            <div class="card">
-              <div class="card-header"><div><div class="card-title">Investment Goals</div><div class="card-sub">Current vs target</div></div></div>
-              <div class="chart-wrap"><canvas id="chartGoals"></canvas></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title">Coverage vs Recommended</div></div>
-            <div id="coverageGauge"></div>
-          </div>
-        </div>
-
-        <!-- Insurance Page -->
-        <div class="page" id="page-insurance">
-          <div id="insuranceAlerts"></div>
-          <div class="metrics" id="insuranceMetrics"></div>
-          <div class="card" style="margin-bottom:16px">
-            <div class="card-header">
-              <div><div class="card-title">Coverage vs Recommended</div><div class="card-sub">Blue = Current · Orange = Recommended</div></div>
-            </div>
-            <div class="chart-wrap"><canvas id="chartCoverageComp"></canvas></div>
-          </div>
-          <div class="card" style="margin-bottom:16px">
-            <div class="card-header"><div class="card-title">Coverage Timeline</div><div class="card-sub">Based on your current age</div></div>
-            <div id="coverageTimeline" style="margin-top:8px"></div>
-          </div>
-          <div class="card">
-            <div class="card-header">
-              <div><div class="card-title">Your Policies</div><div class="card-sub">All fields are editable</div></div>
-              <button class="btn btn-primary btn-sm" id="addPolicyBtn">+ Add Policy</button>
-            </div>
-            <div id="policyList"></div>
-          </div>
-        </div>
-
-        <!-- Investments Page -->
-        <div class="page" id="page-investments">
-          <div class="metrics" id="investmentMetrics"></div>
-          <div class="chart-grid">
-            <div class="card">
-              <div class="card-header">
-                <div><div class="card-title">Projected Growth</div><div class="card-sub">Compound growth over 15 years</div></div>
-                <select id="growthRateSelect" class="field" style="margin:0;width:auto">
-                  <option value="0.03">3% Conservative</option>
-                  <option value="0.04">4% Moderate-Low</option>
-                  <option value="0.05">5% Moderate</option>
-                  <option value="0.06" selected>6% Balanced</option>
-                  <option value="0.07">7% Growth</option>
-                  <option value="0.08">8% Aggressive</option>
-                  <option value="0.10">10% Very Aggressive</option>
-                </select>
-              </div>
-              <div class="chart-wrap"><canvas id="chartGrowth"></canvas></div>
-            </div>
-            <div class="card">
-              <div class="card-header"><div class="card-title">Portfolio Allocation</div></div>
-              <div class="chart-wrap"><canvas id="chartPortfolio"></canvas></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header">
-              <div><div class="card-title">Your Investments</div></div>
-              <button class="btn btn-primary btn-sm" id="addInvestmentBtn">+ Add Investment</button>
-            </div>
-            <div id="investmentList"></div>
-          </div>
-        </div>
-
-        <!-- History Page -->
-        <div class="page" id="page-history">
-          <div class="chart-grid">
-            <div class="card">
-              <div class="card-header"><div class="card-title">Coverage Growth</div></div>
-              <div class="chart-wrap"><canvas id="chartCoverageHistory"></canvas></div>
-            </div>
-            <div class="card">
-              <div class="card-header"><div class="card-title">Investment Growth</div></div>
-              <div class="chart-wrap"><canvas id="chartInvestmentHistory"></canvas></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title">Year by Year Comparison</div></div>
-            <div id="historyTable"></div>
-          </div>
-        </div>
-
-      </main>
     </div>
-  </div>
+    <div id="sidebarClientBox" class="sidebar-client">
+      <div class="sidebar-client-name" id="sidebarName">—</div>
+      <div class="sidebar-client-role" id="sidebarRole">Client</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-footer">
+      <button class="nav-item" onclick="logout()" style="width:100%;color:rgba(255,255,255,0.45)">
+        <span class="nav-icon">🚪</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="page-title" id="pageTitle">Dashboard</div>
+        <div class="page-sub" id="pageSub"></div>
+      </div>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </div>
+    <div class="content" id="mainContent"></div>
+  </main>
 </div>
 
-<!-- Modal -->
-<div class="modal-bg hidden" id="modal">
-  <div class="modal">
+<!-- ══ MODAL ══════════════════════════════════════════════════════ -->
+<div id="modal" class="modal-overlay hidden">
+  <div class="modal-box">
     <div class="modal-header">
-      <div class="modal-title" id="modalTitle"></div>
-      <button class="modal-close" id="modalClose">×</button>
+      <div class="modal-title" id="modalTitle">Modal</div>
+      <button class="modal-close" id="modalClose">✕</button>
     </div>
-    <form id="modalForm"></form>
+    <div class="modal-body" id="modalBody"></div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" type="button" id="modalCancel">Cancel</button>
-      <button class="btn btn-primary" type="button" id="modalSubmit">Save</button>
+      <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+      <button class="btn btn-primary" id="modalSubmit">Save</button>
     </div>
   </div>
 </div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────────
-const S = {
-  token: null,
-  client: null,
-  policies: [],
-  investments: [],
-  snapshots: [],
-  page: 'overview'
-};
+const S = { token: null, role: null, user: null, client: null, policies: [], investments: [], snapshots: [], page: null, viewClientId: null };
+const CHARTS = {};
+const COLORS = ['#0EA5E9','#10B981','#F59E0B','#8B5CF6','#EF4444','#06B6D4','#EC4899','#14B8A6','#F97316','#6366F1'];
 
-const COLORS = ['#0EA5E9','#8B5CF6','#10B981','#F59E0B','#EF4444','#EC4899','#06B6D4','#84CC16'];
-const charts = {};
+// ── Helpers ────────────────────────────────────────────────────────────────────
+const fmt = v => 'S$' + (parseFloat(v)||0).toLocaleString('en-SG',{minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtPct = v => (parseFloat(v)||0).toFixed(1) + '%';
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const daysUntil = d => d ? Math.ceil((new Date(d)-new Date())/(1000*60*60*24)) : null;
+
+function toast(msg, type='success', dur=3500) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), dur);
+}
+
+function mkChart(id, cfg) {
+  if (CHARTS[id]) CHARTS[id].destroy();
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  CHARTS[id] = new Chart(canvas, cfg);
+}
 
 // ── API ────────────────────────────────────────────────────────────────────────
 const api = {
-  async req(method, path, body) {
-    const r = await fetch(`/api${path}`, {
-      method,
-      headers: { 'Content-Type': 'application/json', ...(S.token ? { 'Authorization': `Bearer ${S.token}` } : {}) },
-      body: body != null ? JSON.stringify(body) : undefined
+  _req: async (method, path, body) => {
+    const res = await fetch('/api' + path, {
+      method, headers: { 'Content-Type': 'application/json', ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) },
+      body: body ? JSON.stringify(body) : undefined
     });
-    if (!r.ok) { const e = await r.json().catch(() => ({ error: 'Request failed' })); throw new Error(e.error || 'Request failed'); }
-    return r.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
   },
-  get: (p) => api.req('GET', p),
-  post: (p, b) => api.req('POST', p, b),
-  put: (p, b) => api.req('PUT', p, b),
-  del: (p) => api.req('DELETE', p)
-};
-
-// ── Toast ──────────────────────────────────────────────────────────────────────
-function toast(msg, type = 'success') {
-  const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
-  el.textContent = msg;
-  document.getElementById('toasts').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
-}
-
-// ── Format ─────────────────────────────────────────────────────────────────────
-const fmt = (n) => new Intl.NumberFormat('en-SG', { style: 'currency', currency: 'SGD', maximumFractionDigits: 0 }).format(n || 0);
-const fmtPct = (n) => `${Number(n || 0).toFixed(1)}%`;
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-
-// ── Chart helpers ──────────────────────────────────────────────────────────────
-function mkChart(id, cfg) {
-  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
-  const el = document.getElementById(id);
-  if (!el) return;
-  charts[id] = new Chart(el, cfg);
-}
-
-const chartDefaults = {
-  plugins: { legend: { labels: { font: { size: 12, family: 'Inter' }, padding: 16, usePointStyle: true } } },
-  scales: { x: { grid: { display: false }, ticks: { font: { size: 11 } } }, y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 } } } }
+  get: (p) => api._req('GET', p),
+  post: (p, b) => api._req('POST', p, b),
+  put: (p, b) => api._req('PUT', p, b),
+  del: (p) => api._req('DELETE', p)
 };
 
 // ── Login ──────────────────────────────────────────────────────────────────────
-document.getElementById('loginForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const btn = document.getElementById('loginBtn');
-  btn.disabled = true; btn.textContent = 'Signing in...';
-  document.getElementById('loginErr').textContent = '';
-  try {
-    const d = await api.post('/auth/login', { username: document.getElementById('loginUser').value, password: document.getElementById('loginPass').value });
-    S.token = d.token;
-    S.client = d.client;
-    await loadData();
-    document.getElementById('loginPage').classList.add('hidden');
-    document.getElementById('appPage').classList.remove('hidden');
-    document.getElementById('sidebarName').textContent = d.client.name;
-    document.getElementById('sidebarRole').textContent = d.client.occupation || 'Client';
-    renderPage('overview');
-    toast(`Welcome back, ${d.client.name.split(' ')[0]}! 👋`);
-  } catch (err) {
-    document.getElementById('loginErr').textContent = err.message;
-  } finally {
-    btn.disabled = false; btn.textContent = 'Sign In';
-  }
-});
+document.getElementById('loginBtn').onclick = doLogin;
+document.getElementById('loginPass').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
 
-async function loadData() {
-  const id = S.client.id;
-  const [policies, investments, snapshots] = await Promise.all([
-    api.get(`/clients/${id}/policies`),
-    api.get(`/clients/${id}/investments`),
-    api.get(`/clients/${id}/snapshots`)
-  ]);
-  S.policies = policies;
-  S.investments = investments;
-  S.snapshots = snapshots;
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  errEl.classList.add('hidden');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const res = await api.post('/auth/login', { username, password });
+    S.token = res.token;
+    S.role = res.role;
+    S.user = res.client;
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('appRoot').classList.remove('hidden');
+    document.getElementById('sidebarName').textContent = res.client.name;
+    document.getElementById('sidebarRole').textContent = res.role === 'admin' ? '🔑 Admin' : '👤 Client';
+    if (res.role === 'admin') initAdminApp();
+    else initClientApp(res.client.id);
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Sign In →';
+  }
 }
 
-// ── Logout ─────────────────────────────────────────────────────────────────────
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  S.token = null; S.client = null; S.policies = []; S.investments = []; S.snapshots = [];
-  Object.values(charts).forEach(c => c.destroy());
-  Object.keys(charts).forEach(k => delete charts[k]);
+function logout() {
+  S.token = null; S.role = null; S.user = null; S.client = null;
+  S.policies = []; S.investments = []; S.snapshots = [];
+  document.getElementById('appRoot').classList.add('hidden');
   document.getElementById('loginPage').classList.remove('hidden');
-  document.getElementById('appPage').classList.add('hidden');
-  document.getElementById('loginPass').value = '';
   document.getElementById('loginUser').value = '';
-});
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginBtn').disabled = false;
+  document.getElementById('loginBtn').textContent = 'Sign In →';
+}
 
-// ── Sync ───────────────────────────────────────────────────────────────────────
-document.getElementById('syncBtn').addEventListener('click', async () => {
-  try {
-    const r = await api.post(`/sync/push/${S.client.id}`, {});
-    toast('✅ Synced to Notion');
-  } catch (e) { toast('Sync failed: ' + e.message, 'error'); }
-});
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN APP
+// ══════════════════════════════════════════════════════════════════════════════
+function initAdminApp() {
+  buildAdminNav();
+  navTo('adminDashboard');
+}
 
-// ── Snapshot ───────────────────────────────────────────────────────────────────
-document.getElementById('snapshotBtn').addEventListener('click', async () => {
-  try {
-    await api.post(`/clients/${S.client.id}/snapshots/auto`, {});
-    const snaps = await api.get(`/clients/${S.client.id}/snapshots`);
-    S.snapshots = snaps;
-    toast('📸 Snapshot saved');
-    if (S.page === 'history') renderHistory();
-  } catch (e) { toast('Snapshot failed', 'error'); }
-});
+function buildAdminNav() {
+  document.getElementById('sidebarNav').innerHTML = `
+    <div class="nav-label">Admin</div>
+    <button class="nav-item active" id="nav-adminDashboard" onclick="navTo('adminDashboard')"><span class="nav-icon">📊</span> Overview</button>
+    <button class="nav-item" id="nav-adminClients" onclick="navTo('adminClients')"><span class="nav-icon">👥</span> Clients</button>
+    <div class="nav-label" style="margin-top:8px">Tools</div>
+    <button class="nav-item" id="nav-adminSync" onclick="syncAllToNotion()"><span class="nav-icon">🔄</span> Sync All → Notion</button>
+  `;
+}
 
-// ── Navigation ─────────────────────────────────────────────────────────────────
-document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
-  btn.addEventListener('click', () => renderPage(btn.dataset.page));
-});
-
-const pageTitles = { overview: ['Dashboard', 'Your financial overview at a glance'], insurance: ['Insurance Policies', 'Manage your protection portfolio'], investments: ['Investments', 'Track your wealth journey'], history: ['Progress History', 'Year over year performance'] };
-
-function renderPage(page) {
+function navTo(page, ...args) {
   S.page = page;
-  document.querySelectorAll('.nav-item[data-page]').forEach(b => b.classList.toggle('active', b.dataset.page === page));
-  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === `page-${page}`));
-  const [title, sub] = pageTitles[page] || ['', ''];
-  document.getElementById('topbarTitle').textContent = title;
-  document.getElementById('topbarSub').textContent = sub;
-  const addBtn = document.getElementById('topAddBtn');
-  if (page === 'insurance') { addBtn.textContent = '+ Add Policy'; addBtn.classList.remove('hidden'); addBtn.onclick = () => openPolicyModal(); }
-  else if (page === 'investments') { addBtn.textContent = '+ Add Investment'; addBtn.classList.remove('hidden'); addBtn.onclick = () => openInvestmentModal(); }
-  else addBtn.classList.add('hidden');
-  setTimeout(() => {
-    if (page === 'overview') renderOverview();
-    else if (page === 'insurance') renderInsurance();
-    else if (page === 'investments') renderInvestments();
-    else if (page === 'history') renderHistory();
-  }, 50);
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const activeNav = document.getElementById(`nav-${page}`);
+  if (activeNav) activeNav.classList.add('active');
+  const fns = { adminDashboard: renderAdminDashboard, adminClients: renderAdminClients, adminViewClient: () => renderAdminViewClient(...args) };
+  if (fns[page]) fns[page]();
+}
+
+// ── Admin Dashboard ────────────────────────────────────────────────────────────
+async function renderAdminDashboard() {
+  document.getElementById('pageTitle').textContent = 'Admin Overview';
+  document.getElementById('pageSub').textContent = 'All clients at a glance';
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary" onclick="openCreateClientModal()">+ New Client</button>`;
+  document.getElementById('mainContent').innerHTML = `
+    <div id="adminStats" class="admin-stats"></div>
+    <div class="chart-grid">
+      <div class="card"><div class="card-header"><div class="card-title">📈 Total Coverage by Client</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartAdminCoverage"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">💰 Investment Value by Client</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartAdminInvestments"></canvas></div></div></div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">👥 Recent Clients</div><button class="btn btn-secondary btn-sm" onclick="navTo('adminClients')">View All</button></div><div id="recentClientsList"></div></div>
+  `;
+  try {
+    const [stats, clients] = await Promise.all([api.get('/admin/stats'), api.get('/admin/clients')]);
+    document.getElementById('adminStats').innerHTML = `
+      <div class="admin-stat-card"><div class="admin-stat-icon">👥</div><div class="admin-stat-value">${stats.totalClients}</div><div class="admin-stat-label">Total Clients</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-icon">🛡️</div><div class="admin-stat-value">${stats.totalPolicies}</div><div class="admin-stat-label">Total Policies</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-icon">💎</div><div class="admin-stat-value">${fmt(stats.totalCoverage)}</div><div class="admin-stat-label">Total Coverage</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-icon">💵</div><div class="admin-stat-value">${fmt(stats.totalPremium)}</div><div class="admin-stat-label">Annual Premium</div></div>
+      <div class="admin-stat-card"><div class="admin-stat-icon">📈</div><div class="admin-stat-value">${fmt(stats.totalInvestments)}</div><div class="admin-stat-label">Investments AUM</div></div>
+    `;
+    if (clients.length) {
+      mkChart('chartAdminCoverage', { type: 'bar', data: { labels: clients.map(c => c.name.split(' ')[0]), datasets: [{ label: 'Coverage', data: clients.map(c => c.totalCoverage), backgroundColor: COLORS, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
+      mkChart('chartAdminInvestments', { type: 'bar', data: { labels: clients.map(c => c.name.split(' ')[0]), datasets: [{ label: 'Investments', data: clients.map(c => c.totalInvestments), backgroundColor: COLORS.slice(3), borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
+    }
+    const recent = clients.slice(0, 5);
+    document.getElementById('recentClientsList').innerHTML = recent.length ? recent.map(c => clientRowHTML(c)).join('') : `<div class="empty"><div class="empty-sub">No clients yet</div><button class="btn btn-primary" onclick="openCreateClientModal()">+ Add First Client</button></div>`;
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Admin Clients ──────────────────────────────────────────────────────────────
+async function renderAdminClients() {
+  document.getElementById('pageTitle').textContent = 'Clients';
+  document.getElementById('pageSub').textContent = 'Manage all client accounts';
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary" onclick="openCreateClientModal()">+ New Client</button>`;
+  document.getElementById('mainContent').innerHTML = `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-body" style="padding:12px 16px">
+        <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="clientSearch" placeholder="Search clients by name or email…" oninput="filterClients()" style="width:100%"></div>
+      </div>
+    </div>
+    <div class="card"><div id="clientsList"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading…</div></div></div></div>
+  `;
+  try {
+    const clients = await api.get('/admin/clients');
+    window._allClients = clients;
+    renderClientList(clients);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function clientRowHTML(c) {
+  const initials = c.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  return `
+    <div class="client-row" onclick="openClientView('${c.id}','${esc(c.name)}')">
+      <div class="client-avatar">${initials}</div>
+      <div class="client-info">
+        <div class="client-name">${esc(c.name)}</div>
+        <div class="client-meta">${esc(c.username)} · ${esc(c.occupation||'—')} · ${c.policyCount||0} policies</div>
+      </div>
+      <div class="client-stats">
+        <div class="client-stat"><div class="client-stat-label">Coverage</div><div class="client-stat-value">${fmt(c.totalCoverage)}</div></div>
+        <div class="client-stat"><div class="client-stat-label">Investments</div><div class="client-stat-value">${fmt(c.totalInvestments)}</div></div>
+        <div class="client-stat"><div class="client-stat-label">Premium/yr</div><div class="client-stat-value">${fmt(c.totalPremium)}</div></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
+        <button class="btn btn-secondary btn-sm" onclick="openEditClientModal('${c.id}')">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteClient('${c.id}','${esc(c.name)}')">🗑️</button>
+      </div>
+    </div>`;
+}
+
+function renderClientList(clients) {
+  document.getElementById('clientsList').innerHTML = clients.length
+    ? clients.map(c => clientRowHTML(c)).join('')
+    : `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No clients yet</div><div class="empty-sub">Add your first client to get started</div><button class="btn btn-primary" onclick="openCreateClientModal()">+ Add Client</button></div>`;
+}
+
+function filterClients() {
+  const q = document.getElementById('clientSearch').value.toLowerCase();
+  renderClientList((window._allClients||[]).filter(c => c.name.toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q)));
+}
+
+function openClientView(id, name) {
+  S.viewClientId = id;
+  document.getElementById('sidebarNav').innerHTML = `
+    <div class="nav-label" style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="backToAdmin()" style="padding:3px 6px;font-size:11px">← Back</button>
+      ${esc(name)}
+    </div>
+    <button class="nav-item active" id="nav-overview" onclick="navClientPage('overview')"><span class="nav-icon">📊</span> Overview</button>
+    <button class="nav-item" id="nav-insurance" onclick="navClientPage('insurance')"><span class="nav-icon">🛡️</span> Insurance</button>
+    <button class="nav-item" id="nav-investments" onclick="navClientPage('investments')"><span class="nav-icon">📈</span> Investments</button>
+    <button class="nav-item" id="nav-history" onclick="navClientPage('history')"><span class="nav-icon">🗓️</span> History</button>
+  `;
+  loadClientData(id).then(() => navClientPage('overview'));
+}
+
+function backToAdmin() {
+  S.viewClientId = null;
+  buildAdminNav();
+  navTo('adminClients');
+}
+
+// ── Create / Edit Client Modal ─────────────────────────────────────────────────
+function clientFormHTML(c = {}, isEdit = false) {
+  return `
+    <div class="form-grid">
+      <div class="field"><label>Full Name *</label><input type="text" id="cf-name" value="${esc(c.name||'')}" placeholder="Sarah Tan Wei Lin" required></div>
+      <div class="field"><label>Username *</label><input type="text" id="cf-username" value="${esc(c.username||'')}" placeholder="sarah.tan" ${isEdit ? 'disabled' : ''}></div>
+      <div class="field"><label>${isEdit ? 'New Password (leave blank to keep)' : 'Password *'}</label><input type="password" id="cf-password" placeholder="${isEdit ? 'Leave blank to keep current' : 'Min 8 characters'}"></div>
+      <div class="field"><label>Age</label><input type="number" id="cf-age" value="${c.age||''}" placeholder="28" min="18" max="99"></div>
+      <div class="field"><label>Gender</label><select id="cf-gender"><option value="">—</option><option ${c.gender==='Male'?'selected':''}>Male</option><option ${c.gender==='Female'?'selected':''}>Female</option></select></div>
+      <div class="field"><label>Occupation</label><input type="text" id="cf-occupation" value="${esc(c.occupation||'')}" placeholder="Software Engineer"></div>
+      <div class="field"><label>Annual Income (SGD)</label><input type="number" id="cf-income" value="${c.annual_income||''}" placeholder="72000"></div>
+      <div class="field"><label>Dependents</label><input type="number" id="cf-dependents" value="${c.dependents||0}" min="0"></div>
+      <div class="field"><label>Email</label><input type="email" id="cf-email" value="${esc(c.email||'')}" placeholder="sarah@email.com"></div>
+      <div class="field"><label>Phone</label><input type="text" id="cf-phone" value="${esc(c.phone||'')}" placeholder="+65 9xxx xxxx"></div>
+    </div>`;
+}
+
+function openCreateClientModal() {
+  showModal('New Client', clientFormHTML(), async () => {
+    const name = document.getElementById('cf-name').value.trim();
+    const username = document.getElementById('cf-username').value.trim();
+    const password = document.getElementById('cf-password').value;
+    if (!name || !username || !password) { toast('Name, username and password are required', 'error'); return; }
+    try {
+      await api.post('/admin/clients', {
+        name, username, password,
+        age: parseInt(document.getElementById('cf-age').value)||0,
+        gender: document.getElementById('cf-gender').value,
+        occupation: document.getElementById('cf-occupation').value,
+        annual_income: parseFloat(document.getElementById('cf-income').value)||0,
+        dependents: parseInt(document.getElementById('cf-dependents').value)||0,
+        email: document.getElementById('cf-email').value,
+        phone: document.getElementById('cf-phone').value
+      });
+      closeModal();
+      toast('Client created ✅');
+      if (S.page === 'adminClients') renderAdminClients();
+      else if (S.page === 'adminDashboard') renderAdminDashboard();
+    } catch (e) { toast(e.message, 'error'); }
+  }, 'Create Client');
+}
+
+async function openEditClientModal(id) {
+  try {
+    const c = await api.get(`/clients/${id}`);
+    showModal('Edit Client', clientFormHTML(c, true), async () => {
+      const body = {
+        name: document.getElementById('cf-name').value.trim(),
+        age: parseInt(document.getElementById('cf-age').value)||0,
+        gender: document.getElementById('cf-gender').value,
+        occupation: document.getElementById('cf-occupation').value,
+        annual_income: parseFloat(document.getElementById('cf-income').value)||0,
+        dependents: parseInt(document.getElementById('cf-dependents').value)||0,
+        email: document.getElementById('cf-email').value,
+        phone: document.getElementById('cf-phone').value
+      };
+      const pw = document.getElementById('cf-password').value;
+      if (pw) body.password = pw;
+      await api.put(`/admin/clients/${id}`, body);
+      closeModal();
+      toast('Client updated ✅');
+      if (S.page === 'adminClients') renderAdminClients();
+    }, 'Save Changes');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function deleteClient(id, name) {
+  if (!confirm(`Delete ${name}? This will remove all their policies and investments. This cannot be undone.`)) return;
+  try {
+    await api.del(`/admin/clients/${id}`);
+    toast(`${name} deleted`);
+    if (S.page === 'adminClients') renderAdminClients();
+    else renderAdminDashboard();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function syncAllToNotion() {
+  toast('Syncing all clients to Notion…', 'success', 2000);
+  try {
+    const r = await api.post('/sync/push-all', {});
+    toast(`Synced ${r.synced} clients to Notion ✅`);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLIENT APP (shared between client login + admin viewing a client)
+// ══════════════════════════════════════════════════════════════════════════════
+function initClientApp(clientId) {
+  document.getElementById('sidebarNav').innerHTML = `
+    <div class="nav-label">My Dashboard</div>
+    <button class="nav-item active" id="nav-overview" onclick="navClientPage('overview')"><span class="nav-icon">📊</span> Overview</button>
+    <button class="nav-item" id="nav-insurance" onclick="navClientPage('insurance')"><span class="nav-icon">🛡️</span> Insurance</button>
+    <button class="nav-item" id="nav-investments" onclick="navClientPage('investments')"><span class="nav-icon">📈</span> Investments</button>
+    <button class="nav-item" id="nav-history" onclick="navClientPage('history')"><span class="nav-icon">🗓️</span> History</button>
+  `;
+  loadClientData(clientId).then(() => navClientPage('overview'));
+}
+
+async function loadClientData(clientId) {
+  try {
+    const [client, policies, investments, snapshots] = await Promise.all([
+      api.get(`/clients/${clientId}`),
+      api.get(`/clients/${clientId}/policies`),
+      api.get(`/clients/${clientId}/investments`),
+      api.get(`/clients/${clientId}/snapshots`)
+    ]);
+    S.client = client;
+    S.policies = policies;
+    S.investments = investments;
+    S.snapshots = snapshots;
+    document.getElementById('sidebarName').textContent = client.name;
+    // Expiry badge
+    const soonExpiring = policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
+    const expiryNav = document.getElementById('nav-insurance');
+    if (expiryNav && soonExpiring.length) expiryNav.innerHTML = `<span class="nav-icon">🛡️</span> Insurance <span class="nav-badge">${soonExpiring.length}</span>`;
+  } catch (e) { toast('Failed to load client data', 'error'); }
+}
+
+function navClientPage(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const nav = document.getElementById(`nav-${page}`);
+  if (nav) nav.classList.add('active');
+  S.page = page;
+  const clientId = S.viewClientId || S.user?.id;
+  const isAdmin = S.role === 'admin';
+  const renders = { overview: renderOverview, insurance: renderInsurance, investments: renderInvestments, history: renderHistory };
+  if (renders[page]) renders[page](clientId, isAdmin);
 }
 
 // ── Overview ───────────────────────────────────────────────────────────────────
-function renderOverview() {
-  const totalCoverage = S.policies.reduce((s, p) => s + p.coverage, 0);
-  const totalRecommended = (() => { const byType = {}; S.policies.forEach(p => { if (!byType[p.type]) byType[p.type] = 0; byType[p.type] = Math.max(byType[p.type], p.recommended || 0); }); return Object.values(byType).reduce((s, v) => s + v, 0); })();
-  const totalPremium = S.policies.reduce((s, p) => s + p.premium, 0);
-  const totalInvested = S.investments.reduce((s, i) => s + i.invested, 0);
-  const totalValue = S.investments.reduce((s, i) => s + i.value_now, 0);
-  const gains = totalValue - totalInvested;
-  const snaps = [...S.snapshots].sort((a, b) => b.year - a.year);
-  const covChange = snaps.length >= 2 ? snaps[0].total_coverage - snaps[1].total_coverage : 0;
-  const invChange = snaps.length >= 2 ? snaps[0].total_investment_value - snaps[1].total_investment_value : 0;
-
-  document.getElementById('overviewMetrics').innerHTML = `
-    <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#0EA5E9,#6366F1)"></div><div class="metric-label">Total Coverage</div><div class="metric-value">${fmt(totalCoverage)}</div><span class="metric-change ${covChange >= 0 ? 'up' : 'down'}">${covChange >= 0 ? '↑' : '↓'} ${fmt(Math.abs(covChange))} YoY</span></div>
-    <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#10B981,#06B6D4)"></div><div class="metric-label">Investment Value</div><div class="metric-value">${fmt(totalValue)}</div><span class="metric-change ${gains >= 0 ? 'up' : 'down'}">${gains >= 0 ? '↑' : '↓'} ${fmtPct(totalInvested ? gains / totalInvested * 100 : 0)} all time</span></div>
-    <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#F59E0B,#EF4444)"></div><div class="metric-label">Annual Premium</div><div class="metric-value">${fmt(totalPremium)}</div><span class="metric-change neutral">${S.policies.filter(p => p.status === 'Active').length} active policies</span></div>
-    <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#8B5CF6,#EC4899)"></div><div class="metric-label">Coverage Gap</div><div class="metric-value">${fmt(Math.max(0, totalRecommended - totalCoverage))}</div><span class="metric-change ${totalCoverage >= totalRecommended ? 'up' : 'down'}">${totalCoverage >= totalRecommended ? '✓ Fully covered' : 'Needs attention'}</span></div>
+function renderOverview(clientId, isAdmin) {
+  const c = S.client;
+  document.getElementById('pageTitle').textContent = `${c.name}'s Overview`;
+  document.getElementById('pageSub').textContent = `${c.occupation||''} · Age ${c.age||'—'} · Income ${fmt(c.annual_income||0)}/yr`;
+  document.getElementById('topbarActions').innerHTML = `
+    ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="api.post('/sync/push/${clientId}',{}).then(()=>toast('Synced to Notion ✅')).catch(e=>toast(e.message,'error'))">🔄 Sync Notion</button>` : ''}
+    <button class="btn btn-primary btn-sm" onclick="autoSnapshot('${clientId}')">📸 Save Snapshot</button>
   `;
 
-  // Coverage donut
+  const totalCoverage = S.policies.filter(p => p.status === 'Active').reduce((s, p) => s + (p.coverage||0), 0);
+  const totalRecommended = (() => { const byT = {}; S.policies.forEach(p => { byT[p.type] = Math.max(byT[p.type]||0, p.recommended||0); }); return Object.values(byT).reduce((s,v) => s+v, 0); })();
+  const totalPremium = S.policies.reduce((s, p) => s + (p.premium||0), 0);
+  const totalInvested = S.investments.reduce((s, i) => s + (i.invested||0), 0);
+  const totalValue = S.investments.reduce((s, i) => s + (i.value_now||0), 0);
+  const gains = totalValue - totalInvested;
+  const snaps = [...S.snapshots].sort((a, b) => b.year - a.year);
+  const covChange = snaps.length >= 2 ? snaps[0].total_coverage - snaps[1].total_coverage : null;
+  const invChange = snaps.length >= 2 ? snaps[0].total_investment_value - snaps[1].total_investment_value : null;
+  const coverageGap = Math.max(0, totalRecommended - totalCoverage);
+
+  // Expiry alerts
+  const expiring = S.policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
+
+  document.getElementById('mainContent').innerHTML = `
+    ${expiring.length ? expiring.map(p => `<div class="alert alert-${daysUntil(p.end_date) <= 30 ? 'danger' : 'warning'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${daysUntil(p.end_date) <= 0 ? 'today' : `in ${daysUntil(p.end_date)} days`}</strong>Policy ${esc(p.policy_number||'—')} · ${fmtDate(p.end_date)}</div></div>`).join('') : ''}
+    <div class="metrics-grid">
+      <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#0EA5E9,#6366F1)"></div><div class="metric-label">Total Coverage</div><div class="metric-value">${fmt(totalCoverage)}</div>${covChange !== null ? `<span class="metric-change ${covChange >= 0 ? 'up' : 'down'}">${covChange >= 0 ? '↑' : '↓'} ${fmt(Math.abs(covChange))} YoY</span>` : ''}</div>
+      <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#10B981,#06B6D4)"></div><div class="metric-label">Investment Value</div><div class="metric-value">${fmt(totalValue)}</div><span class="metric-change ${gains >= 0 ? 'up' : 'down'}">${gains >= 0 ? '+' : ''}${fmtPct(totalInvested ? gains/totalInvested*100 : 0)} all-time</span></div>
+      <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#F59E0B,#EF4444)"></div><div class="metric-label">Annual Premium</div><div class="metric-value">${fmt(totalPremium)}</div><span class="metric-change neutral">${fmt(totalPremium/12)}/mo · ${S.policies.filter(p=>p.status==='Active').length} active</span></div>
+      <div class="metric"><div class="metric-accent" style="background:${coverageGap > 0 ? 'linear-gradient(90deg,#EF4444,#F59E0B)' : 'linear-gradient(90deg,#10B981,#06B6D4)'}"></div><div class="metric-label">Coverage Gap</div><div class="metric-value">${fmt(coverageGap)}</div><span class="metric-change ${coverageGap === 0 ? 'up' : 'down'}">${coverageGap === 0 ? '✓ Fully covered' : '⚠ Underinsured'}</span></div>
+    </div>
+    <div class="chart-grid">
+      <div class="card"><div class="card-header"><div class="card-title">🛡️ Coverage by Type</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartCoverageDonut"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">🎯 Goals Progress</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartGoals"></canvas></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">📊 Coverage vs Recommended</div></div>
+      <div class="card-body"><div id="coverageGauge"></div></div>
+    </div>
+  `;
+
   const byType = {};
-  S.policies.forEach(p => { byType[p.type] = (byType[p.type] || 0) + p.coverage; });
-  mkChart('chartCoverageDonut', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)} (${((c.parsed / Object.values(byType).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%)` } } } } });
+  S.policies.forEach(p => { byType[p.type] = (byType[p.type]||0) + (p.coverage||0); });
+  if (Object.keys(byType).length) mkChart('chartCoverageDonut', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } } } } });
 
-  // Goals bar
-  mkChart('chartGoals', { type: 'bar', data: { labels: S.investments.map(i => i.name.length > 16 ? i.name.slice(0, 14) + '…' : i.name), datasets: [{ label: 'Current Value', data: S.investments.map(i => i.value_now), backgroundColor: '#0EA5E9', borderRadius: 6 }, { label: 'Target', data: S.investments.map(i => i.target), backgroundColor: '#F59E0B', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
+  if (S.investments.length) mkChart('chartGoals', { type: 'bar', data: { labels: S.investments.map(i => i.name.length > 15 ? i.name.slice(0,13)+'…' : i.name), datasets: [{ label: 'Current', data: S.investments.map(i => i.value_now||0), backgroundColor: '#0EA5E9', borderRadius: 6 }, { label: 'Target', data: S.investments.map(i => i.target||0), backgroundColor: 'rgba(245,158,11,0.6)', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
 
-  // Coverage gauge
   const byTypeArr = Object.entries(byType).map(([type, curr]) => {
-    const rec = Math.max(...S.policies.filter(p => p.type === type).map(p => p.recommended || 0));
+    const rec = Math.max(...S.policies.filter(p => p.type === type).map(p => p.recommended||0));
     return { type, curr, rec };
   });
   document.getElementById('coverageGauge').innerHTML = byTypeArr.map(({ type, curr, rec }) => {
-    const pct = rec > 0 ? Math.min(100, Math.round(curr / rec * 100)) : 100;
+    const pct = rec > 0 ? Math.min(100, Math.round(curr/rec*100)) : 100;
     const color = pct >= 100 ? '#10B981' : pct >= 60 ? '#F59E0B' : '#EF4444';
-    return `<div class="coverage-row"><div class="coverage-label">${esc(type)}</div><div class="coverage-track"><div class="coverage-fill" style="width:${pct}%;background:${color}"></div></div><div class="coverage-pct" style="color:${color}">${pct}%</div></div>`;
-  }).join('') || '<div class="empty"><div class="empty-sub">No policies added yet</div></div>';
+    return `<div class="coverage-row"><div class="coverage-label" title="${esc(type)}">${esc(type)}</div><div class="coverage-track"><div class="coverage-fill" style="width:${pct}%;background:${color}"></div></div><div class="coverage-pct" style="color:${color}">${pct}%</div></div>`;
+  }).join('') || '<div class="empty"><div class="empty-sub">No policies yet</div></div>';
+}
+
+async function autoSnapshot(clientId) {
+  try {
+    await api.post(`/clients/${clientId}/snapshots/auto`, {});
+    const snaps = await api.get(`/clients/${clientId}/snapshots`);
+    S.snapshots = snaps;
+    toast('Snapshot saved ✅');
+  } catch (e) { toast(e.message, 'error'); }
 }
 
 // ── Insurance ──────────────────────────────────────────────────────────────────
-function renderInsurance() {
-  const clientAge = S.client.age || 35;
-  const totalCoverage = S.policies.reduce((s, p) => s + p.coverage, 0);
-  const totalPremium = S.policies.reduce((s, p) => s + p.premium, 0);
-  const active = S.policies.filter(p => p.status === 'Active').length;
+function renderInsurance(clientId, isAdmin) {
+  const cid = S.viewClientId || S.user?.id;
+  document.getElementById('pageTitle').textContent = 'Insurance Policies';
+  document.getElementById('pageSub').textContent = `${S.client.name} · ${S.policies.filter(p=>p.status==='Active').length} active policies`;
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary" onclick="openPolicyModal()">+ Add Policy</button>`;
+
+  const activePolicies = S.policies.filter(p => p.status === 'Active');
+  const totalCoverage = activePolicies.reduce((s, p) => s + (p.coverage||0), 0);
+  const totalPremium = S.policies.reduce((s, p) => s + (p.premium||0), 0);
   const byType = {};
-  S.policies.forEach(p => { if (!byType[p.type]) byType[p.type] = { curr: 0, rec: 0, policies: [] }; byType[p.type].curr += p.coverage; byType[p.type].rec = Math.max(byType[p.type].rec, p.recommended || 0); byType[p.type].policies.push(p); });
+  S.policies.forEach(p => { if (!byType[p.type]) byType[p.type] = { curr: 0, rec: 0, policies: [] }; byType[p.type].curr += p.coverage||0; byType[p.type].rec = Math.max(byType[p.type].rec, p.recommended||0); byType[p.type].policies.push(p); });
   const totalRec = Object.values(byType).reduce((s, v) => s + v.rec, 0);
   const gap = Math.max(0, totalRec - totalCoverage);
 
-  document.getElementById('insuranceMetrics').innerHTML = `
-    <div class="metric"><div class="metric-accent" style="background:var(--primary)"></div><div class="metric-label">Total Coverage</div><div class="metric-value">${fmt(totalCoverage)}</div></div>
-    <div class="metric"><div class="metric-accent" style="background:var(--success)"></div><div class="metric-label">Active Policies</div><div class="metric-value">${active}</div></div>
-    <div class="metric"><div class="metric-accent" style="background:var(--warning)"></div><div class="metric-label">Annual Premium</div><div class="metric-value">${fmt(totalPremium)}</div><span class="metric-change neutral">${fmt(totalPremium / 12)}/mo</span></div>
-    <div class="metric"><div class="metric-accent" style="background:${gap > 0 ? 'var(--danger)' : 'var(--success)'}"></div><div class="metric-label">Coverage Gap</div><div class="metric-value">${fmt(gap)}</div><span class="metric-change ${gap > 0 ? 'down' : 'up'}">${gap > 0 ? '⚠ Underinsured' : '✓ Well covered'}</span></div>
+  // Expiry alerts
+  const expiring = S.policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
+  const clientAge = S.client.age || 30;
+
+  document.getElementById('mainContent').innerHTML = `
+    <div id="insuranceAlerts"></div>
+    <div class="metrics-grid" id="insuranceMetrics"></div>
+    <div class="chart-grid">
+      <div class="card"><div class="card-header"><div class="card-title">📊 Coverage vs Recommended</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartCoverageComp"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">📅 Coverage Timeline</div></div><div class="card-body" style="overflow-x:auto"><div id="coverageTimeline" style="min-width:500px"></div></div></div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">🛡️ All Policies</div></div><div id="policyList" class="card-body"></div></div>
   `;
 
-  // Alerts
-  const alerts = [];
-  Object.entries(byType).forEach(([type, d]) => { if (d.rec > 0 && d.curr < d.rec * 0.6) alerts.push(`<div class="alert alert-warning"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(type)} coverage is below recommended</strong>Current: ${fmt(d.curr)} · Recommended: ${fmt(d.rec)} · Gap: ${fmt(d.rec - d.curr)}</div></div>`); });
-  document.getElementById('insuranceAlerts').innerHTML = alerts.join('');
+  document.getElementById('insuranceAlerts').innerHTML = [
+    ...expiring.map(p => { const d = daysUntil(p.end_date); return `<div class="alert alert-${d<=30?'danger':'warning'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${d<=0?'today':`in ${d} days`}</strong>Policy No: ${esc(p.policy_number||'—')} · End date: ${fmtDate(p.end_date)}</div></div>`; }),
+    ...Object.entries(byType).filter(([,d]) => d.rec > 0 && d.curr < d.rec * 0.6).map(([type, d]) => `<div class="alert alert-warning"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(type)} coverage is below 60% of recommended</strong>Current: ${fmt(d.curr)} · Recommended: ${fmt(d.rec)} · Gap: ${fmt(d.rec-d.curr)}</div></div>`)
+  ].join('');
 
-  // Coverage comparison chart
+  document.getElementById('insuranceMetrics').innerHTML = `
+    <div class="metric"><div class="metric-accent" style="background:var(--primary)"></div><div class="metric-label">Total Coverage</div><div class="metric-value">${fmt(totalCoverage)}</div></div>
+    <div class="metric"><div class="metric-accent" style="background:var(--success)"></div><div class="metric-label">Active Policies</div><div class="metric-value">${activePolicies.length}</div></div>
+    <div class="metric"><div class="metric-accent" style="background:var(--warning)"></div><div class="metric-label">Annual Premium</div><div class="metric-value">${fmt(totalPremium)}</div><span class="metric-change neutral">${fmt(totalPremium/12)}/mo</span></div>
+    <div class="metric"><div class="metric-accent" style="background:${gap>0?'var(--danger)':'var(--success)'}"></div><div class="metric-label">Coverage Gap</div><div class="metric-value">${fmt(gap)}</div><span class="metric-change ${gap>0?'down':'up'}">${gap>0?'⚠ Underinsured':'✓ Well covered'}</span></div>
+  `;
+
   const types = Object.keys(byType);
-  mkChart('chartCoverageComp', { type: 'bar', data: { labels: types, datasets: [{ label: 'Current Coverage', data: types.map(t => byType[t].curr), backgroundColor: '#0EA5E9', borderRadius: 4 }, { label: 'Recommended', data: types.map(t => byType[t].rec), backgroundColor: '#F59E0B', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
+  if (types.length) mkChart('chartCoverageComp', { type: 'bar', data: { labels: types, datasets: [{ label: 'Current', data: types.map(t => byType[t].curr), backgroundColor: '#0EA5E9', borderRadius: 4 }, { label: 'Recommended', data: types.map(t => byType[t].rec), backgroundColor: 'rgba(245,158,11,0.65)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
 
   // Timeline
   const currentYear = new Date().getFullYear();
   const minAge = 20, maxAge = 100;
-  const timelineHTML = S.policies.filter(p => p.start_date && p.end_date).map((p, i) => {
+  const timedPolicies = S.policies.filter(p => p.start_date && p.end_date);
+  document.getElementById('coverageTimeline').innerHTML = timedPolicies.length ? timedPolicies.map((p, i) => {
     const startAge = clientAge + (new Date(p.start_date).getFullYear() - currentYear);
     const endAge = clientAge + (new Date(p.end_date).getFullYear() - currentYear);
     const dur = endAge - startAge;
     const startPct = Math.max(0, ((startAge - minAge) / (maxAge - minAge)) * 100);
     const widthPct = Math.min(100 - startPct, (dur / (maxAge - minAge)) * 100);
-    const color = COLORS[i % COLORS.length];
     const nowPct = ((clientAge - minAge) / (maxAge - minAge)) * 100;
-    return `<div class="timeline-row"><div class="timeline-meta"><span class="timeline-label">${esc(p.product_name || p.type)}</span><span class="timeline-dates">Age ${startAge} → ${endAge} (${dur} yrs) · ${fmt(p.coverage)}</span></div><div class="timeline-track"><div class="timeline-fill" style="left:${startPct}%;width:${widthPct}%;background:${color}">${fmt(p.coverage)}</div><div class="timeline-now" style="left:${nowPct}%"></div></div><div class="timeline-ages"><span>Age ${minAge}</span><span style="font-weight:600">Now (${clientAge})</span><span>Age ${maxAge}</span></div></div>`;
-  }).join('');
-  document.getElementById('coverageTimeline').innerHTML = timelineHTML || '<div class="empty"><div class="empty-sub">Add policies with dates to see timeline</div></div>';
+    const color = COLORS[i % COLORS.length];
+    const barLabel = widthPct > 8 ? fmt(p.coverage) : '';
+    return `<div class="timeline-row"><div class="timeline-meta"><span class="timeline-label" title="${esc(p.product_name||p.type)}">${esc(p.product_name||p.type)}</span><span class="timeline-dates">Age ${startAge}→${endAge} · ${fmt(p.coverage)}</span></div><div class="timeline-track"><div class="timeline-fill" style="left:${startPct}%;width:${widthPct}%;background:${color}">${barLabel}</div><div class="timeline-now" style="left:${nowPct}%"></div></div><div class="timeline-ages"><span>${minAge}</span><span style="font-weight:600;color:var(--danger)">Now (${clientAge})</span><span>${maxAge}</span></div></div>`;
+  }).join('') : '<div class="empty"><div class="empty-sub">Add policies with start and end dates to see the coverage timeline</div></div>';
 
   // Policy list
-  if (S.policies.length === 0) {
-    document.getElementById('policyList').innerHTML = `<div class="empty"><div class="empty-icon">🛡️</div><div class="empty-title">No policies yet</div><div class="empty-sub">Add your first insurance policy</div><button class="btn btn-primary" id="addFirstPolicy">+ Add Policy</button></div>`;
-    document.getElementById('addFirstPolicy')?.addEventListener('click', () => openPolicyModal());
+  if (!S.policies.length) {
+    document.getElementById('policyList').innerHTML = `<div class="empty"><div class="empty-icon">🛡️</div><div class="empty-title">No policies yet</div><div class="empty-sub">Add your first insurance policy</div><button class="btn btn-primary" onclick="openPolicyModal()">+ Add Policy</button></div>`;
     return;
   }
   const grouped = {};
   S.policies.forEach(p => { if (!grouped[p.type]) grouped[p.type] = []; grouped[p.type].push(p); });
   document.getElementById('policyList').innerHTML = Object.entries(grouped).map(([type, policies]) => {
-    const total = policies.reduce((s, p) => s + p.coverage, 0);
-    const rec = Math.max(...policies.map(p => p.recommended || 0));
+    const total = policies.reduce((s, p) => s + (p.coverage||0), 0);
+    const rec = Math.max(...policies.map(p => p.recommended||0));
     const gap = Math.max(0, rec - total);
+    const hasExpiring = policies.some(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
     return `
       <div class="policy-group">
         <div class="policy-group-header" onclick="this.nextElementSibling.classList.toggle('hidden')">
-          <div><div class="policy-group-title">${esc(type)}</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">${policies.length} ${policies.length === 1 ? 'policy' : 'policies'}</div></div>
+          <div><div class="policy-group-title">${esc(type)} ${hasExpiring ? '⚠️' : ''}</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">${policies.length} ${policies.length===1?'policy':'policies'}</div></div>
           <div class="policy-group-meta">
-            <div style="text-align:right"><div style="font-size:15px;font-weight:700;color:var(--text)">${fmt(total)}</div>${rec > 0 ? `<div style="font-size:11px;margin-top:2px;color:${gap > 0 ? 'var(--warning)' : 'var(--success)'}">${gap > 0 ? `⚠ Gap: ${fmt(gap)}` : '✓ Fully covered'}</div>` : ''}</div>
+            <div style="text-align:right"><div style="font-size:15px;font-weight:700">${fmt(total)}</div>${rec > 0 ? `<div style="font-size:11px;margin-top:2px;color:${gap>0?'var(--warning)':'var(--success)'}">${gap>0?`⚠ Gap: ${fmt(gap)}`:'✓ Covered'}</div>` : ''}</div>
             <span style="color:var(--text-3);font-size:18px">›</span>
           </div>
         </div>
         <div class="policy-group-body">
-          ${policies.map(p => `
+          ${policies.map(p => {
+            const exd = daysUntil(p.end_date);
+            const expiringSoon = exd !== null && exd >= 0 && exd <= 90;
+            return `
             <div class="policy-row" id="pr-${p.id}">
               <div class="policy-row-header">
-                <div><div class="policy-row-name">${esc(p.product_name || p.type)}</div><div class="policy-row-meta">${esc(p.insurer)} · ${esc(p.product_type)} · ${fmtDate(p.start_date)} → ${fmtDate(p.end_date)}</div></div>
-                <div style="display:flex;gap:8px;align-items:center">
-                  <span class="badge badge-${p.status === 'Active' ? 'active' : 'gray'}">${esc(p.status)}</span>
+                <div style="min-width:0;flex:1">
+                  <div class="policy-row-name">${esc(p.product_name||p.type)}</div>
+                  <div class="policy-row-meta">${esc(p.insurer)} · ${esc(p.product_type)}</div>
+                  ${p.policy_number ? `<div class="policy-number">Policy #${esc(p.policy_number)}</div>` : ''}
+                  ${expiringSoon ? `<div style="font-size:11px;color:var(--danger);margin-top:2px;font-weight:500">⚠ Expires in ${exd} days (${fmtDate(p.end_date)})</div>` : ''}
+                </div>
+                <div class="policy-actions">
+                  <span class="badge badge-${p.status==='Active'?'active':p.status==='Lapsed'?'lapsed':'gray'}">${esc(p.status)}</span>
                   <button class="btn btn-ghost btn-sm" onclick="openPolicyModal(${p.id})">✏️</button>
                   <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deletePolicy(${p.id})">🗑️</button>
                 </div>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:12px;background:var(--surface-2);border-radius:var(--radius)">
-                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Coverage</div><div style="font-size:16px;font-weight:700;color:var(--text)">${fmt(p.coverage)}</div></div>
-                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Annual Premium</div><div style="font-size:16px;font-weight:700;color:var(--text)">${fmt(p.premium)}</div></div>
-                ${p.recommended > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Recommended</div><div style="font-size:16px;font-weight:700;color:var(--text)">${fmt(p.recommended)}</div></div>` : ''}
-                ${p.notes ? `<div style="grid-column:1/-1"><div style="font-size:11px;color:var(--text-3)">${esc(p.notes)}</div></div>` : ''}
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;padding:12px 14px;background:var(--surface-2);border-radius:var(--radius)">
+                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Coverage</div><div style="font-size:16px;font-weight:700">${fmt(p.coverage)}</div></div>
+                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Annual Premium</div><div style="font-size:16px;font-weight:700">${fmt(p.premium)}</div><div style="font-size:11px;color:var(--text-3)">${fmt((p.premium||0)/12)}/mo</div></div>
+                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Period</div><div style="font-size:13px;font-weight:500">${fmtDate(p.start_date)}</div><div style="font-size:11px;color:var(--text-3)">→ ${fmtDate(p.end_date)}</div></div>
+                ${p.recommended > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Recommended</div><div style="font-size:16px;font-weight:700">${fmt(p.recommended)}</div></div>` : ''}
               </div>
-              ${p.recommended > 0 ? `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:4px"><span>Coverage progress</span><span>${Math.min(100, Math.round(p.coverage / p.recommended * 100))}%</span></div><div class="progress"><div class="progress-bar" style="width:${Math.min(100, Math.round(p.coverage / p.recommended * 100))}%;background:${p.coverage >= p.recommended ? 'var(--success)' : p.coverage >= p.recommended * 0.6 ? 'var(--warning)' : 'var(--danger)'}"></div></div></div>` : ''}
-            </div>
-          `).join('')}
+              ${p.recommended > 0 ? `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:4px"><span>Coverage vs recommended</span><span>${Math.min(100,Math.round((p.coverage||0)/(p.recommended)*100))}%</span></div><div class="progress"><div class="progress-bar" style="width:${Math.min(100,Math.round((p.coverage||0)/p.recommended*100))}%;background:${(p.coverage||0)>=p.recommended?'var(--success)':(p.coverage||0)>=p.recommended*0.6?'var(--warning)':'var(--danger)'}"></div></div></div>` : ''}
+              ${p.notes ? `<div style="margin-top:10px;font-size:12px;color:var(--text-3);font-style:italic">${esc(p.notes)}</div>` : ''}
+            </div>`;
+          }).join('')}
         </div>
       </div>`;
   }).join('');
 }
 
 // ── Investments ────────────────────────────────────────────────────────────────
-function renderInvestments() {
-  const total = S.investments.reduce((s, i) => s + i.value_now, 0);
-  const invested = S.investments.reduce((s, i) => s + i.invested, 0);
-  const target = S.investments.reduce((s, i) => s + i.target, 0);
-  const gains = total - invested;
+function renderInvestments(clientId, isAdmin) {
+  document.getElementById('pageTitle').textContent = 'Investments';
+  document.getElementById('pageSub').textContent = `${S.client.name} · Portfolio overview`;
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary" onclick="openInvestmentModal()">+ Add Investment</button>`;
 
-  document.getElementById('investmentMetrics').innerHTML = `
-    <div class="metric"><div class="metric-accent" style="background:var(--primary)"></div><div class="metric-label">Total Invested</div><div class="metric-value">${fmt(invested)}</div></div>
-    <div class="metric"><div class="metric-accent" style="background:${gains >= 0 ? 'var(--success)' : 'var(--danger)'}"></div><div class="metric-label">Current Value</div><div class="metric-value">${fmt(total)}</div><span class="metric-change ${gains >= 0 ? 'up' : 'down'}">${gains >= 0 ? '+' : ''}${fmt(gains)} (${fmtPct(invested ? gains / invested * 100 : 0)})</span></div>
-    <div class="metric"><div class="metric-accent" style="background:var(--warning)"></div><div class="metric-label">Target Goal</div><div class="metric-value">${fmt(target)}</div><span class="metric-change ${total >= target ? 'up' : 'neutral'}">${Math.round(total / (target || 1) * 100)}% to goal</span></div>
-    <div class="metric"><div class="metric-accent" style="background:var(--purple)"></div><div class="metric-label">Monthly Contributions</div><div class="metric-value">${fmt(S.investments.reduce((s, i) => s + i.contribution, 0))}</div></div>
+  const total = S.investments.reduce((s, i) => s + (i.value_now||0), 0);
+  const invested = S.investments.reduce((s, i) => s + (i.invested||0), 0);
+  const target = S.investments.reduce((s, i) => s + (i.target||0), 0);
+  const gains = total - invested;
+  const monthlyContrib = S.investments.reduce((s, i) => s + (i.contribution||0), 0);
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="metrics-grid">
+      <div class="metric"><div class="metric-accent" style="background:var(--primary)"></div><div class="metric-label">Total Invested</div><div class="metric-value">${fmt(invested)}</div></div>
+      <div class="metric"><div class="metric-accent" style="background:${gains>=0?'var(--success)':'var(--danger)'}"></div><div class="metric-label">Current Value</div><div class="metric-value">${fmt(total)}</div><span class="metric-change ${gains>=0?'up':'down'}">${gains>=0?'+':''}${fmt(gains)} (${fmtPct(invested?gains/invested*100:0)})</span></div>
+      <div class="metric"><div class="metric-accent" style="background:var(--warning)"></div><div class="metric-label">Target Goal</div><div class="metric-value">${fmt(target)}</div><span class="metric-change ${total>=target?'up':'neutral'}">${Math.round(total/(target||1)*100)}% to goal</span></div>
+      <div class="metric"><div class="metric-accent" style="background:var(--purple)"></div><div class="metric-label">Monthly Contributions</div><div class="metric-value">${fmt(monthlyContrib)}</div></div>
+    </div>
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">📈 Projected Growth</div><div class="card-sub">Compound interest with monthly contributions</div></div>
+          <select id="growthRateSelect" class="btn btn-secondary btn-sm" onchange="renderGrowthChart()" style="font-size:12px">
+            <option value="0.03">3% / yr</option><option value="0.05">5% / yr</option>
+            <option value="0.06" selected>6% / yr</option><option value="0.08">8% / yr</option>
+            <option value="0.10">10% / yr</option>
+          </select>
+        </div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="chartGrowth"></canvas></div></div>
+      </div>
+      <div class="card"><div class="card-header"><div class="card-title">🍩 Portfolio Allocation</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartPortfolio"></canvas></div></div></div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">💼 Holdings</div></div><div id="investmentList"></div></div>
   `;
 
   renderGrowthChart();
 
-  // Portfolio donut
   const byType = {};
-  S.investments.forEach(i => { byType[i.type || 'Other'] = (byType[i.type || 'Other'] || 0) + i.value_now; });
-  mkChart('chartPortfolio', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } } } } });
+  S.investments.forEach(i => { byType[i.type||'Other'] = (byType[i.type||'Other']||0) + (i.value_now||0); });
+  if (Object.keys(byType).length) mkChart('chartPortfolio', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)} (${(c.parsed/total*100).toFixed(1)}%)` } } } } });
 
-  // Investment cards
   if (!S.investments.length) {
     document.getElementById('investmentList').innerHTML = `<div class="empty"><div class="empty-icon">💰</div><div class="empty-title">No investments yet</div><div class="empty-sub">Start tracking your wealth</div><button class="btn btn-primary" onclick="openInvestmentModal()">+ Add Investment</button></div>`;
     return;
   }
   document.getElementById('investmentList').innerHTML = S.investments.map(i => {
-    const g = i.value_now - i.invested;
-    const gPct = i.invested ? g / i.invested * 100 : 0;
-    const prog = i.target ? Math.min(100, Math.round(i.value_now / i.target * 100)) : 0;
+    const g = (i.value_now||0) - (i.invested||0);
+    const gPct = i.invested ? g/i.invested*100 : 0;
+    const prog = i.target ? Math.min(100, Math.round((i.value_now||0)/i.target*100)) : 0;
     return `
       <div style="padding:20px;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px;flex-wrap:wrap">
-          <div><div style="font-size:15px;font-weight:600;color:var(--text)">${esc(i.name)}</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">${esc(i.type)} · Goal by ${fmtDate(i.goal_by)}</div></div>
-          <div style="display:flex;gap:8px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:8px;flex-wrap:wrap">
+          <div><div style="font-size:15px;font-weight:600">${esc(i.name)}</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">${esc(i.type)} · Goal by ${fmtDate(i.goal_by)}</div></div>
+          <div style="display:flex;gap:6px">
             <button class="btn btn-ghost btn-sm" onclick="openInvestmentModal(${i.id})">✏️</button>
             <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteInvestment(${i.id})">🗑️</button>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px">
           <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Invested</div><div style="font-size:18px;font-weight:700">${fmt(i.invested)}</div></div>
-          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Current Value</div><div style="font-size:18px;font-weight:700;color:${g >= 0 ? 'var(--success)' : 'var(--danger)'}">${fmt(i.value_now)}</div></div>
-          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Gains</div><div style="font-size:18px;font-weight:700;color:${g >= 0 ? 'var(--success)' : 'var(--danger)'}">${g >= 0 ? '+' : ''}${fmt(g)}</div></div>
+          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Current Value</div><div style="font-size:18px;font-weight:700;color:${g>=0?'var(--success)':'var(--danger)'}">${fmt(i.value_now)}</div></div>
+          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Gain/Loss</div><div style="font-size:18px;font-weight:700;color:${g>=0?'var(--success)':'var(--danger)'}">${g>=0?'+':''}${fmt(g)} <span style="font-size:13px">(${fmtPct(gPct)})</span></div></div>
           <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Target</div><div style="font-size:18px;font-weight:700">${fmt(i.target)}</div></div>
+          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Monthly</div><div style="font-size:18px;font-weight:700">${fmt(i.contribution)}</div></div>
         </div>
         <div style="margin-bottom:16px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);margin-bottom:6px"><span>Progress to goal</span><span>${prog}%</span></div>
-          <div class="progress"><div class="progress-bar" style="width:${prog}%;background:${prog >= 100 ? 'var(--success)' : prog >= 60 ? 'var(--primary)' : 'var(--warning)'}"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);margin-bottom:6px"><span>Progress to goal</span><span style="font-weight:600">${prog}%</span></div>
+          <div class="progress" style="height:8px"><div class="progress-bar" style="width:${prog}%;background:${prog>=100?'var(--success)':prog>=60?'var(--primary)':'var(--warning)'}"></div></div>
         </div>
         <div class="calc-box">
-          <div class="calc-title">📊 Investment Calculator</div>
+          <div class="calc-title">📊 Projection Calculator</div>
           <div class="calc-grid">
-            <div class="field" style="margin:0"><label>Principal</label><input type="number" id="cp-${i.id}" value="${i.value_now}" class="form-control" style="padding:8px 12px"></div>
-            <div class="field" style="margin:0"><label>Rate (%/yr)</label><input type="number" id="cr-${i.id}" value="6" step="0.1" class="form-control" style="padding:8px 12px"></div>
-            <div class="field" style="margin:0"><label>Years</label><input type="number" id="cy-${i.id}" value="10" min="1" class="form-control" style="padding:8px 12px"></div>
-            <div class="field" style="margin:0"><label>Monthly Contribution</label><input type="number" id="cc-${i.id}" value="${i.contribution}" class="form-control" style="padding:8px 12px"></div>
+            <div class="field" style="margin:0"><label>Principal (S$)</label><input type="number" id="cp-${i.id}" value="${i.value_now||0}" style="padding:8px 12px"></div>
+            <div class="field" style="margin:0"><label>Rate (%/yr)</label><input type="number" id="cr-${i.id}" value="6" step="0.1" style="padding:8px 12px"></div>
+            <div class="field" style="margin:0"><label>Years</label><input type="number" id="cy-${i.id}" value="10" min="1" style="padding:8px 12px"></div>
+            <div class="field" style="margin:0"><label>Monthly Contribution</label><input type="number" id="cc-${i.id}" value="${i.contribution||0}" style="padding:8px 12px"></div>
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
             <button class="btn btn-secondary btn-sm" onclick="calcInterest(${i.id},'simple')">Simple Interest</button>
             <button class="btn btn-primary btn-sm" onclick="calcInterest(${i.id},'compound')">Compound Interest</button>
           </div>
-          <div class="calc-result" id="cres-${i.id}">
+          <div class="calc-result hidden" id="cres-${i.id}">
             <div class="calc-result-grid">
               <div><div class="calc-stat-label">Type</div><div class="calc-stat-value" id="ct-${i.id}"></div></div>
               <div><div class="calc-stat-label">Total Contributed</div><div class="calc-stat-value" id="cti-${i.id}"></div></div>
@@ -800,170 +936,186 @@ function renderGrowthChart() {
   const labels = Array.from({ length: 16 }, (_, i) => yr + i);
   mkChart('chartGrowth', {
     type: 'line',
-    data: { labels, datasets: S.investments.map((inv, idx) => ({ label: inv.name, data: labels.map((_, y) => Math.round(inv.value_now * Math.pow(1 + rate, y) + inv.contribution * 12 * (Math.pow(1 + rate / 12, y * 12) - 1) / (rate / 12))), borderColor: COLORS[idx % COLORS.length], backgroundColor: COLORS[idx % COLORS.length] + '18', fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 3 })) },
+    data: { labels, datasets: S.investments.map((inv, idx) => ({
+      label: inv.name, borderColor: COLORS[idx%COLORS.length], backgroundColor: COLORS[idx%COLORS.length]+'18',
+      fill: false, tension: 0.4, borderWidth: 2.5, pointRadius: 3,
+      data: labels.map((_, y) => {
+        const r = rate, c = inv.contribution||0, p = inv.value_now||0;
+        return Math.round(p * Math.pow(1+r, y) + (r > 0 ? c*12*(Math.pow(1+r/12, y*12)-1)/(r/12) : c*12*y));
+      })
+    })) },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } }
   });
 }
 
-document.getElementById('growthRateSelect')?.addEventListener('change', renderGrowthChart);
-
 function calcInterest(id, type) {
-  const p = parseFloat(document.getElementById(`cp-${id}`).value) || 0;
-  const r = parseFloat(document.getElementById(`cr-${id}`).value) / 100 || 0;
-  const y = parseFloat(document.getElementById(`cy-${id}`).value) || 0;
-  const c = parseFloat(document.getElementById(`cc-${id}`).value) || 0;
-  const contributed = p + c * 12 * y;
+  const p = parseFloat(document.getElementById(`cp-${id}`).value)||0;
+  const r = (parseFloat(document.getElementById(`cr-${id}`).value)||0)/100;
+  const y = parseFloat(document.getElementById(`cy-${id}`).value)||0;
+  const c = parseFloat(document.getElementById(`cc-${id}`).value)||0;
+  const contributed = p + c*12*y;
   let final, interest;
   if (type === 'simple') {
-    interest = p * r * y + c * 12 * y * r * y / 2;
+    // Principal earns simple interest; contributions earn average (y/2) simple interest
+    interest = p*r*y + c*12*y * r * (y/2);
     final = contributed + interest;
   } else {
-    const pf = p * Math.pow(1 + r, y);
-    const cf = r > 0 ? c * 12 * (Math.pow(1 + r / 12, y * 12) - 1) / (r / 12) : c * 12 * y;
-    final = pf + cf;
+    const pFinal = p * Math.pow(1+r, y);
+    const cFinal = r > 0 ? c*12*(Math.pow(1+r/12, y*12)-1)/(r/12) : c*12*y;
+    final = pFinal + cFinal;
     interest = final - contributed;
   }
   const res = document.getElementById(`cres-${id}`);
-  res.style.display = 'block';
-  document.getElementById(`ct-${id}`).textContent = type === 'simple' ? 'Simple Interest' : 'Compound Interest';
+  res.classList.remove('hidden');
+  document.getElementById(`ct-${id}`).textContent = type === 'simple' ? 'Simple Interest' : 'Compound (Monthly)';
   document.getElementById(`cti-${id}`).textContent = fmt(contributed);
   document.getElementById(`ci-${id}`).textContent = fmt(interest);
   document.getElementById(`cf-${id}`).textContent = fmt(final);
 }
 
 // ── History ────────────────────────────────────────────────────────────────────
-function renderHistory() {
+function renderHistory(clientId, isAdmin) {
+  document.getElementById('pageTitle').textContent = 'Financial History';
+  document.getElementById('pageSub').textContent = `${S.client.name} · Year-on-year progress`;
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary btn-sm" onclick="autoSnapshot('${S.viewClientId||S.user?.id}')">📸 Save Snapshot</button>`;
+
   const sorted = [...S.snapshots].sort((a, b) => a.year - b.year);
+  document.getElementById('mainContent').innerHTML = `
+    <div class="chart-grid">
+      <div class="card"><div class="card-header"><div class="card-title">🛡️ Coverage History</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartCoverageHistory"></canvas></div></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">📈 Investment History</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartInvestmentHistory"></canvas></div></div></div>
+    </div>
+    <div class="card"><div class="card-header"><div class="card-title">📋 Yearly Breakdown</div></div><div id="historyTable" class="card-body"></div></div>
+  `;
+
   if (!sorted.length) {
-    document.getElementById('historyTable').innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No history yet</div><div class="empty-sub">Click "Save Snapshot" to record your current data</div></div>';
+    document.getElementById('historyTable').innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">No snapshots yet</div><div class="empty-sub">Click "Save Snapshot" to record today\'s data</div></div>';
     return;
   }
 
-  mkChart('chartCoverageHistory', { type: 'line', data: { labels: sorted.map(s => s.year), datasets: [{ label: 'Total Coverage', data: sorted.map(s => s.total_coverage), borderColor: '#0EA5E9', backgroundColor: 'rgba(14,165,233,0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` Coverage: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: false, ticks: { callback: v => fmt(v) } } } } });
-
-  mkChart('chartInvestmentHistory', { type: 'line', data: { labels: sorted.map(s => s.year), datasets: [{ label: 'Investment Value', data: sorted.map(s => s.total_investment_value), borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` Investments: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: false, ticks: { callback: v => fmt(v) } } } } });
+  mkChart('chartCoverageHistory', { type: 'line', data: { labels: sorted.map(s => s.year), datasets: [{ label: 'Total Coverage', data: sorted.map(s => s.total_coverage||0), borderColor: '#0EA5E9', backgroundColor: 'rgba(14,165,233,0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` Coverage: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: false, ticks: { callback: v => fmt(v) } } } } });
+  mkChart('chartInvestmentHistory', { type: 'line', data: { labels: sorted.map(s => s.year), datasets: [{ label: 'Investment Value', data: sorted.map(s => s.total_investment_value||0), borderColor: '#8B5CF6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` Investments: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: false, ticks: { callback: v => fmt(v) } } } } });
 
   const rev = [...sorted].reverse();
   document.getElementById('historyTable').innerHTML = `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Year</th><th>Total Coverage</th><th>Coverage Change</th><th>Investment Value</th><th>Investment Change</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Year</th><th>Total Coverage</th><th>Coverage Δ</th><th>Investment Value</th><th>Investment Δ</th><th>Notes</th></tr></thead>
         <tbody>${rev.map((s, i) => {
-          const prev = rev[i + 1];
-          const cc = prev ? s.total_coverage - prev.total_coverage : null;
-          const ic = prev ? s.total_investment_value - prev.total_investment_value : null;
-          return `<tr><td><strong>${s.year}</strong></td><td>${fmt(s.total_coverage)}</td><td>${cc != null ? `<span style="color:${cc >= 0 ? 'var(--success)' : 'var(--danger)'}">${cc >= 0 ? '+' : ''}${fmt(cc)}</span>` : '—'}</td><td>${fmt(s.total_investment_value)}</td><td>${ic != null ? `<span style="color:${ic >= 0 ? 'var(--success)' : 'var(--danger)'}">${ic >= 0 ? '+' : ''}${fmt(ic)}</span>` : '—'}</td><td style="color:var(--text-3);font-size:12px">${esc(s.notes)}</td></tr>`;
+          const prev = rev[i+1];
+          const cc = prev ? (s.total_coverage||0) - (prev.total_coverage||0) : null;
+          const ic = prev ? (s.total_investment_value||0) - (prev.total_investment_value||0) : null;
+          return `<tr>
+            <td><strong>${s.year}</strong></td>
+            <td>${fmt(s.total_coverage)}</td>
+            <td>${cc != null ? `<span style="color:${cc>=0?'var(--success)':'var(--danger)'}">${cc>=0?'+':''}${fmt(cc)}</span>` : '<span style="color:var(--text-3)">—</span>'}</td>
+            <td>${fmt(s.total_investment_value)}</td>
+            <td>${ic != null ? `<span style="color:${ic>=0?'var(--success)':'var(--danger)'}">${ic>=0?'+':''}${fmt(ic)}</span>` : '<span style="color:var(--text-3)">—</span>'}</td>
+            <td style="color:var(--text-3);font-size:12px">${esc(s.notes)}</td>
+          </tr>`;
         }).join('')}</tbody>
       </table>
     </div>`;
 }
 
-// ── Modal helpers ──────────────────────────────────────────────────────────────
-let modalCb = null;
-document.getElementById('modalClose').onclick = document.getElementById('modalCancel').onclick = () => document.getElementById('modal').classList.add('hidden');
-document.getElementById('modalSubmit').onclick = () => { if (modalCb) modalCb(); };
-
-function showModal(title, html, onSubmit) {
+// ── Modal ──────────────────────────────────────────────────────────────────────
+let _modalCb = null;
+function showModal(title, html, onSubmit, submitLabel = 'Save') {
   document.getElementById('modalTitle').textContent = title;
-  document.getElementById('modalForm').innerHTML = html;
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalSubmit').textContent = submitLabel;
   document.getElementById('modal').classList.remove('hidden');
-  modalCb = onSubmit;
+  _modalCb = onSubmit;
+}
+function closeModal() { document.getElementById('modal').classList.add('hidden'); _modalCb = null; }
+document.getElementById('modalClose').onclick = document.getElementById('modalCancel').onclick = closeModal;
+document.getElementById('modalSubmit').onclick = () => { if (_modalCb) _modalCb(); };
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+function getFormData() {
+  const data = {};
+  document.getElementById('modalBody').querySelectorAll('[id^="mf-"]').forEach(el => { data[el.id.replace('mf-','')] = el.value; });
+  return data;
 }
 
 // ── Policy Modal ───────────────────────────────────────────────────────────────
-const PRUDENTIAL_PRODUCTS = { 'Term Life': ['PRUActive Protect','PRUTerm Protector'], 'Whole Life': ['PRULife Vantage','PRUActiveCash'], 'ILP': ['PRULink Assurance Account II'], 'IUL': ['PRUIndexed UL'], 'Early CI': ['PRUEarly Stage Crisis Cover','PRUActive Crisis Waiver'], 'Standalone CI': ['PRUCancer 360','PRUMulti Critical Care'], 'Multi-Pay CI': ['PRUMulti Critical Care Plus'], 'Endowment': ['PRUSave Endowment','PRUWealth','PRUFlexiCash'], 'Savings Plan': ['PRUSaver','PRUFlexiSaver'], 'Medical': ['PRUShield','PRUMajor Medical'], 'Disability Income': ['PRUIncome Protect'], 'TPD': ['PRUActive Protect TPD Rider'] };
+const POLICY_TYPES = ['Death / Life','Early Critical Illness','Late Stage Critical Illness','TPD','Terminal Illness','Gender Specific','Endowment','Savings Plan','IUL','Hospitalization','Accident','Disability Income'];
+const INSURERS = ['Prudential','Great Eastern','AIA','Singlife','NTUC Income','Manulife','Sun Life','Other'];
+const PROD_TYPES = ['Term Life','Whole Life','ILP','IUL','Early CI','Standalone CI','Multi-Pay CI','Endowment','Savings Plan','Medical','Disability Income','TPD','Rider'];
 
 function policyFormHTML(p = {}) {
-  const types = ['Death / Life','Early Critical Illness','Late Stage Critical Illness','TPD','Terminal Illness','Gender Specific','Endowment','Savings Plan','IUL','Hospitalization','Accident','Disability Income'];
-  const insurers = ['Prudential','Great Eastern','AIA','Singlife','NTUC Income','Manulife','Sun Life','Other'];
-  const prodTypes = ['Term Life','Whole Life','ILP','IUL','Early CI','Standalone CI','Multi-Pay CI','Endowment','Savings Plan','Medical','Disability Income','TPD','Rider'];
-  const statuses = ['Active','Lapsed','Cancelled','Pending'];
   return `<div class="form-grid">
-    <div class="field"><label>Policy Type</label><select name="type" required>${types.map(t => `<option value="${t}" ${p.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-    <div class="field"><label>Insurer</label><select name="insurer">${insurers.map(i => `<option ${p.insurer === i ? 'selected' : ''}>${i}</option>`).join('')}</select></div>
-    <div class="field"><label>Product Name</label><input type="text" name="product_name" value="${esc(p.product_name||'')}" placeholder="e.g. PRUActive Protect"></div>
-    <div class="field"><label>Product Type</label><select name="product_type">${prodTypes.map(t => `<option ${p.product_type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-    <div class="field"><label>Coverage (SGD)</label><input type="number" name="coverage" value="${p.coverage||''}" required></div>
-    <div class="field"><label>Annual Premium (SGD)</label><input type="number" name="premium" value="${p.premium||''}" required></div>
-    <div class="field"><label>Recommended Coverage</label><input type="number" name="recommended" value="${p.recommended||''}"></div>
-    <div class="field"><label>Status</label><select name="status">${statuses.map(s => `<option ${(p.status||'Active') === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-    <div class="field"><label>Start Date</label><input type="date" name="start_date" value="${p.start_date||''}"></div>
-    <div class="field"><label>End Date</label><input type="date" name="end_date" value="${p.end_date||''}"></div>
-    <div class="field" style="grid-column:1/-1"><label>Notes</label><textarea name="notes" rows="2">${esc(p.notes||'')}</textarea></div>
+    <div class="field"><label>Policy Type *</label><select id="mf-type">${POLICY_TYPES.map(t => `<option ${(p.type||'Death / Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Insurer</label><select id="mf-insurer">${INSURERS.map(i => `<option ${(p.insurer||'Prudential')===i?'selected':''}>${i}</option>`).join('')}</select></div>
+    <div class="field"><label>Product Name</label><input id="mf-product_name" type="text" value="${esc(p.product_name||'')}" placeholder="e.g. PRUActive Protect"></div>
+    <div class="field"><label>Policy Number</label><input id="mf-policy_number" type="text" value="${esc(p.policy_number||'')}" placeholder="e.g. 12345678"></div>
+    <div class="field"><label>Product Type</label><select id="mf-product_type">${PROD_TYPES.map(t => `<option ${(p.product_type||'Term Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Status</label><select id="mf-status"><option ${(p.status||'Active')==='Active'?'selected':''}>Active</option><option ${p.status==='Lapsed'?'selected':''}>Lapsed</option><option ${p.status==='Cancelled'?'selected':''}>Cancelled</option><option ${p.status==='Pending'?'selected':''}>Pending</option></select></div>
+    <div class="field"><label>Coverage (S$) *</label><input id="mf-coverage" type="number" value="${p.coverage||''}" placeholder="500000"></div>
+    <div class="field"><label>Annual Premium (S$)</label><input id="mf-premium" type="number" value="${p.premium||''}" placeholder="3600"></div>
+    <div class="field"><label>Recommended Coverage</label><input id="mf-recommended" type="number" value="${p.recommended||''}" placeholder="0"></div>
+    <div class="field"><label>Start Date</label><input id="mf-start_date" type="date" value="${p.start_date||''}"></div>
+    <div class="field"><label>End Date</label><input id="mf-end_date" type="date" value="${p.end_date||''}"></div>
+    <div class="field" style="grid-column:1/-1"><label>Notes</label><textarea id="mf-notes" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;resize:vertical">${esc(p.notes||'')}</textarea></div>
   </div>`;
-}
-
-function getFormData(formId) {
-  const form = document.getElementById(formId);
-  const data = {};
-  form.querySelectorAll('[name]').forEach(el => { data[el.name] = el.value; });
-  return data;
 }
 
 async function openPolicyModal(id) {
   const existing = id ? S.policies.find(p => p.id === id) : null;
-  showModal(existing ? 'Edit Policy' : 'Add Policy', policyFormHTML(existing || {}), async () => {
-    const data = getFormData('modalForm');
-    data.coverage = parseFloat(data.coverage) || 0;
-    data.premium = parseFloat(data.premium) || 0;
-    data.recommended = parseFloat(data.recommended) || 0;
+  showModal(existing ? 'Edit Policy' : 'Add Policy', policyFormHTML(existing||{}), async () => {
+    const d = getFormData();
+    const body = { type: d.type, product_name: d.product_name, policy_number: d.policy_number, insurer: d.insurer, product_type: d.product_type, coverage: parseFloat(d.coverage)||0, premium: parseFloat(d.premium)||0, recommended: parseFloat(d.recommended)||0, status: d.status, start_date: d.start_date, end_date: d.end_date, notes: d.notes };
+    const cid = S.viewClientId || S.user?.id;
     try {
-      if (existing) { const u = await api.put(`/clients/${S.client.id}/policies/${id}`, data); S.policies = S.policies.map(p => p.id === id ? u : p); toast('Policy updated'); }
-      else { const n = await api.post(`/clients/${S.client.id}/policies`, data); S.policies.push(n); toast('Policy added ✅'); }
-      document.getElementById('modal').classList.add('hidden');
-      renderInsurance();
-      if (S.page === 'overview') renderOverview();
+      if (existing) { const u = await api.put(`/clients/${cid}/policies/${id}`, body); S.policies = S.policies.map(p => p.id===id?u:p); toast('Policy updated'); }
+      else { const n = await api.post(`/clients/${cid}/policies`, body); S.policies.push(n); toast('Policy added ✅'); }
+      closeModal(); renderInsurance(cid);
     } catch (e) { toast(e.message, 'error'); }
   });
 }
 
 async function deletePolicy(id) {
   if (!confirm('Delete this policy?')) return;
-  try { await api.del(`/clients/${S.client.id}/policies/${id}`); S.policies = S.policies.filter(p => p.id !== id); toast('Policy deleted'); renderInsurance(); if (S.page === 'overview') renderOverview(); }
+  const cid = S.viewClientId || S.user?.id;
+  try { await api.del(`/clients/${cid}/policies/${id}`); S.policies = S.policies.filter(p => p.id!==id); toast('Policy deleted'); renderInsurance(cid); }
   catch (e) { toast(e.message, 'error'); }
 }
 
 // ── Investment Modal ───────────────────────────────────────────────────────────
+const INV_TYPES = ['ILP','IUL','SRS','CPF-SA','CPF-OA','Stocks','ETF','Bonds','REITs','Fixed Deposit','Crypto','Other'];
+
 function invFormHTML(i = {}) {
-  const types = ['ILP','IUL','SRS','CPF-SA','CPF-OA','Stocks','ETF','Bonds','REITs','Fixed Deposit','Crypto','Other'];
   return `<div class="form-grid">
-    <div class="field"><label>Investment Name</label><input type="text" name="name" value="${esc(i.name||'')}" required placeholder="e.g. PRULink Growth Fund"></div>
-    <div class="field"><label>Type</label><select name="type">${types.map(t => `<option ${(i.type||'ILP') === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-    <div class="field"><label>Amount Invested (SGD)</label><input type="number" name="invested" value="${i.invested||''}" required></div>
-    <div class="field"><label>Current Value (SGD)</label><input type="number" name="value_now" value="${i.value_now||''}" required></div>
-    <div class="field"><label>Target Goal (SGD)</label><input type="number" name="target" value="${i.target||''}" required></div>
-    <div class="field"><label>Goal Date</label><input type="date" name="goal_by" value="${i.goal_by||''}"></div>
-    <div class="field"><label>Monthly Contribution (SGD)</label><input type="number" name="contribution" value="${i.contribution||0}"></div>
+    <div class="field"><label>Investment Name *</label><input id="mf-name" type="text" value="${esc(i.name||'')}" placeholder="PRULink Growth Fund" required></div>
+    <div class="field"><label>Type</label><select id="mf-type">${INV_TYPES.map(t => `<option ${(i.type||'ILP')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Amount Invested (S$)</label><input id="mf-invested" type="number" value="${i.invested||''}" placeholder="20000"></div>
+    <div class="field"><label>Current Value (S$)</label><input id="mf-value_now" type="number" value="${i.value_now||''}" placeholder="24000"></div>
+    <div class="field"><label>Target Goal (S$)</label><input id="mf-target" type="number" value="${i.target||''}" placeholder="100000"></div>
+    <div class="field"><label>Goal Date</label><input id="mf-goal_by" type="date" value="${i.goal_by||''}"></div>
+    <div class="field"><label>Monthly Contribution (S$)</label><input id="mf-contribution" type="number" value="${i.contribution||0}" placeholder="500"></div>
   </div>`;
 }
 
 async function openInvestmentModal(id) {
-  const existing = id ? S.investments.find(i => i.id === id) : null;
-  showModal(existing ? 'Edit Investment' : 'Add Investment', invFormHTML(existing || {}), async () => {
-    const data = getFormData('modalForm');
-    ['invested','value_now','target','contribution'].forEach(k => data[k] = parseFloat(data[k]) || 0);
+  const existing = id ? S.investments.find(i => i.id===id) : null;
+  showModal(existing ? 'Edit Investment' : 'Add Investment', invFormHTML(existing||{}), async () => {
+    const d = getFormData();
+    const body = { name: d.name, type: d.type, invested: parseFloat(d.invested)||0, value_now: parseFloat(d.value_now)||0, target: parseFloat(d.target)||0, goal_by: d.goal_by, contribution: parseFloat(d.contribution)||0 };
+    const cid = S.viewClientId || S.user?.id;
     try {
-      if (existing) { const u = await api.put(`/clients/${S.client.id}/investments/${id}`, data); S.investments = S.investments.map(i => i.id === id ? u : i); toast('Investment updated'); }
-      else { const n = await api.post(`/clients/${S.client.id}/investments`, data); S.investments.push(n); toast('Investment added ✅'); }
-      document.getElementById('modal').classList.add('hidden');
-      renderInvestments();
-      if (S.page === 'overview') renderOverview();
+      if (existing) { const u = await api.put(`/clients/${cid}/investments/${id}`, body); S.investments = S.investments.map(i => i.id===id?u:i); toast('Investment updated'); }
+      else { const n = await api.post(`/clients/${cid}/investments`, body); S.investments.push(n); toast('Investment added ✅'); }
+      closeModal(); renderInvestments(cid);
     } catch (e) { toast(e.message, 'error'); }
   });
 }
 
 async function deleteInvestment(id) {
   if (!confirm('Delete this investment?')) return;
-  try { await api.del(`/clients/${S.client.id}/investments/${id}`); S.investments = S.investments.filter(i => i.id !== id); toast('Investment deleted'); renderInvestments(); if (S.page === 'overview') renderOverview(); }
+  const cid = S.viewClientId || S.user?.id;
+  try { await api.del(`/clients/${cid}/investments/${id}`); S.investments = S.investments.filter(i => i.id!==id); toast('Investment deleted'); renderInvestments(cid); }
   catch (e) { toast(e.message, 'error'); }
 }
-
-// ── Add policy/investment buttons ──────────────────────────────────────────────
-document.getElementById('addPolicyBtn')?.addEventListener('click', () => openPolicyModal());
-document.getElementById('addInvestmentBtn')?.addEventListener('click', () => openInvestmentModal());
-
-// ── Close modal on bg click ────────────────────────────────────────────────────
-document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.add('hidden'); });
 </script>
 </body>
 </html>
