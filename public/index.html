@@ -39,6 +39,8 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;font-size:14p
 .login-title{font-size:22px;font-weight:700;margin-bottom:6px}
 .login-sub{font-size:14px;color:var(--text-2);margin-bottom:28px}
 .login-error{background:var(--danger-light);border:1px solid rgba(239,68,68,0.25);color:var(--danger);font-size:13px;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px}
+.invite-banner{background:var(--primary-light);border:1px solid rgba(14,165,233,0.3);color:#0C4A6E;font-size:13px;padding:12px 14px;border-radius:var(--radius);margin-bottom:20px;text-align:center}
+.invite-banner strong{display:block;margin-bottom:4px;font-size:15px}
 
 /* ── Forms ── */
 .field{margin-bottom:16px}
@@ -87,6 +89,20 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;font-size:14p
 .topbar-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .content{padding:28px;flex:1}
 
+/* ── Print ── */
+@media print {
+  .sidebar,.topbar,.topbar-actions,.btn,.modal-overlay,.toast-container{display:none!important}
+  .main{margin-left:0!important}
+  .content{padding:0!important}
+  body{background:#fff!important}
+  .card{box-shadow:none!important;border:1px solid #ddd!important;break-inside:avoid;margin-bottom:16px}
+  .print-header{display:block!important}
+  .no-print{display:none!important}
+}
+.print-header{display:none;padding:16px 0 24px;border-bottom:2px solid var(--border);margin-bottom:24px}
+.print-header h1{font-size:20px;font-weight:700}
+.print-header p{font-size:12px;color:var(--text-2);margin-top:4px}
+
 /* ── Metric cards ── */
 .metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
 .metric{background:var(--surface);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);border:1px solid var(--border);position:relative;overflow:hidden}
@@ -118,11 +134,22 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;font-size:14p
 .alert-body strong{display:block;margin-bottom:2px;font-weight:600}
 
 /* ── Coverage gauge ── */
-.coverage-row{display:grid;grid-template-columns:140px 1fr 44px;align-items:center;gap:12px;margin-bottom:10px}
+.coverage-row{display:grid;grid-template-columns:160px 1fr 44px;align-items:center;gap:12px;margin-bottom:10px}
 .coverage-label{font-size:12px;color:var(--text-2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .coverage-track{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
 .coverage-fill{height:100%;border-radius:99px;transition:width 0.6s ease}
 .coverage-pct{font-size:12px;font-weight:600;text-align:right}
+
+/* ── Gap cards ── */
+.gap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px}
+.gap-card{border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;background:var(--surface)}
+.gap-card.critical{border-color:rgba(239,68,68,0.4);background:rgba(239,68,68,0.02)}
+.gap-card.partial{border-color:rgba(245,158,11,0.4);background:rgba(245,158,11,0.02)}
+.gap-card.adequate{border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.02)}
+.gap-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;margin-bottom:8px}
+.gap-status.critical{background:var(--danger-light);color:var(--danger)}
+.gap-status.partial{background:var(--warning-light);color:var(--warning)}
+.gap-status.adequate{background:var(--success-light);color:var(--success)}
 
 /* ── Badges ── */
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
@@ -199,6 +226,18 @@ tr:hover td{background:var(--surface-2)}
 .admin-stat-value{font-size:26px;font-weight:700;color:var(--text)}
 .admin-stat-label{font-size:12px;color:var(--text-3);margin-top:4px}
 
+/* ── Expiry alert list ── */
+.expiry-row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.expiry-row:last-child{border-bottom:none}
+.expiry-days{width:54px;text-align:center;flex-shrink:0}
+.expiry-days-num{font-size:20px;font-weight:800;line-height:1}
+.expiry-days-label{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3)}
+
+/* ── Invite box ── */
+.invite-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-top:16px}
+.invite-link-wrap{display:flex;gap:8px;align-items:center;margin-top:10px}
+.invite-link-input{flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:monospace;background:var(--surface);color:var(--text-2);overflow:hidden;text-overflow:ellipsis}
+
 /* ── Modal ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.5);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.hidden{display:none}
@@ -233,6 +272,11 @@ tr:hover td{background:var(--surface-2)}
 .section-title{font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px}
 .hidden{display:none!important}
 .tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:500;background:var(--surface-2);color:var(--text-2)}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;gap:2px;background:var(--surface-2);padding:4px;border-radius:var(--radius-lg);margin-bottom:20px;width:fit-content}
+.tab-btn{padding:6px 14px;border-radius:var(--radius);font-size:12px;font-weight:500;border:none;background:transparent;color:var(--text-2);cursor:pointer;transition:all var(--transition)}
+.tab-btn.active{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--shadow-sm)}
 </style>
 </head>
 <body>
@@ -244,6 +288,7 @@ tr:hover td{background:var(--surface-2)}
       <div class="login-logo-icon">💎</div>
       <div><div class="login-logo-name">FinView</div><div class="login-logo-sub">by Prudential · Dylan Ho</div></div>
     </div>
+    <div id="inviteBanner" class="invite-banner hidden"></div>
     <div class="login-title">Welcome back</div>
     <div class="login-sub">Sign in to your financial dashboard</div>
     <div id="loginError" class="login-error hidden"></div>
@@ -255,8 +300,6 @@ tr:hover td{background:var(--surface-2)}
 
 <!-- ══ APP ════════════════════════════════════════════════════════ -->
 <div id="appRoot" class="app hidden">
-
-  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">
@@ -275,8 +318,6 @@ tr:hover td{background:var(--surface-2)}
       </button>
     </div>
   </aside>
-
-  <!-- Main -->
   <main class="main">
     <div class="topbar">
       <div class="topbar-left">
@@ -304,7 +345,6 @@ tr:hover td{background:var(--surface-2)}
   </div>
 </div>
 
-<!-- Toast container -->
 <div class="toast-container" id="toasts"></div>
 
 <script>
@@ -352,6 +392,22 @@ const api = {
   del: (p) => api._req('DELETE', p)
 };
 
+// ── Invite token handling ──────────────────────────────────────────────────────
+(async function checkInvite() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (!token) return;
+  try {
+    const data = await fetch(`/api/invite/${token}`).then(r => r.json());
+    if (data.client) {
+      const banner = document.getElementById('inviteBanner');
+      banner.innerHTML = `<strong>👋 Welcome, ${esc(data.client.name)}!</strong>Your advisor has invited you to view your financial dashboard.<br><span style="font-size:12px;margin-top:4px;display:block">Use your username: <strong>${esc(data.client.username)}</strong> and your password to sign in.</span>`;
+      banner.classList.remove('hidden');
+      document.getElementById('loginUser').value = data.client.username;
+    }
+  } catch {}
+})();
+
 // ── Login ──────────────────────────────────────────────────────────────────────
 document.getElementById('loginBtn').onclick = doLogin;
 document.getElementById('loginPass').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
@@ -365,13 +421,13 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Signing in…';
   try {
     const res = await api.post('/auth/login', { username, password });
-    S.token = res.token;
-    S.role = res.role;
-    S.user = res.client;
+    S.token = res.token; S.role = res.role; S.user = res.client;
     document.getElementById('loginPage').classList.add('hidden');
     document.getElementById('appRoot').classList.remove('hidden');
     document.getElementById('sidebarName').textContent = res.client.name;
     document.getElementById('sidebarRole').textContent = res.role === 'admin' ? '🔑 Admin' : '👤 Client';
+    // Clean URL if came from invite link
+    if (window.location.search) window.history.replaceState({}, '', window.location.pathname);
     if (res.role === 'admin') initAdminApp();
     else initClientApp(res.client.id);
   } catch (e) {
@@ -395,16 +451,15 @@ function logout() {
 // ══════════════════════════════════════════════════════════════════════════════
 // ADMIN APP
 // ══════════════════════════════════════════════════════════════════════════════
-function initAdminApp() {
-  buildAdminNav();
-  navTo('adminDashboard');
-}
+function initAdminApp() { buildAdminNav(); navTo('adminDashboard'); }
 
 function buildAdminNav() {
   document.getElementById('sidebarNav').innerHTML = `
     <div class="nav-label">Admin</div>
     <button class="nav-item active" id="nav-adminDashboard" onclick="navTo('adminDashboard')"><span class="nav-icon">📊</span> Overview</button>
     <button class="nav-item" id="nav-adminClients" onclick="navTo('adminClients')"><span class="nav-icon">👥</span> Clients</button>
+    <button class="nav-item" id="nav-adminExpiry" onclick="navTo('adminExpiry')"><span class="nav-icon">🔔</span> Expiry Alerts</button>
+    <button class="nav-item" id="nav-adminGaps" onclick="navTo('adminGaps')"><span class="nav-icon">⚠️</span> Coverage Gaps</button>
     <div class="nav-label" style="margin-top:8px">Tools</div>
     <button class="nav-item" id="nav-adminSync" onclick="syncAllToNotion()"><span class="nav-icon">🔄</span> Sync All → Notion</button>
   `;
@@ -415,7 +470,13 @@ function navTo(page, ...args) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   const activeNav = document.getElementById(`nav-${page}`);
   if (activeNav) activeNav.classList.add('active');
-  const fns = { adminDashboard: renderAdminDashboard, adminClients: renderAdminClients, adminViewClient: () => renderAdminViewClient(...args) };
+  const fns = {
+    adminDashboard: renderAdminDashboard,
+    adminClients: renderAdminClients,
+    adminExpiry: renderAdminExpiry,
+    adminGaps: renderAdminGaps,
+    adminViewClient: () => renderAdminViewClient(...args)
+  };
   if (fns[page]) fns[page]();
 }
 
@@ -426,6 +487,7 @@ async function renderAdminDashboard() {
   document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary" onclick="openCreateClientModal()">+ New Client</button>`;
   document.getElementById('mainContent').innerHTML = `
     <div id="adminStats" class="admin-stats"></div>
+    <div id="adminExpiryPreview" style="margin-bottom:20px"></div>
     <div class="chart-grid">
       <div class="card"><div class="card-header"><div class="card-title">📈 Total Coverage by Client</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartAdminCoverage"></canvas></div></div></div>
       <div class="card"><div class="card-header"><div class="card-title">💰 Investment Value by Client</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartAdminInvestments"></canvas></div></div></div>
@@ -433,7 +495,11 @@ async function renderAdminDashboard() {
     <div class="card"><div class="card-header"><div class="card-title">👥 Recent Clients</div><button class="btn btn-secondary btn-sm" onclick="navTo('adminClients')">View All</button></div><div id="recentClientsList"></div></div>
   `;
   try {
-    const [stats, clients] = await Promise.all([api.get('/admin/stats'), api.get('/admin/clients')]);
+    const [stats, clients, expiry] = await Promise.all([
+      api.get('/admin/stats'),
+      api.get('/admin/clients'),
+      api.get('/admin/expiry-alerts?days=30')
+    ]);
     document.getElementById('adminStats').innerHTML = `
       <div class="admin-stat-card"><div class="admin-stat-icon">👥</div><div class="admin-stat-value">${stats.totalClients}</div><div class="admin-stat-label">Total Clients</div></div>
       <div class="admin-stat-card"><div class="admin-stat-icon">🛡️</div><div class="admin-stat-value">${stats.totalPolicies}</div><div class="admin-stat-label">Total Policies</div></div>
@@ -441,12 +507,120 @@ async function renderAdminDashboard() {
       <div class="admin-stat-card"><div class="admin-stat-icon">💵</div><div class="admin-stat-value">${fmt(stats.totalPremium)}</div><div class="admin-stat-label">Annual Premium</div></div>
       <div class="admin-stat-card"><div class="admin-stat-icon">📈</div><div class="admin-stat-value">${fmt(stats.totalInvestments)}</div><div class="admin-stat-label">Investments AUM</div></div>
     `;
+    if (expiry.length) {
+      document.getElementById('adminExpiryPreview').innerHTML = `
+        <div class="alert alert-danger" style="cursor:pointer" onclick="navTo('adminExpiry')">
+          <div class="alert-icon">🔔</div>
+          <div class="alert-body"><strong>${expiry.length} ${expiry.length===1?'policy':'policies'} expiring within 30 days</strong>
+          ${expiry.slice(0,3).map(p => `${esc(p.client_name)} — ${esc(p.product_name||p.type)} (${daysUntil(p.end_date)} days)`).join(' · ')}${expiry.length > 3 ? ` · +${expiry.length-3} more` : ''} <span style="text-decoration:underline;margin-left:4px">View all →</span></div>
+        </div>`;
+    }
     if (clients.length) {
       mkChart('chartAdminCoverage', { type: 'bar', data: { labels: clients.map(c => c.name.split(' ')[0]), datasets: [{ label: 'Coverage', data: clients.map(c => c.totalCoverage), backgroundColor: COLORS, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
       mkChart('chartAdminInvestments', { type: 'bar', data: { labels: clients.map(c => c.name.split(' ')[0]), datasets: [{ label: 'Investments', data: clients.map(c => c.totalInvestments), backgroundColor: COLORS.slice(3), borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
     }
     const recent = clients.slice(0, 5);
     document.getElementById('recentClientsList').innerHTML = recent.length ? recent.map(c => clientRowHTML(c)).join('') : `<div class="empty"><div class="empty-sub">No clients yet</div><button class="btn btn-primary" onclick="openCreateClientModal()">+ Add First Client</button></div>`;
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Admin: Expiry Alerts ───────────────────────────────────────────────────────
+async function renderAdminExpiry() {
+  document.getElementById('pageTitle').textContent = 'Expiry Alerts';
+  document.getElementById('pageSub').textContent = 'Policies expiring across all clients';
+  document.getElementById('topbarActions').innerHTML = `
+    <div class="tab-bar" style="margin-bottom:0">
+      <button class="tab-btn active" id="tab-30" onclick="loadExpiry(30)">30 Days</button>
+      <button class="tab-btn" id="tab-60" onclick="loadExpiry(60)">60 Days</button>
+      <button class="tab-btn" id="tab-90" onclick="loadExpiry(90)">90 Days</button>
+    </div>`;
+  document.getElementById('mainContent').innerHTML = `<div id="expiryContent"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading…</div></div></div>`;
+  loadExpiry(30);
+}
+
+async function loadExpiry(days) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tab = document.getElementById(`tab-${days}`);
+  if (tab) tab.classList.add('active');
+  try {
+    const alerts = await api.get(`/admin/expiry-alerts?days=${days}`);
+    const el = document.getElementById('expiryContent');
+    if (!alerts.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All clear!</div><div class="empty-sub">No policies expiring in the next ${days} days.</div></div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-title">🔔 ${alerts.length} ${alerts.length===1?'Policy':'Policies'} Expiring in ${days} Days</div></div>
+        <div>${alerts.map(p => {
+          const d = daysUntil(p.end_date);
+          const urgency = d <= 14 ? 'danger' : d <= 30 ? 'warning' : 'neutral';
+          const bgColor = urgency === 'danger' ? 'var(--danger-light)' : urgency === 'warning' ? 'var(--warning-light)' : 'var(--surface)';
+          const textColor = urgency === 'danger' ? 'var(--danger)' : urgency === 'warning' ? 'var(--warning)' : 'var(--success)';
+          return `<div class="expiry-row" style="background:${d<=14?'rgba(239,68,68,0.02)':''}">
+            <div class="expiry-days">
+              <div class="expiry-days-num" style="color:${textColor}">${d}</div>
+              <div class="expiry-days-label">days</div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px;font-weight:600">${esc(p.client_name)}</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:2px">${esc(p.product_name||p.type)} · ${esc(p.insurer)} · Policy #${esc(p.policy_number||'—')}</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px">Expires ${fmtDate(p.end_date)} · Coverage ${fmt(p.coverage)}</div>
+            </div>
+            <div style="flex-shrink:0;text-align:right">
+              <span class="badge badge-${urgency==='danger'?'lapsed':urgency==='warning'?'pending':'active'}">${d <= 14 ? 'Urgent' : d <= 30 ? 'Soon' : 'Upcoming'}</span>
+              <div style="font-size:12px;color:var(--text-3);margin-top:4px">${fmt(p.premium)}/yr</div>
+            </div>
+            <button class="btn btn-secondary btn-sm no-print" onclick="openClientView('${esc(p.client_id)}','${esc(p.client_name)}')" style="flex-shrink:0">View →</button>
+          </div>`;
+        }).join('')}</div>
+      </div>`;
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Admin: Coverage Gaps ───────────────────────────────────────────────────────
+async function renderAdminGaps() {
+  document.getElementById('pageTitle').textContent = 'Coverage Gaps';
+  document.getElementById('pageSub').textContent = 'Clients with underinsured areas';
+  document.getElementById('topbarActions').innerHTML = '';
+  document.getElementById('mainContent').innerHTML = `<div id="gapsContent"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Analysing…</div></div></div>`;
+  try {
+    const gaps = await api.get('/admin/coverage-gaps');
+    const el = document.getElementById('gapsContent');
+    if (!gaps.length) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All clients are well covered!</div><div class="empty-sub">No critical coverage gaps detected.</div></div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="alert alert-info" style="margin-bottom:20px"><div class="alert-icon">ℹ️</div><div class="alert-body"><strong>Based on Singapore financial planning benchmarks</strong>Recommendations use income multipliers: Life ${`(income × years to retire)`}, CI ${`(income × 3–5)`}, Hospitalisation ${`(S$150k)`}. Gaps are opportunities to review coverage.</div></div>
+      ${gaps.map(c => `
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${esc(c.name)} <span style="font-size:12px;color:var(--text-3);font-weight:400">· Age ${c.age} · ${fmt(c.annual_income)}/yr · ${c.dependents} dependent(s)</span></div>
+              <div class="card-sub">Total gap: <strong style="color:var(--danger)">${fmt(c.totalGap)}</strong></div>
+            </div>
+            <button class="btn btn-secondary btn-sm no-print" onclick="openClientView('${esc(c.id)}','${esc(c.name)}')">View Client →</button>
+          </div>
+          <div class="card-body">
+            <div class="gap-grid">
+              ${c.gaps.map(g => `
+                <div class="gap-card ${g.status}">
+                  <div class="gap-status ${g.status}">${g.status === 'critical' ? '🔴 Critical' : g.status === 'partial' ? '🟡 Partial' : '🟢 Adequate'}</div>
+                  <div style="font-size:14px;font-weight:600;margin-bottom:8px">${esc(g.type)}</div>
+                  <div style="margin-bottom:10px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:4px"><span>Coverage</span><span>${g.pct}%</span></div>
+                    <div class="progress" style="height:8px"><div class="progress-bar" style="width:${g.pct}%;background:${g.status==='critical'?'var(--danger)':g.status==='partial'?'var(--warning)':'var(--success)'}"></div></div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+                    <div><div style="color:var(--text-3)">Current</div><div style="font-weight:600">${fmt(g.current)}</div></div>
+                    <div><div style="color:var(--text-3)">Recommended</div><div style="font-weight:600">${fmt(g.recommended)}</div></div>
+                    <div style="grid-column:1/-1"><div style="color:var(--text-3)">Gap to fill</div><div style="font-weight:700;color:${g.status==='adequate'?'var(--success)':'var(--danger)'}">${g.gap > 0 ? fmt(g.gap) : '✓ Covered'}</div></div>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>
+        </div>`).join('')}`;
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -486,6 +660,7 @@ function clientRowHTML(c) {
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
         <button class="btn btn-secondary btn-sm" onclick="openEditClientModal('${c.id}')">✏️ Edit</button>
+        <button class="btn btn-secondary btn-sm" onclick="showInviteLink('${c.id}','${esc(c.name)}')">🔗</button>
         <button class="btn btn-danger btn-sm" onclick="deleteClient('${c.id}','${esc(c.name)}')">🗑️</button>
       </div>
     </div>`;
@@ -502,6 +677,38 @@ function filterClients() {
   renderClientList((window._allClients||[]).filter(c => c.name.toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q)));
 }
 
+// ── Invite Link ────────────────────────────────────────────────────────────────
+async function showInviteLink(clientId, clientName) {
+  showModal(`🔗 Invite Link — ${clientName}`,
+    `<p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Generate a 7-day invite link for <strong>${esc(clientName)}</strong> to access their portal. The link pre-fills their username on the login page.</p>
+    <div id="inviteResult"><button class="btn btn-primary" onclick="generateInviteLink('${clientId}')">🔗 Generate Invite Link</button></div>`,
+    null, 'Close');
+  document.getElementById('modalSubmit').style.display = 'none';
+  document.getElementById('modalCancel').textContent = 'Close';
+}
+
+async function generateInviteLink(clientId) {
+  try {
+    const data = await api.post(`/admin/clients/${clientId}/invite`, {});
+    document.getElementById('inviteResult').innerHTML = `
+      <div class="invite-box">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">✅ Link generated — expires ${fmtDate(data.expires)}</div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:10px">Share this link with your client. Previous unused links have been revoked.</div>
+        <div class="invite-link-wrap">
+          <input class="invite-link-input" id="inviteLinkInput" value="${esc(data.link)}" readonly>
+          <button class="btn btn-primary btn-sm" onclick="copyInviteLink()">📋 Copy</button>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-3)">💡 Share via WhatsApp, email or SMS. Client logs in using their username: <strong>${esc(data.client.username)}</strong></div>
+      </div>`;
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function copyInviteLink() {
+  const input = document.getElementById('inviteLinkInput');
+  if (!input) return;
+  navigator.clipboard.writeText(input.value).then(() => toast('Link copied to clipboard! 📋'));
+}
+
 function openClientView(id, name) {
   S.viewClientId = id;
   document.getElementById('sidebarNav').innerHTML = `
@@ -512,6 +719,7 @@ function openClientView(id, name) {
     <button class="nav-item active" id="nav-overview" onclick="navClientPage('overview')"><span class="nav-icon">📊</span> Overview</button>
     <button class="nav-item" id="nav-insurance" onclick="navClientPage('insurance')"><span class="nav-icon">🛡️</span> Insurance</button>
     <button class="nav-item" id="nav-investments" onclick="navClientPage('investments')"><span class="nav-icon">📈</span> Investments</button>
+    <button class="nav-item" id="nav-gaps" onclick="navClientPage('gaps')"><span class="nav-icon">⚠️</span> Coverage Gaps</button>
     <button class="nav-item" id="nav-history" onclick="navClientPage('history')"><span class="nav-icon">🗓️</span> History</button>
   `;
   loadClientData(id).then(() => navClientPage('overview'));
@@ -557,8 +765,7 @@ function openCreateClientModal() {
         email: document.getElementById('cf-email').value,
         phone: document.getElementById('cf-phone').value
       });
-      closeModal();
-      toast('Client created ✅');
+      closeModal(); toast('Client created ✅');
       if (S.page === 'adminClients') renderAdminClients();
       else if (S.page === 'adminDashboard') renderAdminDashboard();
     } catch (e) { toast(e.message, 'error'); }
@@ -582,8 +789,7 @@ async function openEditClientModal(id) {
       const pw = document.getElementById('cf-password').value;
       if (pw) body.password = pw;
       await api.put(`/admin/clients/${id}`, body);
-      closeModal();
-      toast('Client updated ✅');
+      closeModal(); toast('Client updated ✅');
       if (S.page === 'adminClients') renderAdminClients();
     }, 'Save Changes');
   } catch (e) { toast(e.message, 'error'); }
@@ -608,7 +814,7 @@ async function syncAllToNotion() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// CLIENT APP (shared between client login + admin viewing a client)
+// CLIENT APP
 // ══════════════════════════════════════════════════════════════════════════════
 function initClientApp(clientId) {
   document.getElementById('sidebarNav').innerHTML = `
@@ -616,6 +822,7 @@ function initClientApp(clientId) {
     <button class="nav-item active" id="nav-overview" onclick="navClientPage('overview')"><span class="nav-icon">📊</span> Overview</button>
     <button class="nav-item" id="nav-insurance" onclick="navClientPage('insurance')"><span class="nav-icon">🛡️</span> Insurance</button>
     <button class="nav-item" id="nav-investments" onclick="navClientPage('investments')"><span class="nav-icon">📈</span> Investments</button>
+    <button class="nav-item" id="nav-gaps" onclick="navClientPage('gaps')"><span class="nav-icon">⚠️</span> Coverage Gaps</button>
     <button class="nav-item" id="nav-history" onclick="navClientPage('history')"><span class="nav-icon">🗓️</span> History</button>
   `;
   loadClientData(clientId).then(() => navClientPage('overview'));
@@ -629,12 +836,8 @@ async function loadClientData(clientId) {
       api.get(`/clients/${clientId}/investments`),
       api.get(`/clients/${clientId}/snapshots`)
     ]);
-    S.client = client;
-    S.policies = policies;
-    S.investments = investments;
-    S.snapshots = snapshots;
+    S.client = client; S.policies = policies; S.investments = investments; S.snapshots = snapshots;
     document.getElementById('sidebarName').textContent = client.name;
-    // Expiry badge
     const soonExpiring = policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
     const expiryNav = document.getElementById('nav-insurance');
     if (expiryNav && soonExpiring.length) expiryNav.innerHTML = `<span class="nav-icon">🛡️</span> Insurance <span class="nav-badge">${soonExpiring.length}</span>`;
@@ -648,7 +851,7 @@ function navClientPage(page) {
   S.page = page;
   const clientId = S.viewClientId || S.user?.id;
   const isAdmin = S.role === 'admin';
-  const renders = { overview: renderOverview, insurance: renderInsurance, investments: renderInvestments, history: renderHistory };
+  const renders = { overview: renderOverview, insurance: renderInsurance, investments: renderInvestments, gaps: renderCoverageGaps, history: renderHistory };
   if (renders[page]) renders[page](clientId, isAdmin);
 }
 
@@ -659,6 +862,7 @@ function renderOverview(clientId, isAdmin) {
   document.getElementById('pageSub').textContent = `${c.occupation||''} · Age ${c.age||'—'} · Income ${fmt(c.annual_income||0)}/yr`;
   document.getElementById('topbarActions').innerHTML = `
     ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="api.post('/sync/push/${clientId}',{}).then(()=>toast('Synced to Notion ✅')).catch(e=>toast(e.message,'error'))">🔄 Sync Notion</button>` : ''}
+    <button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${clientId}')">📄 Export PDF</button>
     <button class="btn btn-primary btn-sm" onclick="autoSnapshot('${clientId}')">📸 Save Snapshot</button>
   `;
 
@@ -672,11 +876,10 @@ function renderOverview(clientId, isAdmin) {
   const covChange = snaps.length >= 2 ? snaps[0].total_coverage - snaps[1].total_coverage : null;
   const invChange = snaps.length >= 2 ? snaps[0].total_investment_value - snaps[1].total_investment_value : null;
   const coverageGap = Math.max(0, totalRecommended - totalCoverage);
-
-  // Expiry alerts
   const expiring = S.policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
 
   document.getElementById('mainContent').innerHTML = `
+    <div class="print-header"><h1>${esc(c.name)} — Financial Summary</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
     ${expiring.length ? expiring.map(p => `<div class="alert alert-${daysUntil(p.end_date) <= 30 ? 'danger' : 'warning'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${daysUntil(p.end_date) <= 0 ? 'today' : `in ${daysUntil(p.end_date)} days`}</strong>Policy ${esc(p.policy_number||'—')} · ${fmtDate(p.end_date)}</div></div>`).join('') : ''}
     <div class="metrics-grid">
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#0EA5E9,#6366F1)"></div><div class="metric-label">Total Coverage</div><div class="metric-value">${fmt(totalCoverage)}</div>${covChange !== null ? `<span class="metric-change ${covChange >= 0 ? 'up' : 'down'}">${covChange >= 0 ? '↑' : '↓'} ${fmt(Math.abs(covChange))} YoY</span>` : ''}</div>
@@ -697,7 +900,6 @@ function renderOverview(clientId, isAdmin) {
   const byType = {};
   S.policies.forEach(p => { byType[p.type] = (byType[p.type]||0) + (p.coverage||0); });
   if (Object.keys(byType).length) mkChart('chartCoverageDonut', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } } } } });
-
   if (S.investments.length) mkChart('chartGoals', { type: 'bar', data: { labels: S.investments.map(i => i.name.length > 15 ? i.name.slice(0,13)+'…' : i.name), datasets: [{ label: 'Current', data: S.investments.map(i => i.value_now||0), backgroundColor: '#0EA5E9', borderRadius: 6 }, { label: 'Target', data: S.investments.map(i => i.target||0), backgroundColor: 'rgba(245,158,11,0.6)', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
 
   const byTypeArr = Object.entries(byType).map(([type, curr]) => {
@@ -711,6 +913,14 @@ function renderOverview(clientId, isAdmin) {
   }).join('') || '<div class="empty"><div class="empty-sub">No policies yet</div></div>';
 }
 
+// ── PDF Report ─────────────────────────────────────────────────────────────────
+async function printClientReport(clientId) {
+  // Ensure we're on the overview page for a clean print
+  navClientPage('overview');
+  await new Promise(r => setTimeout(r, 400));
+  window.print();
+}
+
 async function autoSnapshot(clientId) {
   try {
     await api.post(`/clients/${clientId}/snapshots/auto`, {});
@@ -720,12 +930,79 @@ async function autoSnapshot(clientId) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+// ── Coverage Gap Analysis (per-client) ────────────────────────────────────────
+async function renderCoverageGaps(clientId, isAdmin) {
+  document.getElementById('pageTitle').textContent = 'Coverage Gap Analysis';
+  document.getElementById('pageSub').textContent = `${S.client.name} · Based on income & age`;
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${clientId}')">📄 Export PDF</button>`;
+  document.getElementById('mainContent').innerHTML = `<div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Analysing…</div></div>`;
+
+  try {
+    const data = await api.get(`/clients/${clientId}/coverage-gaps`);
+    const c = S.client;
+    const totalGap = data.gaps.reduce((s, g) => s + g.gap, 0);
+    const criticalCount = data.gaps.filter(g => g.status === 'critical').length;
+    const partialCount = data.gaps.filter(g => g.status === 'partial').length;
+
+    document.getElementById('mainContent').innerHTML = `
+      <div class="print-header"><h1>${esc(c.name)} — Coverage Gap Analysis</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
+      <div class="alert alert-info" style="margin-bottom:20px"><div class="alert-icon">ℹ️</div><div class="alert-body"><strong>How this is calculated</strong>Recommendations are based on Singapore financial planning benchmarks — income multipliers for Life/CI/TPD, standard hospitalization coverage. Adjust by reviewing each type.</div></div>
+      <div class="metrics-grid" style="margin-bottom:20px">
+        <div class="metric"><div class="metric-accent" style="background:var(--danger)"></div><div class="metric-label">Total Gap</div><div class="metric-value">${fmt(totalGap)}</div></div>
+        <div class="metric"><div class="metric-accent" style="background:var(--danger)"></div><div class="metric-label">Critical Areas</div><div class="metric-value">${criticalCount}</div><span class="metric-change down">&lt;40% covered</span></div>
+        <div class="metric"><div class="metric-accent" style="background:var(--warning)"></div><div class="metric-label">Partial Areas</div><div class="metric-value">${partialCount}</div><span class="metric-change warn">40–99% covered</span></div>
+        <div class="metric"><div class="metric-accent" style="background:var(--text-3)"></div><div class="metric-label">Based On</div><div class="metric-value" style="font-size:14px">${fmt(data.income)}/yr</div><span class="metric-change neutral">Age ${data.age} · ${data.deps} dependent(s)</span></div>
+      </div>
+      <div class="gap-grid">
+        ${data.gaps.map(g => `
+          <div class="gap-card ${g.status}">
+            <div class="gap-status ${g.status}">${g.status === 'critical' ? '🔴 Critical' : g.status === 'partial' ? '🟡 Partial' : '🟢 Adequate'}</div>
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px">${esc(g.type)}</div>
+            <div style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:5px"><span>Coverage level</span><span style="font-weight:700">${g.pct}%</span></div>
+              <div class="progress" style="height:10px"><div class="progress-bar" style="width:${g.pct}%;background:${g.status==='critical'?'var(--danger)':g.status==='partial'?'var(--warning)':'var(--success)'}"></div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px">
+                <div style="color:var(--text-3);margin-bottom:3px">Current</div>
+                <div style="font-size:16px;font-weight:700">${fmt(g.current)}</div>
+              </div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px">
+                <div style="color:var(--text-3);margin-bottom:3px">Recommended</div>
+                <div style="font-size:16px;font-weight:700">${fmt(g.recommended)}</div>
+              </div>
+              ${g.gap > 0 ? `<div style="grid-column:1/-1;background:${g.status==='critical'?'var(--danger-light)':'var(--warning-light)'};border:1px solid ${g.status==='critical'?'rgba(239,68,68,0.3)':'rgba(245,158,11,0.3)'};border-radius:var(--radius);padding:10px">
+                <div style="color:var(--text-3);margin-bottom:3px">Gap to fill</div>
+                <div style="font-size:18px;font-weight:800;color:${g.status==='critical'?'var(--danger)':'var(--warning)'}">${fmt(g.gap)}</div>
+              </div>` : `<div style="grid-column:1/-1;background:var(--success-light);border:1px solid rgba(16,185,129,0.3);border-radius:var(--radius);padding:10px;text-align:center;color:var(--success);font-weight:700">✅ Adequately covered</div>`}
+            </div>
+          </div>`).join('')}
+      </div>
+      ${totalGap > 0 ? `
+        <div class="card" style="margin-top:4px">
+          <div class="card-header"><div class="card-title">💡 Recommended Actions</div></div>
+          <div class="card-body">
+            ${data.gaps.filter(g => g.gap > 0).map((g, i) => `
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+                <div style="width:24px;height:24px;background:${g.status==='critical'?'var(--danger)':'var(--warning)'};color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${i+1}</div>
+                <div>
+                  <div style="font-weight:600;font-size:13px">${g.status === 'critical' ? 'Urgently review' : 'Consider increasing'} ${esc(g.type)} coverage</div>
+                  <div style="font-size:12px;color:var(--text-3);margin-top:3px">Current: ${fmt(g.current)} → Recommended: ${fmt(g.recommended)} (${fmt(g.gap)} shortfall)</div>
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}`;
+  } catch (e) { toast(e.message, 'error'); }
+}
+
 // ── Insurance ──────────────────────────────────────────────────────────────────
 function renderInsurance(clientId, isAdmin) {
   const cid = S.viewClientId || S.user?.id;
   document.getElementById('pageTitle').textContent = 'Insurance Policies';
   document.getElementById('pageSub').textContent = `${S.client.name} · ${S.policies.filter(p=>p.status==='Active').length} active policies`;
-  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary" onclick="openPolicyModal()">+ Add Policy</button>`;
+  document.getElementById('topbarActions').innerHTML = `
+    <button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${cid}')">📄 Export PDF</button>
+    <button class="btn btn-primary" onclick="openPolicyModal()">+ Add Policy</button>`;
 
   const activePolicies = S.policies.filter(p => p.status === 'Active');
   const totalCoverage = activePolicies.reduce((s, p) => s + (p.coverage||0), 0);
@@ -734,8 +1011,6 @@ function renderInsurance(clientId, isAdmin) {
   S.policies.forEach(p => { if (!byType[p.type]) byType[p.type] = { curr: 0, rec: 0, policies: [] }; byType[p.type].curr += p.coverage||0; byType[p.type].rec = Math.max(byType[p.type].rec, p.recommended||0); byType[p.type].policies.push(p); });
   const totalRec = Object.values(byType).reduce((s, v) => s + v.rec, 0);
   const gap = Math.max(0, totalRec - totalCoverage);
-
-  // Expiry alerts
   const expiring = S.policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
   const clientAge = S.client.age || 30;
 
@@ -764,7 +1039,6 @@ function renderInsurance(clientId, isAdmin) {
   const types = Object.keys(byType);
   if (types.length) mkChart('chartCoverageComp', { type: 'bar', data: { labels: types, datasets: [{ label: 'Current', data: types.map(t => byType[t].curr), backgroundColor: '#0EA5E9', borderRadius: 4 }, { label: 'Recommended', data: types.map(t => byType[t].rec), backgroundColor: 'rgba(245,158,11,0.65)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
 
-  // Timeline
   const currentYear = new Date().getFullYear();
   const minAge = 20, maxAge = 100;
   const timedPolicies = S.policies.filter(p => p.start_date && p.end_date);
@@ -780,7 +1054,6 @@ function renderInsurance(clientId, isAdmin) {
     return `<div class="timeline-row"><div class="timeline-meta"><span class="timeline-label" title="${esc(p.product_name||p.type)}">${esc(p.product_name||p.type)}</span><span class="timeline-dates">Age ${startAge}→${endAge} · ${fmt(p.coverage)}</span></div><div class="timeline-track"><div class="timeline-fill" style="left:${startPct}%;width:${widthPct}%;background:${color}">${barLabel}</div><div class="timeline-now" style="left:${nowPct}%"></div></div><div class="timeline-ages"><span>${minAge}</span><span style="font-weight:600;color:var(--danger)">Now (${clientAge})</span><span>${maxAge}</span></div></div>`;
   }).join('') : '<div class="empty"><div class="empty-sub">Add policies with start and end dates to see the coverage timeline</div></div>';
 
-  // Policy list
   if (!S.policies.length) {
     document.getElementById('policyList').innerHTML = `<div class="empty"><div class="empty-icon">🛡️</div><div class="empty-title">No policies yet</div><div class="empty-sub">Add your first insurance policy</div><button class="btn btn-primary" onclick="openPolicyModal()">+ Add Policy</button></div>`;
     return;
@@ -790,14 +1063,14 @@ function renderInsurance(clientId, isAdmin) {
   document.getElementById('policyList').innerHTML = Object.entries(grouped).map(([type, policies]) => {
     const total = policies.reduce((s, p) => s + (p.coverage||0), 0);
     const rec = Math.max(...policies.map(p => p.recommended||0));
-    const gap = Math.max(0, rec - total);
+    const gapAmt = Math.max(0, rec - total);
     const hasExpiring = policies.some(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
     return `
       <div class="policy-group">
         <div class="policy-group-header" onclick="this.nextElementSibling.classList.toggle('hidden')">
           <div><div class="policy-group-title">${esc(type)} ${hasExpiring ? '⚠️' : ''}</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">${policies.length} ${policies.length===1?'policy':'policies'}</div></div>
           <div class="policy-group-meta">
-            <div style="text-align:right"><div style="font-size:15px;font-weight:700">${fmt(total)}</div>${rec > 0 ? `<div style="font-size:11px;margin-top:2px;color:${gap>0?'var(--warning)':'var(--success)'}">${gap>0?`⚠ Gap: ${fmt(gap)}`:'✓ Covered'}</div>` : ''}</div>
+            <div style="text-align:right"><div style="font-size:15px;font-weight:700">${fmt(total)}</div>${rec > 0 ? `<div style="font-size:11px;margin-top:2px;color:${gapAmt>0?'var(--warning)':'var(--success)'}">${gapAmt>0?`⚠ Gap: ${fmt(gapAmt)}`:'✓ Covered'}</div>` : ''}</div>
             <span style="color:var(--text-3);font-size:18px">›</span>
           </div>
         </div>
@@ -872,7 +1145,6 @@ function renderInvestments(clientId, isAdmin) {
   `;
 
   renderGrowthChart();
-
   const byType = {};
   S.investments.forEach(i => { byType[i.type||'Other'] = (byType[i.type||'Other']||0) + (i.value_now||0); });
   if (Object.keys(byType).length) mkChart('chartPortfolio', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)} (${(c.parsed/total*100).toFixed(1)}%)` } } } } });
@@ -956,7 +1228,6 @@ function calcInterest(id, type) {
   const contributed = p + c*12*y;
   let final, interest;
   if (type === 'simple') {
-    // Principal earns simple interest; contributions earn average (y/2) simple interest
     interest = p*r*y + c*12*y * r * (y/2);
     final = contributed + interest;
   } else {
@@ -1024,6 +1295,8 @@ function showModal(title, html, onSubmit, submitLabel = 'Save') {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalSubmit').textContent = submitLabel;
+  document.getElementById('modalSubmit').style.display = '';
+  document.getElementById('modalCancel').textContent = 'Cancel';
   document.getElementById('modal').classList.remove('hidden');
   _modalCb = onSubmit;
 }
