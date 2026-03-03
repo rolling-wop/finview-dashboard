@@ -344,6 +344,40 @@ app.post('/api/sync/push-all', authenticate, requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Admin: Expiry Alerts ───────────────────────────────────────────────
+app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, (req, res) => {
+  const days = parseInt(req.query.days) || 90;
+  const today = new Date();
+  const cutoff = new Date(today); cutoff.setDate(today.getDate() + days);
+  const todayStr = today.toISOString().split('T')[0];
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+
+  const policies = dbAll(`
+    SELECT p.*, c.name as client_name, c.email as client_email, c.phone as client_phone
+    FROM policies p
+    JOIN clients c ON p.client_id = c.id
+    WHERE c.role != 'admin'
+      AND p.end_date != ''
+      AND p.end_date >= ?
+      AND p.end_date <= ?
+      AND p.status = 'Active'
+    ORDER BY p.end_date ASC
+  `, [todayStr, cutoffStr]);
+
+  const tagged = policies.map(p => {
+    const daysLeft = Math.ceil((new Date(p.end_date) - today) / (1000 * 60 * 60 * 24));
+    const urgency = daysLeft <= 14 ? 'critical' : daysLeft <= 30 ? 'high' : daysLeft <= 60 ? 'medium' : 'low';
+    return { ...p, days_left: daysLeft, urgency };
+  });
+
+  res.json({
+    generated_at: new Date().toISOString(),
+    window_days: days,
+    total: tagged.length,
+    alerts: tagged
+  });
+});
+
 // ── Bootstrap admin ────────────────────────────────────────────────────────────
 app.post('/api/bootstrap', (req, res) => {
   const { adminPassword } = req.body || {};
