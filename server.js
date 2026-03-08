@@ -63,9 +63,13 @@ async function initDb() {
     );
   `);
 
+  // Migration: add coverage_items column to policies
+  try { db.run(`ALTER TABLE policies ADD COLUMN coverage_items TEXT DEFAULT '[]'`); } catch {}
+
   // Migrations
   try { db.run(`ALTER TABLE clients ADD COLUMN role TEXT DEFAULT 'client'`); } catch {}
   try { db.run(`ALTER TABLE policies ADD COLUMN policy_number TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE policies ADD COLUMN coverage_items TEXT DEFAULT '[]'`); } catch {}
   try { db.run(`CREATE TABLE IF NOT EXISTS invite_tokens (token TEXT PRIMARY KEY, client_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')), expires_at TEXT, used INTEGER DEFAULT 0, FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE)`); } catch {}
 
   // Auto-seed admin
@@ -109,7 +113,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version / health ping — update this to confirm new deploys
-app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v4-2026-03-03', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client'] }));
+app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v5-2026-03-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items'] }));
 
 function authenticate(req, res, next) {
   const token = (req.headers.authorization || '').split(' ')[1];
@@ -311,9 +315,9 @@ app.get('/api/clients/:id/policies', authenticate, (req, res) => {
 
 app.post('/api/clients/:id/policies', authenticate, (req, res) => {
   if (!guardClient(req, res)) return;
-  const { type, product_name, policy_number, insurer, product_type, coverage, premium, start_date, end_date, status, recommended, notes } = req.body;
-  const id = dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,premium,start_date,end_date,status,recommended,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    [req.params.id, type||'', product_name||'', policy_number||'', insurer||'', product_type||'', coverage||0, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'']);
+  const { type, product_name, policy_number, insurer, product_type, coverage, premium, start_date, end_date, status, recommended, notes, coverage_items } = req.body;
+  const id = dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,premium,start_date,end_date,status,recommended,notes,coverage_items) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    [req.params.id, type||'', product_name||'', policy_number||'', insurer||'', product_type||'', coverage||0, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'', JSON.stringify(coverage_items||[])]);
   res.json(dbGet('SELECT * FROM policies WHERE id=?', [id]));
 });
 
@@ -322,6 +326,7 @@ app.put('/api/clients/:id/policies/:pid', authenticate, (req, res) => {
   const f = ['type','product_name','policy_number','insurer','product_type','coverage','premium','start_date','end_date','status','recommended','notes'];
   const sets = [], vals = [];
   f.forEach(k => { if (req.body[k] !== undefined) { sets.push(`${k}=?`); vals.push(req.body[k]); } });
+  if (req.body.coverage_items !== undefined) { sets.push('coverage_items=?'); vals.push(JSON.stringify(req.body.coverage_items)); }
   if (sets.length) { vals.push(req.params.pid, req.params.id); dbRun(`UPDATE policies SET ${sets.join(',')} WHERE id=? AND client_id=?`, vals); }
   res.json(dbGet('SELECT * FROM policies WHERE id=?', [req.params.pid]));
 });

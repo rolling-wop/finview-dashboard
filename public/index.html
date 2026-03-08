@@ -277,6 +277,21 @@ tr:hover td{background:var(--surface-2)}
 .tab-bar{display:flex;gap:2px;background:var(--surface-2);padding:4px;border-radius:var(--radius-lg);margin-bottom:20px;width:fit-content}
 .tab-btn{padding:6px 14px;border-radius:var(--radius);font-size:12px;font-weight:500;border:none;background:transparent;color:var(--text-2);cursor:pointer;transition:all var(--transition)}
 .tab-btn.active{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--shadow-sm)}
+
+/* ── Coverage Checklist ── */
+.coverage-checklist{margin-top:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.coverage-checklist-header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--surface-2);cursor:pointer;user-select:none;gap:8px}
+.coverage-checklist-header:hover{background:var(--border)}
+.coverage-checklist-title{font-size:12px;font-weight:600;color:var(--text-2);display:flex;align-items:center;gap:6px}
+.coverage-checklist-badge{background:var(--primary-light);color:var(--primary);font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px}
+.coverage-checklist-body{padding:12px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 16px}
+.coverage-checklist-body.hidden{display:none}
+.coverage-item{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background var(--transition)}
+.coverage-item:hover{background:var(--surface-2)}
+.coverage-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--primary);cursor:pointer;flex-shrink:0}
+.coverage-item-label{font-size:12px;color:var(--text-2);line-height:1.3}
+.coverage-item-label.checked{color:var(--text);font-weight:500}
+.coverage-item-tag{font-size:10px;color:var(--text-3);margin-left:auto;flex-shrink:0;background:var(--surface-2);padding:1px 5px;border-radius:99px}
 </style>
 </head>
 <body>
@@ -1101,6 +1116,7 @@ function renderInsurance(clientId, isAdmin) {
               </div>
               ${p.recommended > 0 ? `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:4px"><span>Coverage vs recommended</span><span>${Math.min(100,Math.round((p.coverage||0)/(p.recommended)*100))}%</span></div><div class="progress"><div class="progress-bar" style="width:${Math.min(100,Math.round((p.coverage||0)/p.recommended*100))}%;background:${(p.coverage||0)>=p.recommended?'var(--success)':(p.coverage||0)>=p.recommended*0.6?'var(--warning)':'var(--danger)'}"></div></div></div>` : ''}
               ${p.notes ? `<div style="margin-top:10px;font-size:12px;color:var(--text-3);font-style:italic">${esc(p.notes)}</div>` : ''}
+              ${coverageChecklistHTML(p)}
             </div>`;
           }).join('')}
         </div>
@@ -1311,18 +1327,248 @@ function getFormData() {
   return data;
 }
 
+// ── Coverage Checklist Definitions ────────────────────────────────────────────
+const COVERAGE_DEFS = {
+  'Term Life': [
+    { id: 'death', label: 'Death', tag: 'core' },
+    { id: 'tpd', label: 'TPD (Total Permanent Disability)', tag: 'core' },
+    { id: 'ti', label: 'TI (Terminal Illness)', tag: 'core' },
+    { id: 'ci', label: 'CI (Critical Illness — 37 conditions)', tag: 'add-on' },
+    { id: 'eci', label: 'ECI (Early Critical Illness)', tag: 'add-on' },
+    { id: 'ci_wop', label: 'CI Waiver of Premium', tag: 'add-on' },
+    { id: 'payor', label: 'Payor Benefit', tag: 'add-on' },
+    { id: 'adb', label: 'Accidental Death Benefit (ADB)', tag: 'add-on' },
+    { id: 'di', label: 'Disability Income', tag: 'add-on' },
+  ],
+  'Whole Life': [
+    { id: 'death', label: 'Death', tag: 'core' },
+    { id: 'tpd', label: 'TPD (Total Permanent Disability)', tag: 'core' },
+    { id: 'ti', label: 'TI (Terminal Illness)', tag: 'core' },
+    { id: 'ci', label: 'CI (Critical Illness — 37 conditions)', tag: 'add-on' },
+    { id: 'eci', label: 'ECI (Early Critical Illness)', tag: 'add-on' },
+    { id: 'ci_wop', label: 'CI Waiver of Premium', tag: 'add-on' },
+    { id: 'multiplier', label: 'Multiplier (2×/3×/4× till age 65/70)', tag: 'add-on' },
+    { id: 'limited_pay', label: 'Limited Pay (10/15/20yr)', tag: 'add-on' },
+    { id: 'payor', label: 'Payor Benefit', tag: 'add-on' },
+    { id: 'adb', label: 'Accidental Death Benefit (ADB)', tag: 'add-on' },
+  ],
+  'ILP': [
+    { id: 'death', label: 'Death (SA or Account Value, higher of)', tag: 'core' },
+    { id: 'tpd', label: 'TPD (Total Permanent Disability)', tag: 'core' },
+    { id: 'ti', label: 'TI (Terminal Illness)', tag: 'core' },
+    { id: 'ci', label: 'CI (Critical Illness)', tag: 'add-on' },
+    { id: 'eci', label: 'ECI (Early Critical Illness)', tag: 'add-on' },
+    { id: 'fund_selection', label: 'Fund Selection (Sub-funds)', tag: 'feature' },
+    { id: 'premium_holiday', label: 'Premium Holiday Feature', tag: 'feature' },
+    { id: 'partial_withdrawal', label: 'Partial Withdrawal Feature', tag: 'feature' },
+  ],
+  'IUL': [
+    { id: 'death', label: 'Death', tag: 'core' },
+    { id: 'tpd', label: 'TPD (Total Permanent Disability)', tag: 'core' },
+    { id: 'ti', label: 'TI (Terminal Illness)', tag: 'core' },
+    { id: 'ci', label: 'CI (Critical Illness)', tag: 'add-on' },
+    { id: 'eci', label: 'ECI (Early Critical Illness)', tag: 'add-on' },
+    { id: 'index_participation', label: 'Index Participation Strategy', tag: 'feature' },
+    { id: 'floor_protection', label: '0% Floor (Downside Protection)', tag: 'feature' },
+    { id: 'premium_flexibility', label: 'Flexible Premium Feature', tag: 'feature' },
+  ],
+  'Endowment': [
+    { id: 'death', label: 'Death', tag: 'core' },
+    { id: 'tpd', label: 'TPD (Total Permanent Disability)', tag: 'core' },
+    { id: 'ti', label: 'TI (Terminal Illness)', tag: 'core' },
+    { id: 'maturity', label: 'Maturity Benefit (Guaranteed)', tag: 'core' },
+    { id: 'bonus', label: 'Bonus (Non-Guaranteed)', tag: 'feature' },
+    { id: 'limited_pay', label: 'Limited Pay Option', tag: 'add-on' },
+  ],
+  'Savings Plan': [
+    { id: 'death', label: 'Death', tag: 'core' },
+    { id: 'maturity', label: 'Maturity Benefit (Guaranteed)', tag: 'core' },
+    { id: 'bonus', label: 'Bonus (Non-Guaranteed)', tag: 'feature' },
+    { id: 'capital_guaranteed', label: 'Capital Guaranteed', tag: 'feature' },
+    { id: 'partial_withdrawal', label: 'Partial Withdrawal', tag: 'feature' },
+  ],
+  'Medical': [
+    { id: 'medishield', label: 'MediShield Life (Mandatory Base)', tag: 'core' },
+    { id: 'ip', label: 'Integrated Shield Plan (IP)', tag: 'core' },
+    { id: 'ward_a', label: 'Ward Type: Private', tag: 'feature' },
+    { id: 'ward_b1', label: 'Ward Type: Class B1', tag: 'feature' },
+    { id: 'pre_post_hosp', label: 'Pre & Post Hospitalisation', tag: 'add-on' },
+    { id: 'outpatient_cancer', label: 'Outpatient Cancer/Kidney Treatment', tag: 'add-on' },
+    { id: 'rider_copay', label: 'Rider: Full / Co-payment Rider', tag: 'add-on' },
+    { id: 'rider_daily_cash', label: 'Rider: Daily Hospital Cash', tag: 'add-on' },
+    { id: 'rider_outpatient', label: 'Rider: Outpatient Benefits', tag: 'add-on' },
+  ],
+  'Early CI': [
+    { id: 'early_stage', label: 'Early Stage CI', tag: 'core' },
+    { id: 'intermediate_stage', label: 'Intermediate Stage CI', tag: 'core' },
+    { id: 'late_stage', label: 'Late Stage CI (37 conditions)', tag: 'core' },
+    { id: 'multi_pay', label: 'Multi-Pay (per claim)', tag: 'feature' },
+    { id: 'ci_wop', label: 'CI Waiver of Premium', tag: 'add-on' },
+    { id: 'cancer_specific', label: 'Cancer-Specific Coverage', tag: 'add-on' },
+    { id: 'heart_specific', label: 'Heart-Specific Coverage', tag: 'add-on' },
+  ],
+  'Standalone CI': [
+    { id: 'late_stage', label: 'Late Stage CI (37 conditions)', tag: 'core' },
+    { id: 'multi_pay', label: 'Multi-Pay (per claim)', tag: 'feature' },
+    { id: 'ci_wop', label: 'CI Waiver of Premium', tag: 'add-on' },
+    { id: 'cancer_specific', label: 'Cancer-Specific Coverage', tag: 'add-on' },
+  ],
+  'Multi-Pay CI': [
+    { id: 'early_stage', label: 'Early Stage CI', tag: 'core' },
+    { id: 'intermediate_stage', label: 'Intermediate Stage CI', tag: 'core' },
+    { id: 'late_stage', label: 'Late Stage CI (37 conditions)', tag: 'core' },
+    { id: 'multi_claim', label: 'Multiple Claims Allowed', tag: 'core' },
+    { id: 'ci_wop', label: 'CI Waiver of Premium', tag: 'add-on' },
+    { id: 'special_benefit', label: 'Special Benefit (Diabetes / Dementia etc.)', tag: 'add-on' },
+  ],
+  'TPD': [
+    { id: 'tpd', label: 'TPD (Total Permanent Disability)', tag: 'core' },
+    { id: 'own_occ', label: 'Own Occupation Definition', tag: 'feature' },
+    { id: 'any_occ', label: 'Any Occupation Definition', tag: 'feature' },
+    { id: 'wop', label: 'Waiver of Premium on Disability', tag: 'add-on' },
+  ],
+  'Disability Income': [
+    { id: 'careshield', label: 'CareShield Life (Mandatory Base)', tag: 'core' },
+    { id: 'careshield_supplement', label: 'CareShield Life Supplement', tag: 'add-on' },
+    { id: 'di_own_occ', label: 'Disability Income — Own Occupation', tag: 'add-on' },
+    { id: 'di_any_occ', label: 'Disability Income — Any Occupation', tag: 'add-on' },
+    { id: 'wop', label: 'Waiver of Premium on Disability', tag: 'add-on' },
+  ],
+  'Rider': [
+    { id: 'death', label: 'Death Benefit Rider', tag: 'add-on' },
+    { id: 'tpd', label: 'TPD Rider', tag: 'add-on' },
+    { id: 'ci', label: 'CI Rider', tag: 'add-on' },
+    { id: 'eci', label: 'ECI Rider', tag: 'add-on' },
+    { id: 'payor', label: 'Payor Benefit Rider', tag: 'add-on' },
+    { id: 'adb', label: 'Accidental Death & Disablement Rider', tag: 'add-on' },
+    { id: 'wop', label: 'Waiver of Premium Rider', tag: 'add-on' },
+    { id: 'ci_wop', label: 'CI Waiver of Premium Rider', tag: 'add-on' },
+  ],
+  'Accident': [
+    { id: 'accidental_death', label: 'Accidental Death', tag: 'core' },
+    { id: 'perm_disability', label: 'Permanent Disablement', tag: 'core' },
+    { id: 'temp_disability', label: 'Temporary Disablement', tag: 'core' },
+    { id: 'medical_expenses', label: 'Medical Expenses (Accident)', tag: 'add-on' },
+    { id: 'hospitalisation', label: 'Hospitalisation (Accident)', tag: 'add-on' },
+    { id: 'mobility_aid', label: 'Mobility Aid Benefit', tag: 'add-on' },
+  ],
+};
+
+// Get coverage options for a given product type
+function getCoverageOptions(productType) {
+  return COVERAGE_DEFS[productType] || [];
+}
+
+// Render the coverage checklist HTML for a policy row (view mode)
+function coverageChecklistHTML(policy) {
+  const opts = getCoverageOptions(policy.product_type);
+  if (!opts.length) return '';
+  let checked = [];
+  try { checked = JSON.parse(policy.coverage_items || '[]'); } catch {}
+  const checkedSet = new Set(checked);
+  const total = opts.length;
+  const checkedCount = opts.filter(o => checkedSet.has(o.id)).length;
+  const badgeColor = checkedCount === 0 ? 'var(--text-3)' : checkedCount === total ? 'var(--success)' : 'var(--primary)';
+
+  return `
+    <div class="coverage-checklist">
+      <div class="coverage-checklist-header" onclick="toggleChecklist('cl-${policy.id}')">
+        <div class="coverage-checklist-title">
+          🛡️ Coverage Breakdown
+          <span class="coverage-checklist-badge" style="background:${checkedColor(checkedCount,total)};color:#fff">${checkedCount}/${total} covered</span>
+        </div>
+        <span style="color:var(--text-3);font-size:12px">▾</span>
+      </div>
+      <div id="cl-${policy.id}" class="coverage-checklist-body hidden">
+        ${opts.map(opt => `
+          <label class="coverage-item" onclick="saveCoverageItem(${policy.id}, '${opt.id}', this)">
+            <input type="checkbox" ${checkedSet.has(opt.id) ? 'checked' : ''} onclick="event.stopPropagation();saveCoverageItem(${policy.id}, '${opt.id}', this.closest('.coverage-item'))">
+            <span class="coverage-item-label ${checkedSet.has(opt.id) ? 'checked' : ''}">${esc(opt.label)}</span>
+            <span class="coverage-item-tag" style="background:${tagColor(opt.tag)}">${opt.tag}</span>
+          </label>`).join('')}
+      </div>
+    </div>`;
+}
+
+function checkedColor(n, total) {
+  if (n === 0) return '#94A3B8';
+  if (n === total) return '#10B981';
+  return '#0EA5E9';
+}
+
+function tagColor(tag) {
+  if (tag === 'core') return 'rgba(239,68,68,0.12)';
+  if (tag === 'add-on') return 'rgba(245,158,11,0.12)';
+  return 'rgba(139,92,246,0.12)';
+}
+
+function toggleChecklist(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('hidden');
+}
+
+// Save a single checkbox toggle immediately via API
+async function saveCoverageItem(policyId, itemId, labelEl) {
+  const checkbox = labelEl.querySelector('input[type=checkbox]');
+  const textEl = labelEl.querySelector('.coverage-item-label');
+  const isChecked = checkbox.checked;
+
+  // Update UI instantly
+  if (textEl) { if (isChecked) textEl.classList.add('checked'); else textEl.classList.remove('checked'); }
+
+  // Find the policy and build updated items list
+  const policy = S.policies.find(p => p.id === policyId);
+  if (!policy) return;
+  let items = [];
+  try { items = JSON.parse(policy.coverage_items || '[]'); } catch {}
+  if (isChecked) { if (!items.includes(itemId)) items.push(itemId); }
+  else { items = items.filter(i => i !== itemId); }
+  policy.coverage_items = JSON.stringify(items);
+
+  // Update badge
+  const opts = getCoverageOptions(policy.product_type);
+  const checkedSet = new Set(items);
+  const n = opts.filter(o => checkedSet.has(o.id)).length;
+  const badge = labelEl.closest('.coverage-checklist')?.querySelector('.coverage-checklist-badge');
+  if (badge) { badge.textContent = `${n}/${opts.length} covered`; badge.style.background = checkedColor(n, opts.length); }
+
+  const cid = S.viewClientId || S.user?.id;
+  try {
+    await api.put(`/clients/${cid}/policies/${policyId}`, { coverage_items: items });
+  } catch (e) { toast('Failed to save coverage', 'error'); }
+}
+
 // ── Policy Modal ───────────────────────────────────────────────────────────────
 const POLICY_TYPES = ['Death / Life','Early Critical Illness','Late Stage Critical Illness','TPD','Terminal Illness','Gender Specific','Endowment','Savings Plan','IUL','Hospitalization','Accident','Disability Income'];
 const INSURERS = ['Prudential','Great Eastern','AIA','Singlife','NTUC Income','Manulife','Sun Life','Other'];
 const PROD_TYPES = ['Term Life','Whole Life','ILP','IUL','Early CI','Standalone CI','Multi-Pay CI','Endowment','Savings Plan','Medical','Disability Income','TPD','Rider'];
 
 function policyFormHTML(p = {}) {
+  let checkedItems = [];
+  try { checkedItems = JSON.parse(p.coverage_items || '[]'); } catch {}
+  const checkedSet = new Set(checkedItems);
+  const initProductType = p.product_type || 'Term Life';
+  const initOpts = getCoverageOptions(initProductType);
+
+  const checklistHTML = initOpts.length ? `
+  <div style="margin-top:4px">
+    <div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">&#128737; Coverage Included</div>
+    <div id="modal-checklist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px">
+      ${initOpts.map(opt => `
+        <label class="coverage-item">
+          <input type="checkbox" name="modal_coverage" value="${opt.id}" ${checkedSet.has(opt.id)?'checked':''}>
+          <span class="coverage-item-label ${checkedSet.has(opt.id)?'checked':''}">${esc(opt.label)}</span>
+          <span class="coverage-item-tag" style="background:${tagColor(opt.tag)}">${opt.tag}</span>
+        </label>`).join('')}
+    </div>
+  </div>` : `<div id="modal-checklist"></div>`;
+
   return `<div class="form-grid">
     <div class="field"><label>Policy Type *</label><select id="mf-type">${POLICY_TYPES.map(t => `<option ${(p.type||'Death / Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Insurer</label><select id="mf-insurer">${INSURERS.map(i => `<option ${(p.insurer||'Prudential')===i?'selected':''}>${i}</option>`).join('')}</select></div>
     <div class="field"><label>Product Name</label><input id="mf-product_name" type="text" value="${esc(p.product_name||'')}" placeholder="e.g. PRUActive Protect"></div>
     <div class="field"><label>Policy Number</label><input id="mf-policy_number" type="text" value="${esc(p.policy_number||'')}" placeholder="e.g. 12345678"></div>
-    <div class="field"><label>Product Type</label><select id="mf-product_type">${PROD_TYPES.map(t => `<option ${(p.product_type||'Term Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Product Type</label><select id="mf-product_type" onchange="updateModalChecklist()">${PROD_TYPES.map(t => `<option ${initProductType===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Status</label><select id="mf-status"><option ${(p.status||'Active')==='Active'?'selected':''}>Active</option><option ${p.status==='Lapsed'?'selected':''}>Lapsed</option><option ${p.status==='Cancelled'?'selected':''}>Cancelled</option><option ${p.status==='Pending'?'selected':''}>Pending</option></select></div>
     <div class="field"><label>Coverage (S$) *</label><input id="mf-coverage" type="number" value="${p.coverage||''}" placeholder="500000"></div>
     <div class="field"><label>Annual Premium (S$)</label><input id="mf-premium" type="number" value="${p.premium||''}" placeholder="3600"></div>
@@ -1330,18 +1576,36 @@ function policyFormHTML(p = {}) {
     <div class="field"><label>Start Date</label><input id="mf-start_date" type="date" value="${p.start_date||''}"></div>
     <div class="field"><label>End Date</label><input id="mf-end_date" type="date" value="${p.end_date||''}"></div>
     <div class="field" style="grid-column:1/-1"><label>Notes</label><textarea id="mf-notes" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;resize:vertical">${esc(p.notes||'')}</textarea></div>
-  </div>`;
+  </div>${checklistHTML}`;
+}
+
+function updateModalChecklist() {
+  const pt = document.getElementById('mf-product_type')?.value;
+  const opts = getCoverageOptions(pt);
+  const el = document.getElementById('modal-checklist');
+  if (!el) return;
+  if (!opts.length) { el.innerHTML = ''; el.style.cssText = ''; return; }
+  el.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 16px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px';
+  el.innerHTML = opts.map(opt => `
+    <label class="coverage-item">
+      <input type="checkbox" name="modal_coverage" value="${opt.id}">
+      <span class="coverage-item-label">${esc(opt.label)}</span>
+      <span class="coverage-item-tag" style="background:${tagColor(opt.tag)}">${opt.tag}</span>
+    </label>`).join('');
 }
 
 async function openPolicyModal(id) {
   const existing = id ? S.policies.find(p => p.id === id) : null;
   showModal(existing ? 'Edit Policy' : 'Add Policy', policyFormHTML(existing||{}), async () => {
     const d = getFormData();
-    const body = { type: d.type, product_name: d.product_name, policy_number: d.policy_number, insurer: d.insurer, product_type: d.product_type, coverage: parseFloat(d.coverage)||0, premium: parseFloat(d.premium)||0, recommended: parseFloat(d.recommended)||0, status: d.status, start_date: d.start_date, end_date: d.end_date, notes: d.notes };
+    // Collect checked coverage items from modal
+    const checkedBoxes = document.querySelectorAll('#modal-checklist input[name="modal_coverage"]:checked');
+    const coverage_items = Array.from(checkedBoxes).map(cb => cb.value);
+    const body = { type: d.type, product_name: d.product_name, policy_number: d.policy_number, insurer: d.insurer, product_type: d.product_type, coverage: parseFloat(d.coverage)||0, premium: parseFloat(d.premium)||0, recommended: parseFloat(d.recommended)||0, status: d.status, start_date: d.start_date, end_date: d.end_date, notes: d.notes, coverage_items };
     const cid = S.viewClientId || S.user?.id;
     try {
-      if (existing) { const u = await api.put(`/clients/${cid}/policies/${id}`, body); S.policies = S.policies.map(p => p.id===id?u:p); toast('Policy updated'); }
-      else { const n = await api.post(`/clients/${cid}/policies`, body); S.policies.push(n); toast('Policy added ✅'); }
+      if (existing) { const u = await api.put(`/clients/${cid}/policies/${id}`, body); S.policies = S.policies.map(p => p.id===id?{...u, coverage_items: JSON.stringify(coverage_items)}:p); toast('Policy updated'); }
+      else { const n = await api.post(`/clients/${cid}/policies`, body); S.policies.push({...n, coverage_items: JSON.stringify(coverage_items)}); toast('Policy added ✅'); }
       closeModal(); renderInsurance(cid);
     } catch (e) { toast(e.message, 'error'); }
   });
