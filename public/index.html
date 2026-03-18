@@ -820,11 +820,19 @@ function renderInsurance(clientId, isAdmin) {
                   <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deletePolicy(${p.id})">🗑️</button>
                 </div>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;padding:12px 14px;background:var(--surface-2);border-radius:var(--radius)">
-                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Coverage</div><div style="font-size:16px;font-weight:700">${fmt(p.coverage)}</div></div>
-                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Annual Premium</div><div style="font-size:16px;font-weight:700">${fmt(p.premium)}</div><div style="font-size:11px;color:var(--text-3)">${fmt((p.premium||0)/12)}/mo</div></div>
-                <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Period</div><div style="font-size:13px;font-weight:500">${fmtDate(p.start_date)}</div><div style="font-size:11px;color:var(--text-3)">→ ${fmtDate(p.end_date)}</div></div>
-                ${p.recommended > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Recommended</div><div style="font-size:16px;font-weight:700">${fmt(p.recommended)}</div></div>` : ''}
+              <div style="padding:12px 14px;background:var(--surface-2);border-radius:var(--radius);display:flex;flex-direction:column;gap:10px">
+                ${(() => {
+                  const items = Array.isArray(p.coverage_items) && p.coverage_items.length > 0 ? p.coverage_items : (p.coverage > 0 ? [{ type: p.type || 'Coverage', coverage: p.coverage }] : []);
+                  const coverageHTML = items.length > 0
+                    ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:6px">Coverage Types</div><div style="display:flex;flex-wrap:wrap;gap:6px">${items.map(ci => `<div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px"><span style="font-size:12px;color:var(--text-2)">${esc(ci.type)}</span><span style="font-size:13px;font-weight:700;color:var(--text-1)">${fmt(ci.coverage)}</span></div>`).join('')}</div><div style="margin-top:6px;font-size:12px;color:var(--text-3)">Total: <strong style="color:var(--text-1)">${fmt(p.coverage)}</strong></div></div>`
+                    : '';
+                  return coverageHTML;
+                })()}
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
+                  <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Annual Premium</div><div style="font-size:16px;font-weight:700">${fmt(p.premium)}</div><div style="font-size:11px;color:var(--text-3)">${fmt((p.premium||0)/12)}/mo</div></div>
+                  <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Period</div><div style="font-size:13px;font-weight:500">${fmtDate(p.start_date)}</div><div style="font-size:11px;color:var(--text-3)">→ ${fmtDate(p.end_date)}</div></div>
+                  ${p.recommended > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Recommended</div><div style="font-size:16px;font-weight:700">${fmt(p.recommended)}</div></div>` : ''}
+                </div>
               </div>
               ${p.recommended > 0 ? `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:4px"><span>Coverage vs recommended</span><span>${Math.min(100,Math.round((p.coverage||0)/(p.recommended)*100))}%</span></div><div class="progress"><div class="progress-bar" style="width:${Math.min(100,Math.round((p.coverage||0)/p.recommended*100))}%;background:${(p.coverage||0)>=p.recommended?'var(--success)':(p.coverage||0)>=p.recommended*0.6?'var(--warning)':'var(--danger)'}"></div></div></div>` : ''}
               ${p.notes ? `<div style="margin-top:10px;font-size:12px;color:var(--text-3);font-style:italic">${esc(p.notes)}</div>` : ''}
@@ -1029,7 +1037,7 @@ function showModal(title, html, onSubmit, submitLabel = 'Save') {
 }
 function closeModal() { document.getElementById('modal').classList.add('hidden'); _modalCb = null; }
 document.getElementById('modalClose').onclick = document.getElementById('modalCancel').onclick = closeModal;
-document.getElementById('modalSubmit').onclick = () => { if (_modalCb) _modalCb(); };
+document.getElementById('modalSubmit').onclick = async () => { if (_modalCb) { const r = await _modalCb(); if (r === false) return; } };
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 
 function getFormData() {
@@ -1043,19 +1051,76 @@ const POLICY_TYPES = ['Death / Life','Early Critical Illness','Late Stage Critic
 const INSURERS = ['Prudential','Great Eastern','AIA','Singlife','NTUC Income','Manulife','Sun Life','Other'];
 const PROD_TYPES = ['Term Life','Whole Life','ILP','IUL','Early CI','Standalone CI','Multi-Pay CI','Endowment','Savings Plan','Medical','Disability Income','TPD','Rider'];
 
+function coverageChecklistHTML(existingItems = []) {
+  const itemMap = {};
+  existingItems.forEach(i => { itemMap[i.type] = i.coverage; });
+  return `
+    <div class="field" style="grid-column:1/-1">
+      <label>Coverage Types &amp; Amounts</label>
+      <div id="coverage-checklist" style="border:1.5px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--surface)">
+        ${POLICY_TYPES.map(t => {
+          const checked = itemMap.hasOwnProperty(t);
+          const val = checked ? itemMap[t] : '';
+          return `<div class="coverage-check-row" style="display:grid;grid-template-columns:20px 1fr 140px;align-items:center;gap:10px">
+            <input type="checkbox" class="cov-chk" data-type="${esc(t)}" id="chk-${esc(t)}" ${checked ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer;accent-color:var(--primary)">
+            <label for="chk-${esc(t)}" style="font-size:13px;cursor:pointer;margin:0;color:var(--text-1)">${esc(t)}</label>
+            <input type="number" class="cov-amt" data-type="${esc(t)}" placeholder="S$ amount" value="${val}" ${checked ? '' : 'disabled'} style="padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;width:100%;background:${checked ? 'var(--surface-2)' : 'var(--surface-3)'};color:var(--text-1);transition:background 0.2s">
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--text-3)">Total: <strong id="coverage-total">S$ ${existingItems.reduce((s,i)=>s+(parseFloat(i.coverage)||0),0).toLocaleString()}</strong></div>
+    </div>`;
+}
+
+function bindCoverageChecklist() {
+  document.querySelectorAll('.cov-chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const amt = document.querySelector(`.cov-amt[data-type="${chk.dataset.type}"]`);
+      if (amt) {
+        amt.disabled = !chk.checked;
+        amt.style.background = chk.checked ? 'var(--surface-2)' : 'var(--surface-3)';
+        if (!chk.checked) amt.value = '';
+      }
+      updateCoverageTotal();
+    });
+  });
+  document.querySelectorAll('.cov-amt').forEach(amt => {
+    amt.addEventListener('input', updateCoverageTotal);
+  });
+}
+
+function updateCoverageTotal() {
+  let total = 0;
+  document.querySelectorAll('.cov-chk:checked').forEach(chk => {
+    const amt = document.querySelector(`.cov-amt[data-type="${chk.dataset.type}"]`);
+    total += parseFloat(amt?.value) || 0;
+  });
+  const el = document.getElementById('coverage-total');
+  if (el) el.textContent = 'S$ ' + total.toLocaleString();
+}
+
+function getCoverageItems() {
+  const items = [];
+  document.querySelectorAll('.cov-chk:checked').forEach(chk => {
+    const amt = document.querySelector(`.cov-amt[data-type="${chk.dataset.type}"]`);
+    items.push({ type: chk.dataset.type, coverage: parseFloat(amt?.value) || 0 });
+  });
+  return items;
+}
+
 function policyFormHTML(p = {}) {
+  const existingItems = Array.isArray(p.coverage_items) ? p.coverage_items : [];
   return `<div class="form-grid">
-    <div class="field"><label>Policy Type *</label><select id="mf-type">${POLICY_TYPES.map(t => `<option ${(p.type||'Death / Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Insurer</label><select id="mf-insurer">${INSURERS.map(i => `<option ${(p.insurer||'Prudential')===i?'selected':''}>${i}</option>`).join('')}</select></div>
+    <div class="field"><label>Product Type</label><select id="mf-product_type">${PROD_TYPES.map(t => `<option ${(p.product_type||'Term Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Product Name</label><input id="mf-product_name" type="text" value="${esc(p.product_name||'')}" placeholder="e.g. PRUActive Protect"></div>
     <div class="field"><label>Policy Number</label><input id="mf-policy_number" type="text" value="${esc(p.policy_number||'')}" placeholder="e.g. 12345678"></div>
-    <div class="field"><label>Product Type</label><select id="mf-product_type">${PROD_TYPES.map(t => `<option ${(p.product_type||'Term Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Status</label><select id="mf-status"><option ${(p.status||'Active')==='Active'?'selected':''}>Active</option><option ${p.status==='Lapsed'?'selected':''}>Lapsed</option><option ${p.status==='Cancelled'?'selected':''}>Cancelled</option><option ${p.status==='Pending'?'selected':''}>Pending</option></select></div>
-    <div class="field"><label>Coverage (S$) *</label><input id="mf-coverage" type="number" value="${p.coverage||''}" placeholder="500000"></div>
     <div class="field"><label>Annual Premium (S$)</label><input id="mf-premium" type="number" value="${p.premium||''}" placeholder="3600"></div>
-    <div class="field"><label>Recommended Coverage</label><input id="mf-recommended" type="number" value="${p.recommended||''}" placeholder="0"></div>
+    <div class="field"><label>Recommended Total Coverage</label><input id="mf-recommended" type="number" value="${p.recommended||''}" placeholder="0"></div>
     <div class="field"><label>Start Date</label><input id="mf-start_date" type="date" value="${p.start_date||''}"></div>
     <div class="field"><label>End Date</label><input id="mf-end_date" type="date" value="${p.end_date||''}"></div>
+    ${coverageChecklistHTML(existingItems)}
     <div class="field" style="grid-column:1/-1"><label>Notes</label><textarea id="mf-notes" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;resize:vertical">${esc(p.notes||'')}</textarea></div>
   </div>`;
 }
@@ -1064,7 +1129,9 @@ async function openPolicyModal(id) {
   const existing = id ? S.policies.find(p => p.id === id) : null;
   showModal(existing ? 'Edit Policy' : 'Add Policy', policyFormHTML(existing||{}), async () => {
     const d = getFormData();
-    const body = { type: d.type, product_name: d.product_name, policy_number: d.policy_number, insurer: d.insurer, product_type: d.product_type, coverage: parseFloat(d.coverage)||0, premium: parseFloat(d.premium)||0, recommended: parseFloat(d.recommended)||0, status: d.status, start_date: d.start_date, end_date: d.end_date, notes: d.notes };
+    const coverageItems = getCoverageItems();
+    if (coverageItems.length === 0) { toast('Select at least one coverage type', 'error'); return false; }
+    const body = { product_name: d.product_name, policy_number: d.policy_number, insurer: d.insurer, product_type: d.product_type, coverage_items: coverageItems, premium: parseFloat(d.premium)||0, recommended: parseFloat(d.recommended)||0, status: d.status, start_date: d.start_date, end_date: d.end_date, notes: d.notes };
     const cid = S.viewClientId || S.user?.id;
     try {
       if (existing) { const u = await api.put(`/clients/${cid}/policies/${id}`, body); S.policies = S.policies.map(p => p.id===id?u:p); toast('Policy updated'); }
@@ -1072,6 +1139,8 @@ async function openPolicyModal(id) {
       closeModal(); renderInsurance(cid);
     } catch (e) { toast(e.message, 'error'); }
   });
+  // Bind checklist interactivity after modal renders
+  requestAnimationFrame(() => bindCoverageChecklist());
 }
 
 async function deletePolicy(id) {

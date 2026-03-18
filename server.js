@@ -60,6 +60,7 @@ async function initDb() {
   // Migrations for existing DBs
   try { db.run(`ALTER TABLE clients ADD COLUMN role TEXT DEFAULT 'client'`); } catch {}
   try { db.run(`ALTER TABLE policies ADD COLUMN policy_number TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE policies ADD COLUMN coverage_items TEXT DEFAULT '[]'`); } catch {}
 
   // Auto-seed admin if not exists
   const adminExists = dbGet(`SELECT id FROM clients WHERE role='admin'`);
@@ -210,24 +211,41 @@ function guardClient(req, res) {
 
 app.get('/api/clients/:id/policies', authenticate, (req, res) => {
   if (!guardClient(req, res)) return;
-  res.json(dbAll('SELECT * FROM policies WHERE client_id=? ORDER BY type, created_at', [req.params.id]));
+  const rows = dbAll('SELECT * FROM policies WHERE client_id=? ORDER BY type, created_at', [req.params.id]);
+  rows.forEach(r => { try { r.coverage_items = JSON.parse(r.coverage_items || '[]'); } catch { r.coverage_items = []; } });
+  res.json(rows);
 });
 
 app.post('/api/clients/:id/policies', authenticate, (req, res) => {
   if (!guardClient(req, res)) return;
-  const { type, product_name, policy_number, insurer, product_type, coverage, premium, start_date, end_date, status, recommended, notes } = req.body;
-  const id = dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,premium,start_date,end_date,status,recommended,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    [req.params.id, type||'', product_name||'', policy_number||'', insurer||'', product_type||'', coverage||0, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'']);
-  res.json(dbGet('SELECT * FROM policies WHERE id=?', [id]));
+  const { product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes } = req.body;
+  const items = Array.isArray(coverage_items) ? coverage_items : [];
+  const totalCoverage = items.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
+  const primaryType = items.length > 0 ? items[0].type : '';
+  const itemsJson = JSON.stringify(items);
+  const id = dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,coverage_items,premium,start_date,end_date,status,recommended,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    [req.params.id, primaryType, product_name||'', policy_number||'', insurer||'', product_type||'', totalCoverage, itemsJson, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'']);
+  const row = dbGet('SELECT * FROM policies WHERE id=?', [id]);
+  if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
+  res.json(row);
 });
 
 app.put('/api/clients/:id/policies/:pid', authenticate, (req, res) => {
   if (!guardClient(req, res)) return;
-  const f = ['type','product_name','policy_number','insurer','product_type','coverage','premium','start_date','end_date','status','recommended','notes'];
+  const body = req.body;
+  // Recompute coverage from coverage_items if provided
+  if (Array.isArray(body.coverage_items)) {
+    body.coverage = body.coverage_items.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
+    body.type = body.coverage_items.length > 0 ? body.coverage_items[0].type : '';
+    body.coverage_items = JSON.stringify(body.coverage_items);
+  }
+  const f = ['type','product_name','policy_number','insurer','product_type','coverage','coverage_items','premium','start_date','end_date','status','recommended','notes'];
   const sets = [], vals = [];
-  f.forEach(k => { if (req.body[k] !== undefined) { sets.push(`${k}=?`); vals.push(req.body[k]); } });
+  f.forEach(k => { if (body[k] !== undefined) { sets.push(`${k}=?`); vals.push(body[k]); } });
   if (sets.length) { vals.push(req.params.pid, req.params.id); dbRun(`UPDATE policies SET ${sets.join(',')} WHERE id=? AND client_id=?`, vals); }
-  res.json(dbGet('SELECT * FROM policies WHERE id=?', [req.params.pid]));
+  const row = dbGet('SELECT * FROM policies WHERE id=?', [req.params.pid]);
+  if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
+  res.json(row);
 });
 
 app.delete('/api/clients/:id/policies/:pid', authenticate, (req, res) => {
