@@ -1551,7 +1551,7 @@ const POLICY_TYPES = ['Death / Life','Early Critical Illness','Late Stage Critic
 const INSURERS = ['Prudential','Great Eastern','AIA','Singlife','NTUC Income','Manulife','Sun Life','Other'];
 const PROD_TYPES = ['Term Life','Whole Life','ILP','IUL','Early CI','Standalone CI','Multi-Pay CI','Endowment','Savings Plan','Medical','Disability Income','TPD','Rider'];
 
-function coverageChecklistHTML(existingItems = []) {
+function coverageChecklistModalHTML(existingItems = []) {
   const itemMap = {};
   existingItems.forEach(i => { itemMap[i.type] = i.coverage; });
   return `
@@ -1620,7 +1620,7 @@ function policyFormHTML(p = {}) {
     <div class="field"><label>Recommended Total Coverage</label><input id="mf-recommended" type="number" value="${p.recommended||''}" placeholder="0"></div>
     <div class="field"><label>Start Date</label><input id="mf-start_date" type="date" value="${p.start_date||''}"></div>
     <div class="field"><label>End Date</label><input id="mf-end_date" type="date" value="${p.end_date||''}"></div>
-    ${coverageChecklistHTML(existingItems)}
+    ${coverageChecklistModalHTML(existingItems)}
     <div class="field" style="grid-column:1/-1"><label>Notes</label><textarea id="mf-notes" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;resize:vertical">${esc(p.notes||'')}</textarea></div>
   </div>`;
 }
