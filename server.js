@@ -5,6 +5,7 @@ const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
 const https = require('https');
+const crypto = require('crypto');
 const initSqlJs = require('sql.js');
 
 const app = express();
@@ -55,14 +56,23 @@ async function initDb() {
       UNIQUE(client_id, year),
       FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS invite_tokens (
+      token TEXT PRIMARY KEY, client_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')),
+      expires_at TEXT, used INTEGER DEFAULT 0,
+      FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    );
   `);
 
-  // Migrations for existing DBs
+  // Migration: add coverage_items column to policies
+  try { db.run(`ALTER TABLE policies ADD COLUMN coverage_items TEXT DEFAULT '[]'`); } catch {}
+
+  // Migrations
   try { db.run(`ALTER TABLE clients ADD COLUMN role TEXT DEFAULT 'client'`); } catch {}
   try { db.run(`ALTER TABLE policies ADD COLUMN policy_number TEXT DEFAULT ''`); } catch {}
   try { db.run(`ALTER TABLE policies ADD COLUMN coverage_items TEXT DEFAULT '[]'`); } catch {}
+  try { db.run(`CREATE TABLE IF NOT EXISTS invite_tokens (token TEXT PRIMARY KEY, client_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')), expires_at TEXT, used INTEGER DEFAULT 0, FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE)`); } catch {}
 
-  // Auto-seed admin if not exists
+  // Auto-seed admin
   const adminExists = dbGet(`SELECT id FROM clients WHERE role='admin'`);
   if (!adminExists) {
     const hash = bcrypt.hashSync(process.env.ADMIN_PASSWORD || 'admin2026', 10);
@@ -102,6 +112,9 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Version / health ping — update this to confirm new deploys
+app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v5-2026-03-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items'] }));
+
 function authenticate(req, res, next) {
   const token = (req.headers.authorization || '').split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
@@ -123,8 +136,7 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid username or password' });
   const token = jwt.sign({ id: client.id, username: client.username, role: client.role }, JWT_SECRET, { expiresIn: '8h' });
   res.json({
-    token,
-    role: client.role,
+    token, role: client.role,
     client: { id: client.id, name: client.name, email: client.email, age: client.age, annual_income: client.annual_income, occupation: client.occupation, role: client.role }
   });
 });
@@ -132,7 +144,6 @@ app.post('/api/auth/login', (req, res) => {
 // ── Admin: List all clients ────────────────────────────────────────────────────
 app.get('/api/admin/clients', authenticate, requireAdmin, (req, res) => {
   const clients = dbAll(`SELECT id, username, name, age, gender, occupation, annual_income, email, phone, role, created_at FROM clients WHERE role != 'admin' ORDER BY name`);
-  // Enrich with policy/investment counts
   const enriched = clients.map(c => {
     const policyCount = dbGet('SELECT COUNT(*) as cnt FROM policies WHERE client_id=?', [c.id])?.cnt || 0;
     const totalCoverage = dbGet('SELECT SUM(coverage) as total FROM policies WHERE client_id=? AND status=?', [c.id, 'Active'])?.total || 0;
@@ -153,7 +164,6 @@ app.post('/api/admin/clients', authenticate, requireAdmin, (req, res) => {
     dbRun('INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,dependents,email,phone,role) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
       [id, username, hash, name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'', 'client']);
     const newClient = dbGet('SELECT id,username,name,age,gender,occupation,annual_income,email,phone,role FROM clients WHERE id=?', [id]);
-    // Auto-push to Notion
     notionPushClient(newClient).catch(() => {});
     res.json(newClient);
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -187,6 +197,58 @@ app.get('/api/admin/stats', authenticate, requireAdmin, (req, res) => {
   res.json({ totalClients, totalPolicies, totalCoverage, totalPremium, totalInvestments });
 });
 
+// ── Admin: Expiry alerts across all clients ────────────────────────────────────
+app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, (req, res) => {
+  const days = parseInt(req.query.days) || 90;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() + days);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const today = new Date().toISOString().split('T')[0];
+  const policies = dbAll(`
+    SELECT p.*, c.name as client_name, c.id as client_id, c.email as client_email
+    FROM policies p JOIN clients c ON p.client_id = c.id
+    WHERE p.end_date != '' AND p.end_date >= ? AND p.end_date <= ? AND p.status = 'Active'
+    ORDER BY p.end_date ASC
+  `, [today, cutoffStr]);
+  res.json(policies);
+});
+
+// ── Admin: Coverage gaps across all clients ────────────────────────────────────
+app.get('/api/admin/coverage-gaps', authenticate, requireAdmin, (req, res) => {
+  const clients = dbAll(`SELECT id, name, age, annual_income, dependents, occupation FROM clients WHERE role='client'`);
+  const result = clients.map(c => {
+    const income = c.annual_income || 0;
+    const age = c.age || 30;
+    const deps = c.dependents || 0;
+    const policies = dbAll(`SELECT type, SUM(coverage) as total FROM policies WHERE client_id=? AND status='Active' GROUP BY type`, [c.id]);
+    const covByType = {};
+    policies.forEach(p => { covByType[p.type] = p.total || 0; });
+
+    // Recommended benchmarks (Singapore standard practice)
+    const yearsToRetire = Math.max(0, 65 - age);
+    const rec = {
+      'Death / Life': income * Math.max(5, yearsToRetire * 0.7),
+      'Early Critical Illness': income * 3,
+      'Late Stage Critical Illness': income * 5,
+      'TPD': income * Math.max(5, yearsToRetire * 0.7),
+      'Hospitalization': 150000,
+    };
+    if (deps > 0) rec['Death / Life'] = income * Math.max(8, yearsToRetire * 1.0);
+
+    const gaps = Object.entries(rec).map(([type, recommended]) => {
+      const current = covByType[type] || 0;
+      const gap = Math.max(0, recommended - current);
+      const pct = recommended > 0 ? Math.min(100, Math.round(current / recommended * 100)) : 100;
+      const status = pct >= 100 ? 'adequate' : pct >= 40 ? 'partial' : 'critical';
+      return { type, current, recommended, gap, pct, status };
+    }).filter(g => g.gap > 0);
+
+    const totalGap = gaps.reduce((s, g) => s + g.gap, 0);
+    return { ...c, gaps, totalGap };
+  }).filter(c => c.totalGap > 0).sort((a, b) => b.totalGap - a.totalGap);
+  res.json(result);
+});
+
 // ── Client: Get profile ────────────────────────────────────────────────────────
 app.get('/api/clients/:id', authenticate, (req, res) => {
   if (req.user.role !== 'admin' && req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
@@ -201,6 +263,43 @@ app.put('/api/clients/:id', authenticate, (req, res) => {
   dbRun(`UPDATE clients SET name=?,age=?,gender=?,occupation=?,annual_income=?,dependents=?,email=?,phone=?,updated_at=datetime('now') WHERE id=?`,
     [name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'', req.params.id]);
   res.json({ success: true });
+});
+
+// ── Client: Coverage gap analysis ─────────────────────────────────────────────
+app.get('/api/clients/:id/coverage-gaps', authenticate, (req, res) => {
+  if (req.user.role !== 'admin' && req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
+  const c = dbGet('SELECT * FROM clients WHERE id=?', [req.params.id]);
+  if (!c) return res.status(404).json({ error: 'Not found' });
+
+  const income = c.annual_income || 0;
+  const age = c.age || 30;
+  const deps = c.dependents || 0;
+  const yearsToRetire = Math.max(0, 65 - age);
+
+  const policies = dbAll(`SELECT type, SUM(coverage) as total FROM policies WHERE client_id=? AND status='Active' GROUP BY type`, [c.id]);
+  const covByType = {};
+  policies.forEach(p => { covByType[p.type] = p.total || 0; });
+
+  const rec = {
+    'Death / Life': deps > 0 ? income * Math.max(8, yearsToRetire) : income * Math.max(5, yearsToRetire * 0.7),
+    'Early Critical Illness': income * 3,
+    'Late Stage Critical Illness': income * 5,
+    'TPD': income * Math.max(5, yearsToRetire * 0.7),
+    'Hospitalization': 150000,
+  };
+
+  const gaps = Object.entries(rec).map(([type, recommended]) => {
+    const current = covByType[type] || 0;
+    const gap = Math.max(0, recommended - current);
+    const pct = recommended > 0 ? Math.min(100, Math.round(current / recommended * 100)) : 100;
+    const status = pct >= 100 ? 'adequate' : pct >= 60 ? 'partial' : 'critical';
+    return { type, current, recommended, gap, pct, status };
+  });
+
+  const totalGap = gaps.reduce((s, g) => s + g.gap, 0);
+  const totalRec = gaps.reduce((s, g) => s + g.recommended, 0);
+  const totalCurrent = gaps.reduce((s, g) => s + g.current, 0);
+  res.json({ gaps, totalGap, totalRec, totalCurrent, income, age, deps });
 });
 
 // ── Policies ───────────────────────────────────────────────────────────────────
@@ -218,13 +317,14 @@ app.get('/api/clients/:id/policies', authenticate, (req, res) => {
 
 app.post('/api/clients/:id/policies', authenticate, (req, res) => {
   if (!guardClient(req, res)) return;
-  const { product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes } = req.body;
+  const { type, product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes } = req.body;
   const items = Array.isArray(coverage_items) ? coverage_items : [];
+  // coverage_items can be [{type,coverage}] objects (new) or strings (legacy)
   const totalCoverage = items.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
-  const primaryType = items.length > 0 ? items[0].type : '';
+  const primaryType = items.length > 0 ? (items[0].type || items[0]) : (type || '');
   const itemsJson = JSON.stringify(items);
   const id = dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,coverage_items,premium,start_date,end_date,status,recommended,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    [req.params.id, primaryType, product_name||'', policy_number||'', insurer||'', product_type||'', totalCoverage, itemsJson, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'']);
+    [req.params.id, primaryType, product_name||'', policy_number||'', insurer||'', product_type||'', totalCoverage||0, itemsJson, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'']);
   const row = dbGet('SELECT * FROM policies WHERE id=?', [id]);
   if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
   res.json(row);
@@ -241,7 +341,8 @@ app.put('/api/clients/:id/policies/:pid', authenticate, (req, res) => {
   }
   const f = ['type','product_name','policy_number','insurer','product_type','coverage','coverage_items','premium','start_date','end_date','status','recommended','notes'];
   const sets = [], vals = [];
-  f.forEach(k => { if (body[k] !== undefined) { sets.push(`${k}=?`); vals.push(body[k]); } });
+  f.filter(k => k !== 'coverage_items').forEach(k => { if (body[k] !== undefined) { sets.push(`${k}=?`); vals.push(body[k]); } });
+  if (body.coverage_items !== undefined) { sets.push('coverage_items=?'); vals.push(body.coverage_items); }
   if (sets.length) { vals.push(req.params.pid, req.params.id); dbRun(`UPDATE policies SET ${sets.join(',')} WHERE id=? AND client_id=?`, vals); }
   const row = dbGet('SELECT * FROM policies WHERE id=?', [req.params.pid]);
   if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
@@ -307,6 +408,37 @@ app.post('/api/clients/:id/snapshots/auto', authenticate, (req, res) => {
   dbRun(`INSERT OR REPLACE INTO snapshots (client_id,year,snapshot_date,total_coverage,total_investment_value,notes) VALUES (?,?,date('now'),?,?,'Auto snapshot')`,
     [req.params.id, year, tc, ti]);
   res.json({ year, total_coverage: tc, total_investment_value: ti });
+});
+
+// ── Invite Tokens ──────────────────────────────────────────────────────────────
+app.post('/api/admin/clients/:id/invite', authenticate, requireAdmin, (req, res) => {
+  const clientId = req.params.id;
+  const client = dbGet('SELECT id, username, name FROM clients WHERE id=? AND role=?', [clientId, 'client']);
+  if (!client) return res.status(404).json({ error: 'Client not found' });
+
+  // Revoke old unused tokens for this client
+  db.run('DELETE FROM invite_tokens WHERE client_id=? AND used=0', [clientId]);
+  saveDb();
+
+  const token = crypto.randomBytes(24).toString('hex');
+  const expires = new Date();
+  expires.setDate(expires.getDate() + 7); // 7-day expiry
+  dbRun('INSERT INTO invite_tokens (token, client_id, expires_at) VALUES (?,?,?)',
+    [token, clientId, expires.toISOString()]);
+
+  const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+  res.json({ token, link: `${baseUrl}/invite?token=${token}`, expires: expires.toISOString(), client });
+});
+
+// Resolve invite token → return client credentials info (not password)
+app.get('/api/invite/:token', (req, res) => {
+  const row = dbGet('SELECT * FROM invite_tokens WHERE token=?', [req.params.token]);
+  if (!row) return res.status(404).json({ error: 'Invalid or expired invite link' });
+  if (row.used) return res.status(410).json({ error: 'This invite link has already been used' });
+  if (row.expires_at && new Date(row.expires_at) < new Date()) return res.status(410).json({ error: 'This invite link has expired' });
+  const client = dbGet('SELECT id, name, username FROM clients WHERE id=?', [row.client_id]);
+  if (!client) return res.status(404).json({ error: 'Client not found' });
+  res.json({ client, expires: row.expires_at });
 });
 
 // ── Notion Sync ────────────────────────────────────────────────────────────────
@@ -411,7 +543,6 @@ app.post('/api/bootstrap', (req, res) => {
 initDb().then(() => {
   app.listen(PORT, () => {
     console.log(`\n🚀 FinView Dashboard → http://localhost:${PORT}`);
-    console.log(`   Admin: admin / admin2026`);
-    console.log(`   Client demo: sarah.tan / secure123\n`);
+    console.log(`   Admin: admin / admin2026\n`);
   });
 }).catch(e => { console.error('DB init failed:', e); process.exit(1); });
