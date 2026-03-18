@@ -383,6 +383,37 @@ function toast(msg, type='success', dur=3500) {
   setTimeout(() => el.remove(), dur);
 }
 
+// Expand coverage_items [{type,coverage}] into a per-type total map.
+// Falls back to p.type + p.coverage for legacy policies with no items.
+function getCoverageByType(policies) {
+  const map = {};
+  (policies || []).filter(p => p.status === 'Active').forEach(p => {
+    const items = Array.isArray(p.coverage_items) ? p.coverage_items : [];
+    if (items.length > 0) {
+      items.forEach(ci => {
+        if (ci && ci.type && (ci.coverage || 0) > 0) {
+          map[ci.type] = (map[ci.type] || 0) + (parseFloat(ci.coverage) || 0);
+        }
+      });
+    } else if (p.coverage > 0 && p.type) {
+      // Legacy: no items, use single type
+      map[p.type] = (map[p.type] || 0) + (p.coverage || 0);
+    }
+  });
+  return map;
+}
+
+// Ensure coverage_items is always a parsed array (handles string from old API)
+function parsePolicyCoverageItems(policies) {
+  return (policies || []).map(p => {
+    if (typeof p.coverage_items === 'string') {
+      try { p.coverage_items = JSON.parse(p.coverage_items); } catch { p.coverage_items = []; }
+    }
+    if (!Array.isArray(p.coverage_items)) p.coverage_items = [];
+    return p;
+  });
+}
+
 function mkChart(id, cfg) {
   if (CHARTS[id]) CHARTS[id].destroy();
   const canvas = document.getElementById(id);
@@ -851,7 +882,7 @@ async function loadClientData(clientId) {
       api.get(`/clients/${clientId}/investments`),
       api.get(`/clients/${clientId}/snapshots`)
     ]);
-    S.client = client; S.policies = policies; S.investments = investments; S.snapshots = snapshots;
+    S.client = client; S.policies = parsePolicyCoverageItems(policies); S.investments = investments; S.snapshots = snapshots;
     document.getElementById('sidebarName').textContent = client.name;
     const soonExpiring = policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
     const expiryNav = document.getElementById('nav-insurance');
@@ -912,13 +943,12 @@ function renderOverview(clientId, isAdmin) {
     </div>
   `;
 
-  const byType = {};
-  S.policies.forEach(p => { byType[p.type] = (byType[p.type]||0) + (p.coverage||0); });
+  const byType = getCoverageByType(S.policies);
   if (Object.keys(byType).length) mkChart('chartCoverageDonut', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } } } } });
   if (S.investments.length) mkChart('chartGoals', { type: 'bar', data: { labels: S.investments.map(i => i.name.length > 15 ? i.name.slice(0,13)+'…' : i.name), datasets: [{ label: 'Current', data: S.investments.map(i => i.value_now||0), backgroundColor: '#0EA5E9', borderRadius: 6 }, { label: 'Target', data: S.investments.map(i => i.target||0), backgroundColor: 'rgba(245,158,11,0.6)', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
 
   const byTypeArr = Object.entries(byType).map(([type, curr]) => {
-    const rec = Math.max(...S.policies.filter(p => p.type === type).map(p => p.recommended||0));
+    const rec = Math.max(0, ...S.policies.map(p => p.recommended||0));
     return { type, curr, rec };
   });
   document.getElementById('coverageGauge').innerHTML = byTypeArr.map(({ type, curr, rec }) => {
@@ -1020,10 +1050,21 @@ function renderInsurance(clientId, isAdmin) {
     <button class="btn btn-primary" onclick="openPolicyModal()">+ Add Policy</button>`;
 
   const activePolicies = S.policies.filter(p => p.status === 'Active');
-  const totalCoverage = activePolicies.reduce((s, p) => s + (p.coverage||0), 0);
+  const totalCoverage = Object.values(getCoverageByType(activePolicies)).reduce((s, v) => s + v, 0);
   const totalPremium = S.policies.reduce((s, p) => s + (p.premium||0), 0);
   const byType = {};
-  S.policies.forEach(p => { if (!byType[p.type]) byType[p.type] = { curr: 0, rec: 0, policies: [] }; byType[p.type].curr += p.coverage||0; byType[p.type].rec = Math.max(byType[p.type].rec, p.recommended||0); byType[p.type].policies.push(p); });
+  const expandedByType = getCoverageByType(S.policies);
+  Object.entries(expandedByType).forEach(([type, curr]) => {
+    if (!byType[type]) byType[type] = { curr: 0, rec: 0, policies: [] };
+    byType[type].curr = curr;
+  });
+  S.policies.forEach(p => {
+    // For recommended — still attach to the primary type
+    const ptype = p.type || 'Other';
+    if (!byType[ptype]) byType[ptype] = { curr: 0, rec: 0, policies: [] };
+    byType[ptype].rec = Math.max(byType[ptype].rec, p.recommended||0);
+    byType[ptype].policies.push(p);
+  });
   const totalRec = Object.values(byType).reduce((s, v) => s + v.rec, 0);
   const gap = Math.max(0, totalRec - totalCoverage);
   const expiring = S.policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
@@ -1634,8 +1675,8 @@ async function openPolicyModal(id) {
     const body = { product_name: d.product_name, policy_number: d.policy_number, insurer: d.insurer, product_type: d.product_type, coverage_items: coverageItems, premium: parseFloat(d.premium)||0, recommended: parseFloat(d.recommended)||0, status: d.status, start_date: d.start_date, end_date: d.end_date, notes: d.notes };
     const cid = S.viewClientId || S.user?.id;
     try {
-      if (existing) { const u = await api.put(`/clients/${cid}/policies/${id}`, body); S.policies = S.policies.map(p => p.id===id?u:p); toast('Policy updated'); }
-      else { const n = await api.post(`/clients/${cid}/policies`, body); S.policies.push(n); toast('Policy added ✅'); }
+      if (existing) { const u = await api.put(`/clients/${cid}/policies/${id}`, body); S.policies = parsePolicyCoverageItems(S.policies.map(p => p.id===id?u:p)); toast('Policy updated'); }
+      else { const n = await api.post(`/clients/${cid}/policies`, body); S.policies = parsePolicyCoverageItems([...S.policies, n]); toast('Policy added ✅'); }
       closeModal(); renderInsurance(cid);
     } catch (e) { toast(e.message, 'error'); }
   });
