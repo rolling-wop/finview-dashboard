@@ -528,6 +528,91 @@ app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, (req, res) => {
   });
 });
 
+// ── Backup & Restore ───────────────────────────────────────────────────────────
+app.get('/api/admin/backup', authenticate, requireAdmin, (req, res) => {
+  try {
+    const clients = dbAll(`SELECT * FROM clients WHERE role='client'`);
+    const policies = dbAll(`SELECT * FROM policies`);
+    const investments = dbAll(`SELECT * FROM investments`);
+    const snapshots = dbAll(`SELECT * FROM snapshots`);
+    const backup = {
+      version: 1,
+      exported_at: new Date().toISOString(),
+      counts: { clients: clients.length, policies: policies.length, investments: investments.length, snapshots: snapshots.length },
+      clients, policies, investments, snapshots
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="finview-backup-${new Date().toISOString().slice(0,10)}.json"`);
+    res.json(backup);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/restore', authenticate, requireAdmin, (req, res) => {
+  try {
+    const { clients = [], policies = [], investments = [], snapshots = [] } = req.body;
+    if (!Array.isArray(clients)) return res.status(400).json({ error: 'Invalid backup format' });
+
+    let imported = { clients: 0, policies: 0, investments: 0, snapshots: 0, skipped: 0 };
+
+    // Restore clients (skip admin, skip duplicates by id)
+    for (const c of clients) {
+      if (c.role === 'admin') continue;
+      const exists = dbGet('SELECT id FROM clients WHERE id=?', [c.id]);
+      if (exists) { imported.skipped++; continue; }
+      try {
+        dbRun(`INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,dependents,email,phone,role,notion_page_id,created_at,updated_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [c.id, c.username, c.password_hash, c.name, c.age||0, c.gender||'', c.occupation||'', c.annual_income||0,
+           c.dependents||0, c.email||'', c.phone||'', c.role||'client', c.notion_page_id||'', c.created_at||new Date().toISOString(), c.updated_at||new Date().toISOString()]);
+        imported.clients++;
+      } catch (e) { imported.skipped++; }
+    }
+
+    // Restore policies (upsert by original id if numeric — re-insert otherwise)
+    for (const p of policies) {
+      const clientExists = dbGet('SELECT id FROM clients WHERE id=?', [p.client_id]);
+      if (!clientExists) { imported.skipped++; continue; }
+      try {
+        dbRun(`INSERT OR IGNORE INTO policies (id,client_id,type,product_name,insurer,product_type,coverage,premium,start_date,end_date,status,recommended,notes,policy_number,coverage_items,created_at,updated_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [p.id, p.client_id, p.type||'', p.product_name||'', p.insurer||'', p.product_type||'', p.coverage||0,
+           p.premium||0, p.start_date||'', p.end_date||'', p.status||'Active', p.recommended||0,
+           p.notes||'', p.policy_number||'', p.coverage_items||'[]', p.created_at||new Date().toISOString(), p.updated_at||new Date().toISOString()]);
+        imported.policies++;
+      } catch (e) { imported.skipped++; }
+    }
+
+    // Restore investments
+    for (const i of investments) {
+      const clientExists = dbGet('SELECT id FROM clients WHERE id=?', [i.client_id]);
+      if (!clientExists) { imported.skipped++; continue; }
+      try {
+        dbRun(`INSERT OR IGNORE INTO investments (id,client_id,name,type,invested,value_now,target,goal_by,contribution,created_at,updated_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+          [i.id, i.client_id, i.name||'', i.type||'', i.invested||0, i.value_now||0,
+           i.target||0, i.goal_by||'', i.contribution||0, i.created_at||new Date().toISOString(), i.updated_at||new Date().toISOString()]);
+        imported.investments++;
+      } catch (e) { imported.skipped++; }
+    }
+
+    // Restore snapshots
+    for (const s of snapshots) {
+      const clientExists = dbGet('SELECT id FROM clients WHERE id=?', [s.client_id]);
+      if (!clientExists) { imported.skipped++; continue; }
+      try {
+        dbRun(`INSERT OR IGNORE INTO snapshots (id,client_id,year,snapshot_date,total_coverage,total_investment_value,notes,created_at)
+          VALUES (?,?,?,?,?,?,?,?)`,
+          [s.id, s.client_id, s.year, s.snapshot_date||'', s.total_coverage||0,
+           s.total_investment_value||0, s.notes||'', s.created_at||new Date().toISOString()]);
+        imported.snapshots++;
+      } catch (e) { imported.skipped++; }
+    }
+
+    saveDb();
+    res.json({ success: true, imported });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Bootstrap admin ────────────────────────────────────────────────────────────
 app.post('/api/bootstrap', (req, res) => {
   const { adminPassword } = req.body || {};

@@ -508,6 +508,7 @@ function buildAdminNav() {
     <button class="nav-item" id="nav-adminGaps" onclick="navTo('adminGaps')"><span class="nav-icon">⚠️</span> Coverage Gaps</button>
     <div class="nav-label" style="margin-top:8px">Tools</div>
     <button class="nav-item" id="nav-adminSync" onclick="syncAllToNotion()"><span class="nav-icon">🔄</span> Sync All → Notion</button>
+    <button class="nav-item" id="nav-adminBackup" onclick="navTo('adminBackup')"><span class="nav-icon">💾</span> Backup & Restore</button>
   `;
 }
 
@@ -521,6 +522,7 @@ function navTo(page, ...args) {
     adminClients: renderAdminClients,
     adminExpiry: renderAdminExpiry,
     adminGaps: renderAdminGaps,
+    adminBackup: renderAdminBackup,
     adminViewClient: () => renderAdminViewClient(...args)
   };
   if (fns[page]) fns[page]();
@@ -668,6 +670,74 @@ async function renderAdminGaps() {
           </div>
         </div>`).join('')}`;
   } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Admin: Backup & Restore ────────────────────────────────────────────────────
+async function renderAdminBackup() {
+  document.getElementById('pageTitle').textContent = 'Backup & Restore';
+  document.getElementById('pageSub').textContent = 'Export or import all client data';
+  document.getElementById('topbarActions').innerHTML = '';
+  document.getElementById('mainContent').innerHTML = `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><div class="card-title">💾 Export Backup</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Download a full JSON backup of all clients, policies, investments, and snapshots. Use this before any Railway re-deploy to preserve your data.</p>
+        <button class="btn btn-primary" onclick="downloadBackup()">⬇️ Download Backup JSON</button>
+        <div id="backupStatus" style="margin-top:12px;font-size:13px;color:var(--text-3)"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">📂 Restore from Backup</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Upload a previously exported backup JSON to restore clients and data. Existing records are skipped (won't be duplicated). Admin account is always preserved.</p>
+        <div class="field" style="margin-bottom:16px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Select backup file (.json)</label>
+          <input type="file" id="restoreFile" accept=".json" style="font-size:13px">
+        </div>
+        <button class="btn btn-secondary" onclick="uploadRestore()">⬆️ Restore from File</button>
+        <div id="restoreStatus" style="margin-top:12px;font-size:13px;color:var(--text-3)"></div>
+      </div>
+    </div>
+  `;
+}
+
+async function downloadBackup() {
+  const statusEl = document.getElementById('backupStatus');
+  statusEl.textContent = '⏳ Generating backup…';
+  try {
+    const token = localStorage.getItem('fv_token');
+    const resp = await fetch('/api/admin/backup', { headers: { Authorization: `Bearer ${token}` } });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finview-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    statusEl.innerHTML = `<span style="color:var(--success)">✅ Backup downloaded — ${data.counts.clients} clients, ${data.counts.policies} policies, ${data.counts.investments} investments, ${data.counts.snapshots} snapshots.</span>`;
+  } catch (e) {
+    statusEl.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
+  }
+}
+
+async function uploadRestore() {
+  const statusEl = document.getElementById('restoreStatus');
+  const file = document.getElementById('restoreFile').files[0];
+  if (!file) { statusEl.innerHTML = `<span style="color:var(--danger)">❌ Please select a backup file first.</span>`; return; }
+  statusEl.textContent = '⏳ Restoring data…';
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data.version || !Array.isArray(data.clients)) throw new Error('Invalid backup format — not a FinView backup file.');
+    const result = await api.post('/admin/restore', { clients: data.clients, policies: data.policies, investments: data.investments, snapshots: data.snapshots });
+    const { imported } = result;
+    statusEl.innerHTML = `<span style="color:var(--success)">✅ Restore complete! Imported: ${imported.clients} clients, ${imported.policies} policies, ${imported.investments} investments, ${imported.snapshots} snapshots. Skipped: ${imported.skipped} (already existed).</span>`;
+    setTimeout(() => navTo('adminClients'), 1500);
+  } catch (e) {
+    statusEl.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
+  }
 }
 
 // ── Admin Clients ──────────────────────────────────────────────────────────────
