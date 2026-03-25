@@ -276,9 +276,33 @@ app.get('/api/clients/:id/coverage-gaps', authenticate, (req, res) => {
   const deps = c.dependents || 0;
   const yearsToRetire = Math.max(0, 65 - age);
 
-  const policies = dbAll(`SELECT type, SUM(coverage) as total FROM policies WHERE client_id=? AND status='Active' GROUP BY type`, [c.id]);
+  const policies = dbAll(`SELECT type, coverage, coverage_items FROM policies WHERE client_id=? AND status='Active'`, [c.id]);
   const covByType = {};
-  policies.forEach(p => { covByType[p.type] = p.total || 0; });
+  policies.forEach(p => {
+    // First try coverage_items (granular breakdown)
+    let items = [];
+    try { items = JSON.parse(p.coverage_items || '[]'); } catch {}
+    if (Array.isArray(items) && items.length > 0) {
+      items.forEach(item => {
+        if (item.type && item.coverage) {
+          covByType[item.type] = (covByType[item.type] || 0) + (parseFloat(item.coverage) || 0);
+        }
+      });
+    } else if (p.coverage > 0) {
+      // Fallback: map policy type to coverage type
+      const typeMap = {
+        'Term Life': 'Death / Life', 'Whole Life': 'Death / Life',
+        'ILP': 'Death / Life', 'IUL': 'Death / Life',
+        'Early CI': 'Early Critical Illness', 'Standalone CI': 'Late Stage Critical Illness',
+        'Multi-Pay CI': 'Late Stage Critical Illness',
+        'Medical': 'Hospitalization',
+        'Disability Income': 'Disability Income',
+        'TPD': 'TPD',
+      };
+      const mapped = typeMap[p.type] || p.type;
+      covByType[mapped] = (covByType[mapped] || 0) + (p.coverage || 0);
+    }
+  });
 
   const rec = {
     'Death / Life': deps > 0 ? income * Math.max(8, yearsToRetire) : income * Math.max(5, yearsToRetire * 0.7),
