@@ -199,7 +199,7 @@ app.get('/api/admin/stats', authenticate, requireAdmin, (req, res) => {
 
 // ── Admin: Expiry alerts across all clients ────────────────────────────────────
 app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, (req, res) => {
-  const days = parseInt(req.query.days) || 90;
+  const days = Math.min(Math.max(parseInt(req.query.days) || 90, 1), 365);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + days);
   const cutoffStr = cutoff.toISOString().split('T')[0];
@@ -511,7 +511,7 @@ app.post('/api/sync/push/:id', authenticate, async (req, res) => {
 
 app.post('/api/sync/push-all', authenticate, requireAdmin, async (req, res) => {
   try {
-    const clients = dbAll(`SELECT * FROM clients WHERE role='client'`);
+    const clients = dbAll(`SELECT id, username, name, age, gender, occupation, annual_income, dependents, email, phone, role, notion_page_id, created_at, updated_at FROM clients WHERE role='client'`);
     let synced = 0;
     for (const c of clients) { try { await notionPushClient(c); synced++; } catch {} }
     res.json({ success: true, synced });
@@ -520,7 +520,7 @@ app.post('/api/sync/push-all', authenticate, requireAdmin, async (req, res) => {
 
 // ── Admin: Expiry Alerts ───────────────────────────────────────────────
 app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, (req, res) => {
-  const days = parseInt(req.query.days) || 90;
+  const days = Math.min(Math.max(parseInt(req.query.days) || 90, 1), 365);
   const today = new Date();
   const cutoff = new Date(today); cutoff.setDate(today.getDate() + days);
   const todayStr = today.toISOString().split('T')[0];
@@ -555,7 +555,7 @@ app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, (req, res) => {
 // ── Backup & Restore ───────────────────────────────────────────────────────────
 app.get('/api/admin/backup', authenticate, requireAdmin, (req, res) => {
   try {
-    const clients = dbAll(`SELECT * FROM clients WHERE role='client'`);
+    const clients = dbAll(`SELECT id, username, name, age, gender, occupation, annual_income, dependents, email, phone, role, notion_page_id, created_at, updated_at FROM clients WHERE role='client'`);
     const policies = dbAll(`SELECT * FROM policies`);
     const investments = dbAll(`SELECT * FROM investments`);
     const snapshots = dbAll(`SELECT * FROM snapshots`);
@@ -639,7 +639,12 @@ app.post('/api/admin/restore', authenticate, requireAdmin, (req, res) => {
 
 // ── Bootstrap admin ────────────────────────────────────────────────────────────
 app.post('/api/bootstrap', (req, res) => {
-  const { adminPassword } = req.body || {};
+  const { adminPassword, bootstrapSecret } = req.body || {};
+  // Require bootstrap secret to prevent unauthorized admin creation
+  const requiredSecret = process.env.BOOTSTRAP_SECRET;
+  if (requiredSecret && bootstrapSecret !== requiredSecret) {
+    return res.status(403).json({ error: 'Invalid bootstrap secret' });
+  }
   const existing = dbGet(`SELECT id FROM clients WHERE role='admin'`);
   if (existing) return res.status(400).json({ error: 'Admin already exists' });
   const hash = bcrypt.hashSync(adminPassword || 'admin2026', 10);
