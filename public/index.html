@@ -612,7 +612,7 @@ async function loadExpiry(days) {
             </div>
             <div style="flex:1;min-width:0">
               <div style="font-size:14px;font-weight:600">${esc(p.client_name)}</div>
-              <div style="font-size:12px;color:var(--text-3);margin-top:2px">${esc(p.product_name||p.type)} · ${esc(p.insurer)} · Policy #${esc(p.policy_number||'—')}</div>
+              <div style="font-size:12px;color:var(--text-3);margin-top:2px">${esc(p.product_name||p.type)} · ${esc(p.insurer)}</div>
               <div style="font-size:11px;color:var(--text-3);margin-top:2px">Expires ${fmtDate(p.end_date)} · Coverage ${fmt(p.coverage)}</div>
             </div>
             <div style="flex-shrink:0;text-align:right">
@@ -859,8 +859,6 @@ function clientFormHTML(c = {}, isEdit = false) {
       <div class="field"><label>Occupation</label><input type="text" id="cf-occupation" value="${esc(c.occupation||'')}" placeholder="Software Engineer"></div>
       <div class="field"><label>Annual Income (SGD)</label><input type="number" id="cf-income" value="${c.annual_income||''}" placeholder="72000"></div>
       <div class="field"><label>Dependents</label><input type="number" id="cf-dependents" value="${c.dependents||0}" min="0"></div>
-      <div class="field"><label>Email</label><input type="email" id="cf-email" value="${esc(c.email||'')}" placeholder="sarah@email.com"></div>
-      <div class="field"><label>Phone</label><input type="text" id="cf-phone" value="${esc(c.phone||'')}" placeholder="+65 9xxx xxxx"></div>
     </div>`;
 }
 
@@ -878,8 +876,8 @@ function openCreateClientModal() {
         occupation: document.getElementById('cf-occupation').value,
         annual_income: parseFloat(document.getElementById('cf-income').value)||0,
         dependents: parseInt(document.getElementById('cf-dependents').value)||0,
-        email: document.getElementById('cf-email').value,
-        phone: document.getElementById('cf-phone').value
+        email: '',
+        phone: ''
       });
       closeModal(); toast('Client created ✅');
       if (S.page === 'adminClients') renderAdminClients();
@@ -898,9 +896,7 @@ async function openEditClientModal(id) {
         gender: document.getElementById('cf-gender').value,
         occupation: document.getElementById('cf-occupation').value,
         annual_income: parseFloat(document.getElementById('cf-income').value)||0,
-        dependents: parseInt(document.getElementById('cf-dependents').value)||0,
-        email: document.getElementById('cf-email').value,
-        phone: document.getElementById('cf-phone').value
+        dependents: parseInt(document.getElementById('cf-dependents').value)||0
       };
       const pw = document.getElementById('cf-password').value;
       if (pw) body.password = pw;
@@ -996,13 +992,37 @@ function renderOverview(clientId, isAdmin) {
 
   document.getElementById('mainContent').innerHTML = `
     <div class="print-header"><h1>${esc(c.name)} — Financial Summary</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
-    ${expiring.length ? expiring.map(p => `<div class="alert alert-${daysUntil(p.end_date) <= 30 ? 'danger' : 'warning'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${daysUntil(p.end_date) <= 0 ? 'today' : `in ${daysUntil(p.end_date)} days`}</strong>Policy ${esc(p.policy_number||'—')} · ${fmtDate(p.end_date)}</div></div>`).join('') : ''}
+    ${expiring.length ? expiring.map(p => `<div class="alert alert-${daysUntil(p.end_date) <= 30 ? 'danger' : 'warning'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${daysUntil(p.end_date) <= 0 ? 'today' : `in ${daysUntil(p.end_date)} days`}</strong>End date: ${fmtDate(p.end_date)}</div></div>`).join('') : ''}
     <div class="metrics-grid">
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#0EA5E9,#6366F1)"></div><div class="metric-label">Total Coverage</div><div class="metric-value">${fmt(totalCoverage)}</div>${covChange !== null ? `<span class="metric-change ${covChange >= 0 ? 'up' : 'down'}">${covChange >= 0 ? '↑' : '↓'} ${fmt(Math.abs(covChange))} YoY</span>` : ''}</div>
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#10B981,#06B6D4)"></div><div class="metric-label">Investment Value</div><div class="metric-value">${fmt(totalValue)}</div><span class="metric-change ${gains >= 0 ? 'up' : 'down'}">${gains >= 0 ? '+' : ''}${fmtPct(totalInvested ? gains/totalInvested*100 : 0)} all-time</span></div>
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#F59E0B,#EF4444)"></div><div class="metric-label">Annual Premium</div><div class="metric-value">${fmt(totalPremium)}</div><span class="metric-change neutral">${fmt(totalPremium/12)}/mo · ${S.policies.filter(p=>p.status==='Active').length} active</span></div>
       <div class="metric"><div class="metric-accent" style="background:${coverageGap > 0 ? 'linear-gradient(90deg,#EF4444,#F59E0B)' : 'linear-gradient(90deg,#10B981,#06B6D4)'}"></div><div class="metric-label">Coverage Gap</div><div class="metric-value">${fmt(coverageGap)}</div><span class="metric-change ${coverageGap === 0 ? 'up' : 'down'}">${coverageGap === 0 ? '✓ Fully covered' : '⚠ Underinsured'}</span></div>
     </div>
+    ${isAdmin ? `
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header">
+    <div>
+      <div class="card-title">👤 Client Profile</div>
+      <div class="card-sub">Click Edit to update client details</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" id="editProfileBtn" onclick="toggleProfileEdit()">✏️ Edit Details</button>
+  </div>
+  <div id="profileEditForm" class="card-body hidden">
+    <div class="form-grid">
+      <div class="field"><label>Age</label><input type="number" id="pe-age" value="${c.age||\'\'}" min="18" max="99" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
+      <div class="field"><label>Gender</label><select id="pe-gender" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%;background:var(--surface)"><option value="">—</option><option ${c.gender===\'Male\'?\'selected\':\'\'}>Male</option><option ${c.gender===\'Female\'?\'selected\':\'\'}>Female</option></select></div>
+      <div class="field"><label>Occupation</label><input type="text" id="pe-occupation" value="${esc(c.occupation||\'\') }" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
+      <div class="field"><label>Annual Income (SGD)</label><input type="number" id="pe-income" value="${c.annual_income||\'\'}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
+      <div class="field"><label>Dependents</label><input type="number" id="pe-dependents" value="${c.dependents||0}" min="0" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+      <button class="btn btn-primary" id="saveProfileBtn" onclick="saveProfileEdits(\'${clientId}\')">💾 Save Changes</button>
+      <button class="btn btn-secondary" onclick="toggleProfileEdit()">Cancel</button>
+      <span style="font-size:12px;color:var(--text-3)">🔒 PDPA protected — changes saved securely</span>
+    </div>
+  </div>
+</div>` : ''}
     <div class="chart-grid">
       <div class="card"><div class="card-header"><div class="card-title">🛡️ Coverage by Type</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartCoverageDonut"></canvas></div></div></div>
       <div class="card"><div class="card-header"><div class="card-title">🎯 Goals Progress</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartGoals"></canvas></div></div></div>
@@ -1151,7 +1171,7 @@ function renderInsurance(clientId, isAdmin) {
   `;
 
   document.getElementById('insuranceAlerts').innerHTML = [
-    ...expiring.map(p => { const d = daysUntil(p.end_date); return `<div class="alert alert-${d<=30?'danger':'warning'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${d<=0?'today':`in ${d} days`}</strong>Policy No: ${esc(p.policy_number||'—')} · End date: ${fmtDate(p.end_date)}</div></div>`; }),
+    ...expiring.map(p => { const d = daysUntil(p.end_date); return `<div class="alert alert-${d<=30?'danger':'warning'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${d<=0?'today':`in ${d} days`}</strong>End date: ${fmtDate(p.end_date)}</div></div>`; }),
     ...Object.entries(byType).filter(([,d]) => d.rec > 0 && d.curr < d.rec * 0.6).map(([type, d]) => `<div class="alert alert-warning"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(type)} coverage is below 60% of recommended</strong>Current: ${fmt(d.curr)} · Recommended: ${fmt(d.rec)} · Gap: ${fmt(d.rec-d.curr)}</div></div>`)
   ].join('');
 
@@ -1210,7 +1230,6 @@ function renderInsurance(clientId, isAdmin) {
                 <div style="min-width:0;flex:1">
                   <div class="policy-row-name">${esc(p.product_name||p.type)}</div>
                   <div class="policy-row-meta">${esc(p.insurer)} · ${esc(p.product_type)}</div>
-                  ${p.policy_number ? `<div class="policy-number">Policy #${esc(p.policy_number)}</div>` : ''}
                   ${expiringSoon ? `<div style="font-size:11px;color:var(--danger);margin-top:2px;font-weight:500">⚠ Expires in ${exd} days (${fmtDate(p.end_date)})</div>` : ''}
                 </div>
                 <div class="policy-actions">
@@ -1725,7 +1744,6 @@ function policyFormHTML(p = {}) {
     <div class="field"><label>Insurer</label><select id="mf-insurer">${INSURERS.map(i => `<option ${(p.insurer||'Prudential')===i?'selected':''}>${i}</option>`).join('')}</select></div>
     <div class="field"><label>Product Type</label><select id="mf-product_type">${PROD_TYPES.map(t => `<option ${(p.product_type||'Term Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Product Name</label><input id="mf-product_name" type="text" value="${esc(p.product_name||'')}" placeholder="e.g. PRUActive Protect"></div>
-    <div class="field"><label>Policy Number</label><input id="mf-policy_number" type="text" value="${esc(p.policy_number||'')}" placeholder="e.g. 12345678"></div>
     <div class="field"><label>Status</label><select id="mf-status"><option ${(p.status||'Active')==='Active'?'selected':''}>Active</option><option ${p.status==='Lapsed'?'selected':''}>Lapsed</option><option ${p.status==='Cancelled'?'selected':''}>Cancelled</option><option ${p.status==='Pending'?'selected':''}>Pending</option></select></div>
     <div class="field"><label>Annual Premium (S$)</label><input id="mf-premium" type="number" value="${p.premium||''}" placeholder="3600"></div>
     <div class="field"><label>Recommended Total Coverage</label><input id="mf-recommended" type="number" value="${p.recommended||''}" placeholder="0"></div>
@@ -1795,6 +1813,40 @@ async function deleteInvestment(id) {
   const cid = S.viewClientId || S.user?.id;
   try { await api.del(`/clients/${cid}/investments/${id}`); S.investments = S.investments.filter(i => i.id!==id); toast('Investment deleted'); renderInvestments(cid); }
   catch (e) { toast(e.message, 'error'); }
+}
+function toggleProfileEdit() {
+  const form = document.getElementById('profileEditForm');
+  const btn = document.getElementById('editProfileBtn');
+  if (form) {
+    form.classList.toggle('hidden');
+    if (btn) btn.textContent = form.classList.contains('hidden') ? '✏️ Edit Details' : '✕ Cancel';
+  }
+}
+
+async function saveProfileEdits(clientId) {
+  const btn = document.getElementById('saveProfileBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const body = {
+    name: S.client.name,
+    age: parseInt(document.getElementById('pe-age').value) || 0,
+    gender: document.getElementById('pe-gender').value,
+    occupation: document.getElementById('pe-occupation').value,
+    annual_income: parseFloat(document.getElementById('pe-income').value) || 0,
+    dependents: parseInt(document.getElementById('pe-dependents').value) || 0,
+  };
+  try {
+    await api.put(`/admin/clients/${clientId}`, body);
+    S.client = { ...S.client, ...body };
+    document.getElementById('profileEditForm').classList.add('hidden');
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save Changes'; }
+    toast('Profile saved ✅');
+    document.getElementById('pageSub').textContent = `${body.occupation || ''} · Age ${body.age || '—'} · Income ${fmt(body.annual_income || 0)}/yr`;
+    const editBtn = document.getElementById('editProfileBtn');
+    if (editBtn) editBtn.textContent = '✏️ Edit Details';
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save Changes'; }
+    toast(e.message, 'error');
+  }
 }
 </script>
 </body>
