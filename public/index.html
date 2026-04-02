@@ -143,13 +143,17 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;font-size:14p
 /* ── Gap cards ── */
 .gap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px}
 .gap-card{border:1.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;background:var(--surface)}
-.gap-card.critical{border-color:rgba(239,68,68,0.4);background:rgba(239,68,68,0.02)}
-.gap-card.partial{border-color:rgba(245,158,11,0.4);background:rgba(245,158,11,0.02)}
-.gap-card.adequate{border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.02)}
+.gap-card.level1{border-color:rgba(239,68,68,0.5);background:rgba(239,68,68,0.03)}
+.gap-card.level2{border-color:rgba(249,115,22,0.5);background:rgba(249,115,22,0.03)}
+.gap-card.level3{border-color:rgba(245,158,11,0.5);background:rgba(245,158,11,0.03)}
+.gap-card.level4{border-color:rgba(14,165,233,0.5);background:rgba(14,165,233,0.03)}
+.gap-card.level5{border-color:rgba(16,185,129,0.5);background:rgba(16,185,129,0.03)}
 .gap-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;margin-bottom:8px}
-.gap-status.critical{background:var(--danger-light);color:var(--danger)}
-.gap-status.partial{background:var(--warning-light);color:var(--warning)}
-.gap-status.adequate{background:var(--success-light);color:var(--success)}
+.gap-status.level1{background:rgba(239,68,68,0.12);color:#DC2626}
+.gap-status.level2{background:rgba(249,115,22,0.12);color:#EA580C}
+.gap-status.level3{background:rgba(245,158,11,0.12);color:#D97706}
+.gap-status.level4{background:rgba(14,165,233,0.12);color:#0284C7}
+.gap-status.level5{background:rgba(16,185,129,0.12);color:#059669}
 
 /* ── Badges ── */
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
@@ -602,9 +606,9 @@ async function loadExpiry(days) {
         <div class="card-header"><div class="card-title">🔔 ${alerts.length} ${alerts.length===1?'Policy':'Policies'} Expiring in ${days} Days</div></div>
         <div>${alerts.map(p => {
           const d = daysUntil(p.end_date);
-          const urgency = d <= 14 ? 'danger' : d <= 30 ? 'warning' : 'neutral';
-          const bgColor = urgency === 'danger' ? 'var(--danger-light)' : urgency === 'warning' ? 'var(--warning-light)' : 'var(--surface)';
-          const textColor = urgency === 'danger' ? 'var(--danger)' : urgency === 'warning' ? 'var(--warning)' : 'var(--success)';
+          const urgency = d <= 7 ? 'level1' : d <= 14 ? 'level2' : d <= 30 ? 'level3' : d <= 60 ? 'level4' : 'level5';
+          const bgColor = urgency==='level1'?'rgba(239,68,68,0.08)':urgency==='level2'?'rgba(249,115,22,0.08)':urgency==='level3'?'rgba(245,158,11,0.08)':urgency==='level4'?'rgba(14,165,233,0.05)':'var(--surface)';
+          const textColor = urgency==='level1'?'#DC2626':urgency==='level2'?'#EA580C':urgency==='level3'?'#D97706':urgency==='level4'?'#0284C7':'#059669';
           return `<div class="expiry-row" style="background:${d<=14?'rgba(239,68,68,0.02)':''}">
             <div class="expiry-days">
               <div class="expiry-days-num" style="color:${textColor}">${d}</div>
@@ -616,7 +620,7 @@ async function loadExpiry(days) {
               <div style="font-size:11px;color:var(--text-3);margin-top:2px">Expires ${fmtDate(p.end_date)} · Coverage ${fmt(p.coverage)}</div>
             </div>
             <div style="flex-shrink:0;text-align:right">
-              <span class="badge badge-${urgency==='danger'?'lapsed':urgency==='warning'?'pending':'active'}">${d <= 14 ? 'Urgent' : d <= 30 ? 'Soon' : 'Upcoming'}</span>
+              <span class="badge badge-${urgency==='level1'?'lapsed':urgency==='level2'?'lapsed':urgency==='level3'?'pending':urgency==='level4'?'pending':'active'}">${d <= 7 ? 'Level 1 — Critical' : d <= 14 ? 'Level 2 — Urgent' : d <= 30 ? 'Level 3 — Soon' : d <= 60 ? 'Level 4 — Due' : 'Level 5 — Upcoming'}</span>
               <div style="font-size:12px;color:var(--text-3);margin-top:4px">${fmt(p.premium)}/yr</div>
             </div>
             <button class="btn btn-secondary btn-sm no-print" onclick="openClientView('${esc(p.client_id)}','${esc(p.client_name)}')" style="flex-shrink:0">View →</button>
@@ -641,6 +645,14 @@ async function renderAdminGaps() {
     }
     el.innerHTML = `
       <div class="alert alert-info" style="margin-bottom:20px"><div class="alert-icon">ℹ️</div><div class="alert-body"><strong>Based on Singapore financial planning benchmarks</strong>Recommendations use income multipliers: Life ${`(income × years to retire)`}, CI ${`(income × 3–5)`}, Hospitalisation ${`(S$150k)`}. Gaps are opportunities to review coverage.</div></div>
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:600;color:#94A3B8;padding:4px 0;align-self:center">COVERAGE LEVELS:</div>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(239,68,68,0.12);color:#DC2626;font-weight:600">🔴 1 — Critical (&lt;20%)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(249,115,22,0.12);color:#EA580C;font-weight:600">🟠 2 — At Risk (20–40%)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(245,158,11,0.12);color:#D97706;font-weight:600">🟡 3 — Below Target (40–70%)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(14,165,233,0.12);color:#0284C7;font-weight:600">🔵 4 — Near Target (70–99%)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(16,185,129,0.12);color:#059669;font-weight:600">🟢 5 — Fully Protected (100%+)</span>
+      </div>
       ${gaps.map(c => `
         <div class="card" style="margin-bottom:16px">
           <div class="card-header">
@@ -654,11 +666,11 @@ async function renderAdminGaps() {
             <div class="gap-grid">
               ${c.gaps.map(g => `
                 <div class="gap-card ${g.status}">
-                  <div class="gap-status ${g.status}">${g.status === 'critical' ? '🔴 Critical' : g.status === 'partial' ? '🟡 Partial' : '🟢 Adequate'}</div>
+                  <div class="gap-status ${g.status}">${g.status === 'level1' ? '🔴 Level 1 — Critical' : g.status === 'level2' ? '🟠 Level 2 — At Risk' : g.status === 'level3' ? '🟡 Level 3 — Below Target' : g.status === 'level4' ? '🔵 Level 4 — Near Target' : '🟢 Level 5 — Fully Protected'}</div>
                   <div style="font-size:14px;font-weight:600;margin-bottom:8px">${esc(g.type)}</div>
                   <div style="margin-bottom:10px">
                     <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:4px"><span>Coverage</span><span>${g.pct}%</span></div>
-                    <div class="progress" style="height:8px"><div class="progress-bar" style="width:${g.pct}%;background:${g.status==='critical'?'var(--danger)':g.status==='partial'?'var(--warning)':'var(--success)'}"></div></div>
+                    <div class="progress" style="height:8px"><div class="progress-bar" style="width:${g.pct}%;background:${g.status==='level1'?'#DC2626':g.status==='level2'?'#EA580C':g.status==='level3'?'#D97706':g.status==='level4'?'#0284C7':'#059669'}"></div></div>
                   </div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
                     <div><div style="color:var(--text-3)">Current</div><div style="font-weight:600">${fmt(g.current)}</div></div>
@@ -967,6 +979,81 @@ function navClientPage(page) {
   if (renders[page]) renders[page](clientId, isAdmin);
 }
 
+// ── Health Score + Risk Profile ───────────────────────────────────────────────
+function calcHealthScore(policies, investments, client) {
+  const income = client.annual_income || 50000;
+  const age = client.age || 30;
+  const deps = client.dependents || 0;
+  const yearsToRetire = Math.max(0, 65 - age);
+  const recLife = deps > 0 ? income * Math.max(8, yearsToRetire) : income * Math.max(5, yearsToRetire * 0.7);
+  const recCI = income * 4;
+  const recHosp = 150000;
+  const byType = {};
+  (policies||[]).filter(p=>p.status==='Active').forEach(p => {
+    const items = Array.isArray(p.coverage_items) ? p.coverage_items : [];
+    items.forEach(ci => { if(ci.type && ci.coverage) byType[ci.type] = (byType[ci.type]||0) + parseFloat(ci.coverage); });
+    if (!items.length && p.coverage) byType[p.type||'Other'] = (byType[p.type||'Other']||0) + p.coverage;
+  });
+  const lifeTypes = ['Death / Life','Term Life','Whole Life'];
+  const ciTypes = ['Early Critical Illness','Late Stage Critical Illness','Standalone CI'];
+  const hospTypes = ['Hospitalization','Medical'];
+  const lifeCov = lifeTypes.reduce((s,t) => s + (byType[t]||0), 0);
+  const ciCov = ciTypes.reduce((s,t) => s + (byType[t]||0), 0);
+  const hospCov = hospTypes.reduce((s,t) => s + (byType[t]||0), 0);
+  const invValue = (investments||[]).reduce((s,i) => s + (i.value_now||0), 0);
+  let score = 0;
+  if (lifeCov >= recLife * 0.8) score += 25;
+  else if (lifeCov > 0) score += Math.round(25 * lifeCov / recLife);
+  if (ciCov >= recCI * 0.8) score += 25;
+  else if (ciCov > 0) score += Math.round(25 * ciCov / recCI);
+  if (hospCov > 0) score += 20;
+  if (invValue > 0) score += 20;
+  if ((policies||[]).length > 0) score += 10;
+  score = Math.min(100, score);
+  const grade = score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : 'D';
+  const color = score >= 80 ? '#10B981' : score >= 60 ? '#F59E0B' : score >= 40 ? '#0EA5E9' : '#EF4444';
+  return { score, grade, color, lifeCov, ciCov, hospCov, invValue, recLife, recCI };
+}
+
+function getRiskProfile(client) {
+  const age = client.age || 30;
+  const income = client.annual_income || 50000;
+  const deps = client.dependents || 0;
+  if (age >= 50 || income > 150000) return {label:'Preservation Phase', emoji:'🔴', color:'#EF4444', desc:'Optimize for legacy & stability'};
+  if (age >= 35 && income >= 80000) return {label:'Accumulation Phase', emoji:'🟡', color:'#F59E0B', desc:'Balance coverage and wealth building'};
+  return {label:'Growth Phase', emoji:'🟢', color:'#10B981', desc:'Maximize protection coverage'};
+}
+
+function openQuickAnalysis() {
+  const hs = calcHealthScore(S.policies, S.investments, S.client);
+  const rp = getRiskProfile(S.client);
+  const gaps = [];
+  if (hs.lifeCov < hs.recLife * 0.8) gaps.push(`Increase life coverage by ${fmt(hs.recLife - hs.lifeCov)} to reach recommended ${fmt(hs.recLife)}`);
+  if (hs.ciCov < hs.recCI * 0.8) gaps.push(`Add critical illness coverage — recommended ${fmt(hs.recCI)}, currently ${fmt(hs.ciCov)}`);
+  if (hs.hospCov === 0) gaps.push('Set up hospitalisation / Integrated Shield Plan coverage');
+  if (S.investments.length === 0) gaps.push('Start an investment portfolio to build long-term wealth');
+  if (gaps.length === 0) gaps.push('Portfolio is well-structured — schedule next annual review');
+  showModal('⚡ Quick Financial Analysis', `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:16px;background:#F8FAFC;border-radius:10px">
+      <div style="width:64px;height:64px;border-radius:50%;border:4px solid ${hs.color};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:${hs.color}">${hs.grade}</div><div style="font-size:10px;color:#94A3B8">${hs.score}/100</div></div>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:700">${S.client.name}</div>
+        <div style="font-size:12px;color:#64748B;margin-top:2px">${rp.emoji} ${rp.label} — ${rp.desc}</div>
+        <div style="height:6px;background:#E2E8F0;border-radius:99px;margin-top:8px;width:200px"><div style="height:100%;width:${hs.score}%;background:${hs.color};border-radius:99px"></div></div>
+      </div>
+    </div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#0F172A">📋 Top Recommendations</div>
+    ${gaps.slice(0,3).map((g,i) => `<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #E2E8F0">
+      <div style="width:22px;height:22px;background:${hs.color};color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</div>
+      <div style="font-size:13px;color:#374151">${g}</div>
+    </div>`).join('')}
+  `, null, 'Close');
+  document.getElementById('modalSubmit').style.display = 'none';
+  document.getElementById('modalCancel').textContent = 'Close';
+}
+
 // ── Overview ───────────────────────────────────────────────────────────────────
 function renderOverview(clientId, isAdmin) {
   const c = S.client;
@@ -974,6 +1061,7 @@ function renderOverview(clientId, isAdmin) {
   document.getElementById('pageSub').textContent = `${c.occupation||''} · Age ${c.age||'—'} · Income ${fmt(c.annual_income||0)}/yr`;
   document.getElementById('topbarActions').innerHTML = `
     ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="api.post('/sync/push/${clientId}',{}).then(()=>toast('Synced to Notion ✅')).catch(e=>toast(e.message,'error'))">🔄 Sync Notion</button>` : ''}
+    <button class="btn btn-warning btn-sm" onclick="openQuickAnalysis()">⚡ Quick Analysis</button>
     <button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${clientId}')">📄 Export PDF</button>
     <button class="btn btn-primary btn-sm" onclick="autoSnapshot('${clientId}')">📸 Save Snapshot</button>
   `;
@@ -992,7 +1080,7 @@ function renderOverview(clientId, isAdmin) {
 
   document.getElementById('mainContent').innerHTML = `
     <div class="print-header"><h1>${esc(c.name)} — Financial Summary</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
-    ${expiring.length ? expiring.map(p => `<div class="alert alert-${daysUntil(p.end_date) <= 30 ? 'danger' : 'warning'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${daysUntil(p.end_date) <= 0 ? 'today' : `in ${daysUntil(p.end_date)} days`}</strong>End date: ${fmtDate(p.end_date)}</div></div>`).join('') : ''}
+    ${expiring.length ? expiring.map(p => `<div class="alert alert-${daysUntil(p.end_date) <= 7 ? 'danger' : daysUntil(p.end_date) <= 30 ? 'warning' : 'info'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${daysUntil(p.end_date) <= 0 ? 'today' : `in ${daysUntil(p.end_date)} days`}</strong>End date: ${fmtDate(p.end_date)}</div></div>`).join('') : ''}
     <div class="metrics-grid">
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#0EA5E9,#6366F1)"></div><div class="metric-label">Total Coverage</div><div class="metric-value">${fmt(totalCoverage)}</div>${covChange !== null ? `<span class="metric-change ${covChange >= 0 ? 'up' : 'down'}">${covChange >= 0 ? '↑' : '↓'} ${fmt(Math.abs(covChange))} YoY</span>` : ''}</div>
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#10B981,#06B6D4)"></div><div class="metric-label">Investment Value</div><div class="metric-value">${fmt(totalValue)}</div><span class="metric-change ${gains >= 0 ? 'up' : 'down'}">${gains >= 0 ? '+' : ''}${fmtPct(totalInvested ? gains/totalInvested*100 : 0)} all-time</span></div>
@@ -1032,6 +1120,31 @@ function renderOverview(clientId, isAdmin) {
       <div class="card-body"><div id="coverageGauge"></div></div>
     </div>
   `;
+
+  // Health Score card
+  const hs = calcHealthScore(S.policies, S.investments, S.client);
+  const rp = getRiskProfile(S.client);
+  const hsCardHTML = `<div class="hs-card" style="background:#fff;border-radius:12px;border:1px solid #E2E8F0;padding:20px;margin-bottom:20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;border:4px solid ${hs.color};flex-shrink:0;position:relative">
+      <div style="text-align:center">
+        <div style="font-size:24px;font-weight:800;color:${hs.color}">${hs.grade}</div>
+        <div style="font-size:10px;color:#94A3B8">${hs.score}/100</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px">Financial Health Score</div>
+      <div style="height:8px;background:#E2E8F0;border-radius:99px;margin-bottom:8px"><div style="height:100%;width:${hs.score}%;background:${hs.color};border-radius:99px;transition:width 0.6s"></div></div>
+      <div style="font-size:12px;color:#64748B">Life: ${fmt(hs.lifeCov)} / CI: ${fmt(hs.ciCov)} / Hosp: ${hs.hospCov > 0 ? '✅' : '❌'} / Investments: ${hs.invValue > 0 ? '✅' : '❌'}</div>
+    </div>
+    <div style="background:${rp.color}15;border:1px solid ${rp.color}40;border-radius:8px;padding:10px 16px;flex-shrink:0">
+      <div style="font-size:13px;font-weight:600;color:${rp.color}">${rp.emoji} ${rp.label}</div>
+      <div style="font-size:11px;color:#64748B;margin-top:2px">${rp.desc}</div>
+    </div>
+  </div>`;
+  const chartGridEl = document.getElementById('mainContent').querySelector('.chart-grid');
+  if (chartGridEl && !document.getElementById('mainContent').querySelector('.hs-card')) {
+    chartGridEl.insertAdjacentHTML('beforebegin', hsCardHTML);
+  }
 
   const byType = getCoverageByType(S.policies);
   if (Object.keys(byType).length) mkChart('chartCoverageDonut', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } } } } });
@@ -1082,6 +1195,14 @@ async function renderCoverageGaps(clientId, isAdmin) {
     document.getElementById('mainContent').innerHTML = `
       <div class="print-header"><h1>${esc(c.name)} — Coverage Gap Analysis</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
       <div class="alert alert-info" style="margin-bottom:20px"><div class="alert-icon">ℹ️</div><div class="alert-body"><strong>How this is calculated</strong>Recommendations are based on Singapore financial planning benchmarks — income multipliers for Life/CI/TPD, standard hospitalization coverage. Adjust by reviewing each type.</div></div>
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:600;color:#94A3B8;padding:4px 0;align-self:center">COVERAGE LEVELS:</div>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(239,68,68,0.12);color:#DC2626;font-weight:600">🔴 1 — Critical</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(249,115,22,0.12);color:#EA580C;font-weight:600">🟠 2 — At Risk</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(245,158,11,0.12);color:#D97706;font-weight:600">🟡 3 — Below Target</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(14,165,233,0.12);color:#0284C7;font-weight:600">🔵 4 — Near Target</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(16,185,129,0.12);color:#059669;font-weight:600">🟢 5 — Fully Protected</span>
+      </div>
       <div class="metrics-grid" style="margin-bottom:20px">
         <div class="metric"><div class="metric-accent" style="background:var(--danger)"></div><div class="metric-label">Total Gap</div><div class="metric-value">${fmt(totalGap)}</div></div>
         <div class="metric"><div class="metric-accent" style="background:var(--danger)"></div><div class="metric-label">Critical Areas</div><div class="metric-value">${criticalCount}</div><span class="metric-change down">&lt;40% covered</span></div>
@@ -1091,11 +1212,11 @@ async function renderCoverageGaps(clientId, isAdmin) {
       <div class="gap-grid">
         ${data.gaps.map(g => `
           <div class="gap-card ${g.status}">
-            <div class="gap-status ${g.status}">${g.status === 'critical' ? '🔴 Critical' : g.status === 'partial' ? '🟡 Partial' : '🟢 Adequate'}</div>
+            <div class="gap-status ${g.status}">${g.status === 'level1' ? '🔴 Level 1 — Critical' : g.status === 'level2' ? '🟠 Level 2 — At Risk' : g.status === 'level3' ? '🟡 Level 3 — Below Target' : g.status === 'level4' ? '🔵 Level 4 — Near Target' : '🟢 Level 5 — Fully Protected'}</div>
             <div style="font-size:15px;font-weight:700;margin-bottom:4px">${esc(g.type)}</div>
             <div style="margin-bottom:12px">
               <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:5px"><span>Coverage level</span><span style="font-weight:700">${g.pct}%</span></div>
-              <div class="progress" style="height:10px"><div class="progress-bar" style="width:${g.pct}%;background:${g.status==='critical'?'var(--danger)':g.status==='partial'?'var(--warning)':'var(--success)'}"></div></div>
+              <div class="progress" style="height:10px"><div class="progress-bar" style="width:${g.pct}%;background:${g.status==='level1'?'#DC2626':g.status==='level2'?'#EA580C':g.status==='level3'?'#D97706':g.status==='level4'?'#0284C7':'#059669'}"></div></div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
               <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px">
