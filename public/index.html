@@ -299,6 +299,9 @@ tr:hover td{background:var(--surface-2)}
 </style>
 </head>
 <body>
+<!-- Disclaimer -->
+<div style="display:none" id="app-disclaimer">For illustration purposes only. Not financial advice. Always conduct your own review.</div>
+
 
 <!-- ══ LOGIN ═══════════════════════════════════════════════════════ -->
 <div id="loginPage" class="login-page">
@@ -848,6 +851,7 @@ function openClientView(id, name) {
     <button class="nav-item" id="nav-insurance" onclick="navClientPage('insurance')"><span class="nav-icon">🛡️</span> Insurance</button>
     <button class="nav-item" id="nav-investments" onclick="navClientPage('investments')"><span class="nav-icon">📈</span> Investments</button>
     <button class="nav-item" id="nav-gaps" onclick="navClientPage('gaps')"><span class="nav-icon">⚠️</span> Coverage Gaps</button>
+    <button class="nav-item" id="nav-profile" onclick="navClientPage('profile')"><span class="nav-icon">🎯</span> My Profile</button>
     <button class="nav-item" id="nav-history" onclick="navClientPage('history')"><span class="nav-icon">🗓️</span> History</button>
   `;
   loadClientData(id).then(() => navClientPage('overview'));
@@ -947,6 +951,7 @@ function initClientApp(clientId) {
     <button class="nav-item" id="nav-insurance" onclick="navClientPage('insurance')"><span class="nav-icon">🛡️</span> Insurance</button>
     <button class="nav-item" id="nav-investments" onclick="navClientPage('investments')"><span class="nav-icon">📈</span> Investments</button>
     <button class="nav-item" id="nav-gaps" onclick="navClientPage('gaps')"><span class="nav-icon">⚠️</span> Coverage Gaps</button>
+    <button class="nav-item" id="nav-profile" onclick="navClientPage('profile')"><span class="nav-icon">🎯</span> My Profile</button>
     <button class="nav-item" id="nav-history" onclick="navClientPage('history')"><span class="nav-icon">🗓️</span> History</button>
   `;
   loadClientData(clientId).then(() => navClientPage('overview'));
@@ -975,7 +980,7 @@ function navClientPage(page) {
   S.page = page;
   const clientId = S.viewClientId || S.user?.id;
   const isAdmin = S.role === 'admin';
-  const renders = { overview: renderOverview, insurance: renderInsurance, investments: renderInvestments, gaps: renderCoverageGaps, history: renderHistory };
+  const renders = { overview: renderOverview, insurance: renderInsurance, investments: renderInvestments, gaps: renderCoverageGaps, profile: renderClientProfile, history: renderHistory };
   if (renders[page]) renders[page](clientId, isAdmin);
 }
 
