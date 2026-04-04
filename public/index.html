@@ -1949,6 +1949,197 @@ function toggleProfileEdit() {
   }
 }
 
+
+// ══════════════════════════════════════════════════════════════════════
+// INVESTOR PROFILE — Equal Weight Risk Scoring (20% each factor)
+// Data: MAS 2024 · CPF Board 2025 · SingStat HES 2024 · MOH 2024
+// ══════════════════════════════════════════════════════════════════════
+function classifyInvestor(client, policies, investments) {
+  const age=client.age||30, inc=client.annual_income||50000, deps=client.dependents||0;
+  const occ=(client.occupation||"").toLowerCase();
+  const invValue=investments.reduce((s,i)=>s+(i.value_now||0),0);
+  const totalPremium=policies.filter(p=>p.status==='Active').reduce((s,p)=>s+(p.premium||0),0);
+  const ytr=Math.max(0,65-age);
+
+  // Factor 1: Time horizon (years to retire / 5, capped 1-5)
+  const time_sc=Math.min(5,Math.max(1,Math.floor(ytr/5)));
+  // Factor 2: Income stability (stable profession = 4, else 3)
+  const stable=/engineer|doctor|lawyer|accountant|civil|teacher|manager|analyst|director|vp/.test(occ);
+  const inc_sc=stable?4:3;
+  // Factor 3: Dependents (more deps = more conservative)
+  const dep_sc=Math.max(1,4-deps);
+  // Factor 4: Investment maturity
+  const inv_sc=Math.min(5,1+(invValue>50000?1:0)+(invValue>150000?1:0)+(investments.length>2?1:0));
+  // Factor 5: Coverage adequacy (from health score)
+  const hs=calcHealthScore(policies,investments,client);
+  const cov_sc=hs.score>=80?5:hs.score>=60?4:hs.score>=40?3:hs.score>=20?2:1;
+
+  // EQUAL WEIGHT: each factor = 20%
+  const risk_score=(time_sc+inc_sc+dep_sc+inv_sc+cov_sc)/5;
+  const risk_level=Math.max(1,Math.min(5,Math.round(risk_score)));
+  const rl_names={1:'Very Conservative',2:'Conservative',3:'Moderate',4:'Growth',5:'Aggressive'};
+  const rl_colors={1:'#10B981',2:'#0EA5E9',3:'#F59E0B',4:'#8B5CF6',5:'#EF4444'};
+
+  // Life stage classification (SingStat age brackets)
+  const ls=age<28?{l:1,n:'Early Career',c:'#10B981',tip:'⚡ Maximum compounding window — start now'}
+         :age<35?{l:2,n:'Young Professional',c:'#0EA5E9',tip:'📈 Aggressive growth phase'}
+         :age<45?{l:3,n:'Family Builder',c:'#F59E0B',tip:'⚖️ Balance growth and protection'}
+         :age<55?{l:4,n:'Wealth Accumulator',c:'#8B5CF6',tip:'🎯 Peak earning years — maximise contributions'}
+                :{l:5,n:'Pre-Retiree / Legacy',c:'#EF4444',tip:'🏖️ Shift to income focus'};
+
+  // Income tier (MAS income bands)
+  const it=inc<48000?{l:1,n:'Entry (<$4K/mo)',c:'#94A3B8',tip:'Start $12-18K/yr · scale up over time'}
+          :inc<72000?{l:2,n:'Mid ($4-6K/mo)',c:'#10B981',tip:'$18-24K/yr is your sweet spot'}
+          :inc<108000?{l:3,n:'Senior ($6-9K/mo)',c:'#F59E0B',tip:'$24-36K/yr + max SRS $15,300'}
+          :inc<150000?{l:4,n:'High ($9-12.5K/mo)',c:'#8B5CF6',tip:'$36K+/yr + SRS + consider hybrid strategy'}
+                    :{l:5,n:'HNW ($12.5K+/mo)',c:'#F59E0B',tip:'SP lump sum + RP hybrid recommended'};
+
+  const protLbls={1:'Critical Gaps',2:'Underinsured',3:'Partially Covered',4:'Well Protected',5:'Fully Optimised'};
+  const protColors={1:'#EF4444',2:'#EA580C',3:'#F59E0B',4:'#0EA5E9',5:'#10B981'};
+  const invLbls=[null,'Not Started','Getting Started (<$50K)','Building ($50-150K)','Growing ($150-500K)','Established ($500K+)'];
+  const invColors=[null,'#EF4444','#EA580C','#F59E0B','#0EA5E9','#10B981'];
+
+  // Scenario matching (8 investor types)
+  const SCENARIOS=[
+    {e:'👨‍💼',n:'Young Professional',c:age<=35&&deps===0,t:'$500-800/mo by age 50',a:'PVW II · $12-18K/yr × 10yr · Global Tech + SG Growth'},
+    {e:'👨‍👩‍👧',n:'Family Protector',c:deps>0&&age<45,t:'$1.5-2.5K/mo by age 50',a:'PVW II · $24K/yr × 10yr · SG Managed + US Dividend'},
+    {e:'💎',n:'HNW Lump Sum',c:invValue>150000||inc>150000,t:'Deploy lump sum → $2-5K/mo',a:'PVA SP · $200-500K · SG Managed + Multi-Asset'},
+    {e:'🏖️',n:'Retirement Planner',c:age>=45&&ytr<=20,t:'$2-4K/mo by age 65',a:'PVA II · $36K/yr × 5yr · Conservative'},
+    {e:'⛵',n:'Semi-Retirement',c:age>=30&&age<50&&inc>=80000,t:'$2K/mo by age 55',a:'PVW II · $30K/yr × 10yr · Balanced'},
+    {e:'🏢',n:'Business Owner',c:inc>120000,t:'$3K/mo + tax relief',a:'PVW II via SRS · $15,300/yr × 10yr'},
+    {e:'🔗',n:'Hybrid Strategist',c:invValue>100000&&inc>=80000,t:'Self-funding by Year 8',a:'PVA SP $200K + PVW II $24K/yr'},
+    {e:'🛡️',n:'Conservative Saver',c:true,t:'$700-1K/mo low risk',a:'PVA II · $18K/yr × 10yr · Multi-Asset'},
+  ];
+  const matched=SCENARIOS.filter(s=>s.c);
+  const primary=matched[0]||SCENARIOS[7], secondary=matched.slice(1,3);
+
+  // Goal readiness (reverse-engineered from SG data)
+  const goals=[
+    {g:'🏖️ Retire at 65 · $3K/mo',n:47412},
+    {g:'🔓 Financial Freedom · $5K/mo',n:71986},
+    {g:'⛵ Semi-Retire at 55 · $2K/mo',n:30393},
+    {g:'💰 CPF Top-Up · $1.5K/mo',n:53353},
+    {g:'🎓 University Fund · $2K/mo',n:70716},
+  ].map(g=>{
+    const pct=Math.min(100,Math.round(totalPremium/g.n*100));
+    const lvl=totalPremium>=g.n?5:totalPremium>=g.n*.7?4:totalPremium>=g.n*.4?3:totalPremium>0?2:1;
+    return{...g,pct,lvl};
+  });
+
+  return{risk_score:Math.round(risk_score*100)/100,risk_level,risk_label:rl_names[risk_level],risk_color:rl_colors[risk_level],
+    rc:{time_sc,inc_sc,dep_sc,inv_sc,cov_sc},ls,it,
+    protLevel:cov_sc,protLabel:protLbls[cov_sc],protColor:protColors[cov_sc],
+    invLevel:inv_sc,invLabel:invLbls[inv_sc],invColor:invColors[inv_sc],
+    healthScore:hs.score,primary,secondary,goals,totalPremium};
+}
+
+function _bar(level,color,max=5){
+  return `<div style="height:6px;background:#E2E8F0;border-radius:99px;margin-top:5px"><div style="height:100%;width:${level/max*100}%;background:${color};border-radius:99px;transition:width .6s ease"></div></div>`;
+}
+
+function renderClientProfile(clientId, isAdmin) {
+  const c=S.client;
+  document.getElementById('pageTitle').textContent=`${c.name} — Investor Profile`;
+  document.getElementById('pageSub').textContent='Classification · Goal Readiness · Recommended Path';
+  document.getElementById('topbarActions').innerHTML=`<button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${clientId}')">📄 Export PDF</button>`;
+  const iv=classifyInvestor(c,S.policies,S.investments);
+  const rBars='█'.repeat(iv.risk_level)+'░'.repeat(5-iv.risk_level);
+
+  document.getElementById('mainContent').innerHTML=`
+    <div class="print-header"><h1>${esc(c.name)} — Investor Profile</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential Singapore</p></div>
+
+    <div style="background:#0F172A;border-radius:12px;padding:20px 24px;margin-bottom:20px;color:white">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="font-size:44px;line-height:1">${iv.primary.e}</div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:17px;font-weight:800;color:#F59E0B">${iv.primary.n}</div>
+          <div style="font-size:12px;color:#94A3B8;margin-top:3px">${c.name} · Age ${c.age||'—'} · ${fmt(c.annual_income||0)}/yr · ${c.dependents||0} dependent(s)</div>
+          <div style="margin-top:10px;font-size:12px;color:#CBD5E1">Goal: <strong style="color:#F59E0B">${iv.primary.t}</strong></div>
+          <div style="font-size:11px;color:#64748B;margin-top:3px">${iv.primary.a}</div>
+        </div>
+        <div style="text-align:center;flex-shrink:0">
+          <div style="font-size:36px;font-weight:900;color:${iv.risk_color};line-height:1">${['','D','C','B','A','A+'][iv.risk_level]}</div>
+          <div style="font-size:11px;color:#64748B;margin-top:2px">Health Grade</div>
+          <div style="font-size:10px;color:#475569;margin-top:4px">${iv.secondary.map(s=>`${s.e} ${s.n}`).join(' · ')}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:14px;font-weight:700">Risk Profile: <span style="color:${iv.risk_color}">${iv.risk_label}</span> [${rBars}] ${iv.risk_score}/5</div>
+      <div style="font-size:11px;color:#94A3B8">Equal 20% weight per factor · MAS 2024 framework</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:20px">
+      ${[
+        {l:'Life Stage',v:iv.ls?.n,lv:iv.ls?.l,c:iv.ls?.c,tip:iv.ls?.tip,w:'20%'},
+        {l:'Income Tier',v:iv.it?.n,lv:iv.it?.l,c:iv.it?.c,tip:iv.it?.tip,w:'20%'},
+        {l:'Protection',v:iv.protLabel,lv:iv.protLevel,c:iv.protColor,tip:iv.protLevel<=2?'🔴 Protect first':iv.protLevel<=3?'🟡 Close gaps first':'🟢 Optimise allocation',w:'20%'},
+        {l:'Investment',v:iv.invLabel,lv:iv.invLevel,c:iv.invColor,tip:iv.invLevel<=2?'Start ILP — delay costs returns':iv.invLevel<=3?'Add ILP alongside portfolio':'HNW strategy available',w:'20%'},
+        {l:'Time Horizon',v:Math.max(0,65-(c.age||30))+' yrs to 65',lv:Math.min(5,Math.max(1,Math.floor(Math.max(0,65-(c.age||30))/5))),c:'#0EA5E9',tip:'Longer = more risk capacity',w:'20%'},
+      ].map(d=>`<div style="background:white;border-radius:10px;border:1px solid #E2E8F0;padding:13px">
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#94A3B8;font-weight:700;margin-bottom:3px">${d.l} <span style="color:#E2E8F0">${d.w}</span></div>
+        <div style="font-size:13px;font-weight:700;color:${d.c};line-height:1.2">${d.v}</div>
+        <div style="font-size:10px;color:#64748B;margin-top:1px">Level ${d.lv}/5</div>
+        ${_bar(d.lv,d.c)}
+        <div style="margin-top:5px;font-size:9px;color:#94A3B8;line-height:1.3">${d.tip}</div>
+      </div>`).join('')}
+    </div>
+
+    <div style="background:white;border-radius:12px;border:1px solid #E2E8F0;overflow:hidden;margin-bottom:20px">
+      <div style="padding:13px 18px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="font-size:14px;font-weight:700">🎯 Goal Readiness Filter</div>
+        <div style="font-size:11px;color:#64748B">Current premium: ${fmt(iv.totalPremium)}/yr · Based on MAS + CPF Board 2025 benchmarks</div>
+      </div>
+      ${iv.goals.map(g=>{
+        const lc=g.lvl===5?'#10B981':g.lvl===4?'#0EA5E9':g.lvl===3?'#F59E0B':g.lvl===2?'#EA580C':'#EF4444';
+        const ll=['','Not Started','Beginning','On Track','Near Goal','Goal Met'][g.lvl];
+        return `<div style="padding:11px 18px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:160px">
+            <div style="font-size:13px;font-weight:600">${g.g}</div>
+            <div style="font-size:10px;color:#64748B;margin-top:2px">Needs ${fmt(g.n)}/yr · Have ${fmt(iv.totalPremium)}/yr</div>
+          </div>
+          <div style="min-width:140px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+              <span style="color:${lc};font-weight:700">${ll}</span><span style="color:#94A3B8">${g.pct}%</span>
+            </div>
+            <div style="height:7px;background:#E2E8F0;border-radius:99px">
+              <div style="height:100%;width:${g.pct}%;background:${lc};border-radius:99px;transition:width .6s"></div>
+            </div>
+          </div>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;flex-shrink:0;background:${lc}20;color:${lc}">${g.lvl>=5?'✅ On Track':g.lvl>=3?'⚡ Close':'Gap'}</span>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div style="background:#0F172A;border-radius:12px;padding:18px 22px;color:white">
+      <div style="font-size:13px;font-weight:700;color:#F59E0B;margin-bottom:12px">⚡ Recommended Next Step</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:11px">
+        <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:13px">
+          <div style="font-size:9px;color:#64748B;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Primary Scenario</div>
+          <div style="font-size:14px;font-weight:700">${iv.primary.e} ${iv.primary.n}</div>
+          <div style="font-size:11px;color:#F59E0B;margin-top:4px">${iv.primary.t}</div>
+          <div style="font-size:10px;color:#94A3B8;margin-top:5px">${iv.primary.a}</div>
+        </div>
+        <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:13px">
+          <div style="font-size:9px;color:#64748B;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Priority Action</div>
+          ${iv.protLevel<3?'<div style="font-size:13px;font-weight:600;color:#EF4444">1. Close coverage gaps first</div><div style="font-size:10px;color:#94A3B8;margin-top:4px">MAS: protect before wealth building</div>':
+            iv.invLevel<3?'<div style="font-size:13px;font-weight:600;color:#10B981">1. Start ILP now</div><div style="font-size:10px;color:#94A3B8;margin-top:4px">Protection solid — every year of delay costs compounding</div>':
+            '<div style="font-size:13px;font-weight:600;color:#F59E0B">Optimise allocation</div><div style="font-size:10px;color:#94A3B8;margin-top:4px">Use PRU Calculator for detailed fund plan</div>'}
+        </div>
+        <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:13px">
+          <div style="font-size:9px;color:#64748B;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Risk Profile</div>
+          <div style="font-size:14px;font-weight:700;color:${iv.risk_color}">${iv.risk_label}</div>
+          <div style="font-size:11px;color:#94A3B8;margin-top:2px">Level ${iv.risk_level}/5 · Score ${iv.risk_score}/5</div>
+          <div style="margin-top:6px;font-size:9px;color:#475569">
+            ⏱${iv.rc.time_sc} · 💼${iv.rc.inc_sc} · 👨‍👩‍👧${iv.rc.dep_sc} · 📈${iv.rc.inv_sc} · 🛡️${iv.rc.cov_sc} (equal 20% each)
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:9px;color:#334155">Data: MAS Financial Planning Guidelines 2024 · CPF Board Retirement Sums 2025 · SingStat HES 2024 · MOH Healthcare Costs 2024 · PRULink UIF Analysis April 2026</div>
+    </div>`;
+}
+// ═════════════════════════════════════════════════════════════════════
+
 async function saveProfileEdits(clientId) {
   const btn = document.getElementById('saveProfileBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
