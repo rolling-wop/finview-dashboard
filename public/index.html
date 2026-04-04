@@ -516,6 +516,7 @@ function buildAdminNav() {
     <div class="nav-label" style="margin-top:8px">Tools</div>
     <button class="nav-item" id="nav-adminSync" onclick="syncAllToNotion()"><span class="nav-icon">🔄</span> Sync All → Notion</button>
     <button class="nav-item" id="nav-adminBackup" onclick="navTo('adminBackup')"><span class="nav-icon">💾</span> Backup & Restore</button>
+    <button class="nav-item" id="nav-adminPipeline" onclick="navTo('adminPipeline')"><span class="nav-icon">🎯</span> Deal Pipeline</button>
   `;
 }
 
@@ -530,6 +531,7 @@ function navTo(page, ...args) {
     adminExpiry: renderAdminExpiry,
     adminGaps: renderAdminGaps,
     adminBackup: renderAdminBackup,
+    adminPipeline: renderAdminPipeline,
     adminViewClient: () => renderAdminViewClient(...args)
   };
   if (fns[page]) fns[page]();
@@ -1155,6 +1157,7 @@ function renderOverview(clientId, isAdmin) {
   if (Object.keys(byType).length) mkChart('chartCoverageDonut', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } } } } });
   if (S.investments.length) mkChart('chartGoals', { type: 'bar', data: { labels: S.investments.map(i => i.name.length > 15 ? i.name.slice(0,13)+'…' : i.name), datasets: [{ label: 'Current', data: S.investments.map(i => i.value_now||0), backgroundColor: '#0EA5E9', borderRadius: 6 }, { label: 'Target', data: S.investments.map(i => i.target||0), backgroundColor: 'rgba(245,158,11,0.6)', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
 
+  if (isAdmin) setTimeout(() => addNotesSection(clientId), 400);
   const byTypeArr = Object.entries(byType).map(([type, curr]) => {
     const rec = Math.max(0, ...S.policies.map(p => p.recommended||0));
     return { type, curr, rec };

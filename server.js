@@ -65,6 +65,11 @@ async function initDb() {
 
   // Migration: add coverage_items column to policies
   try { db.run(`ALTER TABLE policies ADD COLUMN coverage_items TEXT DEFAULT '[]'`); } catch {}
+  // Migration: client notes + deal pipeline
+  try { db.run(`ALTER TABLE clients ADD COLUMN notes TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE clients ADD COLUMN deal_stage TEXT DEFAULT 'Prospect'`); } catch {}
+  try { db.run(`ALTER TABLE clients ADD COLUMN last_contact TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE clients ADD COLUMN next_action TEXT DEFAULT ''`); } catch {}
 
   // Migrations
   try { db.run(`ALTER TABLE clients ADD COLUMN role TEXT DEFAULT 'client'`); } catch {}
@@ -635,6 +640,31 @@ app.post('/api/admin/restore', authenticate, requireAdmin, (req, res) => {
     saveDb();
     res.json({ success: true, imported });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Client Notes & Pipeline ──────────────────────────────────────────────────
+app.patch('/api/clients/:id/notes', authenticate, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { notes, deal_stage, next_action, last_contact } = req.body;
+  const fields = [], vals = [];
+  if (notes !== undefined) { fields.push('notes=?'); vals.push(notes); }
+  if (deal_stage !== undefined) { fields.push('deal_stage=?'); vals.push(deal_stage); }
+  if (next_action !== undefined) { fields.push('next_action=?'); vals.push(next_action); }
+  if (last_contact !== undefined) { fields.push('last_contact=?'); vals.push(last_contact); }
+  if (!fields.length) return res.json({ success: true });
+  vals.push(req.params.id);
+  dbRun(`UPDATE clients SET ${fields.join(',')} WHERE id=?`, vals);
+  saveDb();
+  res.json({ success: true });
+});
+
+app.get('/api/pipeline', authenticate, requireAdmin, (req, res) => {
+  const stages = ['Prospect','Contacted','Proposal Sent','Negotiation','Closed Won','Closed Lost'];
+  const result = {};
+  stages.forEach(s => {
+    result[s] = dbAll(`SELECT id, name, annual_income, age, deal_stage, last_contact, next_action FROM clients WHERE deal_stage=? AND role='client' ORDER BY name`, [s]);
+  });
+  res.json({ stages, pipeline: result });
 });
 
 // ── Bootstrap admin ────────────────────────────────────────────────────────────
