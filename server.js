@@ -257,7 +257,7 @@ app.get('/api/admin/coverage-gaps', authenticate, requireAdmin, (req, res) => {
 // ── Client: Get profile ────────────────────────────────────────────────────────
 app.get('/api/clients/:id', authenticate, (req, res) => {
   if (req.user.role !== 'admin' && req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
-  const c = dbGet('SELECT id,name,age,gender,occupation,annual_income,dependents,email,phone,role FROM clients WHERE id=?', [req.params.id]);
+  const c = dbGet('SELECT id,name,age,gender,occupation,annual_income,dependents,email,phone,role,deal_stage,last_contact,next_action,notes FROM clients WHERE id=?', [req.params.id]);
   if (!c) return res.status(404).json({ error: 'Not found' });
   res.json(c);
 });
