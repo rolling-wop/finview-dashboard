@@ -2043,6 +2043,46 @@ function renderClientProfile(clientId, isAdmin) {
   document.getElementById('pageSub').textContent='Classification · Goal Readiness · Recommended Path';
   document.getElementById('topbarActions').innerHTML=`<button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${clientId}')">📄 Export PDF</button>`;
   const iv=classifyInvestor(c,S.policies,S.investments);
+  // Fetch live recommendation from API
+  api.get(`/clients/${clientId}/recommendation`).then(rec => {
+    const recDiv = document.getElementById('profile-ilp-rec');
+    if (!recDiv || !rec) return;
+    const FUND_NAMES = {'sg-managed-dividend':'SG Managed (Div)','strategic-income-c':'Strategic Income C','us-dividend':'US Dividend','global-technology':'Global Technology','sg-growth':'SG Growth','global-multi-asset':'Multi-Asset Income','asian-income':'Asian Income'};
+    const FUND_TYPES = {'sg-managed-dividend':true,'strategic-income-c':true,'us-dividend':true,'global-multi-asset':true,'asian-income':true};
+    const surplus = rec.retirement?.surplus_deficit || 0;
+    recDiv.innerHTML = `
+      <div style="background:white;border-radius:12px;border:1px solid #E2E8F0;overflow:hidden;margin-bottom:16px">
+        <div style="padding:14px 18px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div style="font-size:14px;font-weight:700">💼 ILP Recommendation — ${rec.recommendation?.product}</div>
+          <div style="font-size:11px;color:#64748B">${rec.recommendation?.annual_premium?.toLocaleString()}/yr × ${rec.recommendation?.pay_term}yr · ${rec.recommendation?.proj_years}yr projection · Blended yield ${rec.recommendation?.blended_yield_pct}%</div>
+        </div>
+        <div style="padding:14px 18px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#94A3B8;margin-bottom:10px">Fund Portfolio Allocation</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${(rec.recommendation?.fund_allocation||[]).map(f=>{
+              const isDivid = FUND_TYPES[f.fund_id] !== false;
+              const color = isDivid ? '#10B981' : '#8B5CF6';
+              const badge = isDivid ? '💰' : '📈';
+              return `<div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:10px;min-width:14px">${badge}</span>
+                <span style="flex:1;font-size:12px;font-weight:500">${FUND_NAMES[f.fund_id]||f.fund_id}</span>
+                <span style="font-size:13px;font-weight:700;color:${color};min-width:36px;text-align:right">${f.allocation_pct}%</span>
+                <div style="width:100px;height:5px;background:#E2E8F0;border-radius:99px">
+                  <div style="height:100%;width:${f.allocation_pct}%;background:${color};border-radius:99px"></div>
+                </div>
+                <span style="font-size:10px;color:#64748B;min-width:60px;text-align:right">\$${(f.annual_amount||0).toLocaleString()}/yr</span>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="margin-top:14px;padding:12px;background:#F8FAFC;border-radius:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
+            <div style="text-align:center"><div style="font-size:18px;font-weight:800;color:#0EA5E9">\$${(rec.recommendation?.median_monthly_div||0).toLocaleString()}</div><div style="font-size:10px;color:#94A3B8;margin-top:2px">ILP dividend/mo</div></div>
+            <div style="text-align:center"><div style="font-size:18px;font-weight:800;color:#10B981">\$${(rec.retirement?.total_income||0).toLocaleString()}</div><div style="font-size:10px;color:#94A3B8;margin-top:2px">Total income at 65</div></div>
+            <div style="text-align:center"><div style="font-size:18px;font-weight:800;color:${surplus>=0?'#10B981':'#EF4444'}">${surplus>=0?'+':''}\$${Math.abs(surplus).toLocaleString()}</div><div style="font-size:10px;color:#94A3B8;margin-top:2px">${surplus>=0?'Monthly surplus':'Monthly gap'}</div></div>
+            ${rec.tax?.estimated_tax_savings>0?`<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:#F59E0B">\$${(rec.tax.estimated_tax_savings||0).toLocaleString()}</div><div style="font-size:10px;color:#94A3B8;margin-top:2px">SRS tax savings/yr</div></div>`:''}
+          </div>
+        </div>
+      </div>`;
+  }).catch(()=>{});
   const rBars='█'.repeat(iv.risk_level)+'░'.repeat(5-iv.risk_level);
 
   document.getElementById('mainContent').innerHTML=`
@@ -2111,6 +2151,7 @@ function renderClientProfile(clientId, isAdmin) {
       }).join('')}
     </div>
 
+    <div id="profile-ilp-rec"></div>
     <div style="background:#0F172A;border-radius:12px;padding:18px 22px;color:white">
       <div style="font-size:13px;font-weight:700;color:#F59E0B;margin-bottom:12px">⚡ Recommended Next Step</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:11px">

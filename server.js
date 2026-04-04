@@ -660,3 +660,126 @@ initDb().then(() => {
     console.log(`   Admin: admin / admin2026\n`);
   });
 }).catch(e => { console.error('DB init failed:', e); process.exit(1); });
+
+// ── Client Recommendation Engine (SG data-backed) ─────────────────────────
+app.get('/api/clients/:id/recommendation', authenticate, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const client = dbGet('SELECT * FROM clients WHERE id=?', [req.params.id]);
+    if (!client) return res.status(404).json({ error: 'Not found' });
+    
+    const policies = dbAll('SELECT * FROM policies WHERE client_id=? AND status=?', [req.params.id, 'Active']);
+    const investments = dbAll('SELECT * FROM investments WHERE client_id=?', [req.params.id]);
+    
+    // SG reference data (MAS 2024, CPF Board 2025, SingStat HES 2024)
+    const SG = {
+      life_mult_employed: 10, life_mult_dependents: 15, ci_mult: 5,
+      cpf_frs_payout: 1700, cpf_brs_payout: 850,
+      median_exp_single: 2800, median_exp_family: 5200,
+      inflation: 0.024, life_exp_male: 82, life_exp_female: 86,
+      srs_limit: 15300,
+      cancer_cost: 350000,
+    };
+    
+    const age = client.age || 30, inc = client.annual_income || 60000;
+    const deps = client.dependents || 0, gender = client.gender || 'Male';
+    const ytr = Math.max(0, 65 - age);
+    const lifeExp = gender === 'Female' ? SG.life_exp_female : SG.life_exp_male;
+    const monthlyExp = Math.min(deps > 0 ? SG.median_exp_family : SG.median_exp_single, inc / 12 * 0.7);
+    
+    // Coverage analysis
+    const totalCoverage = policies.reduce((s, p) => s + (p.coverage || 0), 0);
+    const annualPremPaid = policies.reduce((s, p) => s + (p.premium || 0), 0);
+    const invValue = investments.reduce((s, i) => s + (i.value_now || 0), 0);
+    const reqLife = inc * (deps > 0 ? SG.life_mult_dependents : SG.life_mult_employed);
+    const reqCI = inc * SG.ci_mult;
+    
+    // Risk score — equal 20% each factor
+    const time_sc = Math.min(5, Math.max(1, Math.floor(ytr / 5)));
+    const occ = (client.occupation || '').toLowerCase();
+    const stable = /engineer|doctor|lawyer|accountant|civil|teacher|manager|analyst/.test(occ);
+    const inc_sc = stable ? 4 : 3;
+    const dep_sc = Math.max(1, 4 - deps);
+    const inv_sc = Math.min(5, 1 + (invValue > 50000 ? 1 : 0) + (invValue > 150000 ? 1 : 0) + (investments.length > 2 ? 1 : 0));
+    
+    // Protection score from coverage
+    const lifeGapPct = totalCoverage / reqLife;
+    const cov_sc = lifeGapPct >= 1 ? 5 : lifeGapPct >= 0.7 ? 4 : lifeGapPct >= 0.4 ? 3 : totalCoverage > 0 ? 2 : 1;
+    
+    const riskScore = (time_sc + inc_sc + dep_sc + inv_sc + cov_sc) / 5;
+    const riskLevel = Math.max(1, Math.min(5, Math.round(riskScore)));
+    const riskLabels = { 1: 'Very Conservative', 2: 'Conservative', 3: 'Moderate', 4: 'Growth', 5: 'Aggressive' };
+    
+    // Fund allocation by risk level
+    const allocations = {
+      1: [['sg-managed-dividend',50],['global-multi-asset',35],['us-dividend',15]],
+      2: [['sg-managed-dividend',40],['us-dividend',25],['global-multi-asset',25],['asian-income',10]],
+      3: [['sg-managed-dividend',30],['us-dividend',25],['global-multi-asset',20],['sg-growth',15],['asian-income',10]],
+      4: [['sg-managed-dividend',25],['global-technology',20],['sg-growth',20],['us-dividend',20],['global-multi-asset',15]],
+      5: [['global-technology',35],['sg-growth',25],['sg-managed-dividend',20],['strategic-income-c',15],['us-dividend',5]],
+    };
+    
+    const recPremium = Math.max(12000, Math.min(60000, Math.round(Math.max(inc * 0.15, 12000) / 3000) * 3000));
+    const payTerm = age >= 55 ? 5 : 10;
+    const projYears = Math.max(10, ytr);
+    
+    // Blend parameters by risk level
+    const blends = { 1:[0.0748,0.007], 2:[0.0758,0.008], 3:[0.0780,0.010], 4:[0.0880,0.012], 5:[0.0950,0.015] };
+    const [blendYield, blendVol] = blends[riskLevel];
+    
+    // Simple retirement projection (deterministic median)
+    const BASE_PRICE = 0.9804;
+    const adminRate = payTerm === 5 ? 0.033 : 0.027;
+    let units = 0, prevGross = 0;
+    for (let yr = 1; yr <= projYears; yr++) {
+      const C = yr <= payTerm ? recPremium : 0;
+      const wb = yr === 1 ? recPremium * 0.01 : 0;
+      const ib = yr > payTerm ? prevGross * BASE_PRICE * 0.005 : 0;
+      const gross = units + (C + wb + ib) / BASE_PRICE;
+      prevGross = gross;
+      units = gross - (yr <= payTerm + 2 ? gross * adminRate : 0);
+    }
+    const medianMonthlyDiv = Math.round((units * blendYield) / 12);
+    const cpfPayout = SG.cpf_frs_payout;
+    const totalRetIncome = medianMonthlyDiv + cpfPayout;
+    const retNeed = Math.round(monthlyExp * Math.pow(1 + SG.inflation, ytr));
+    const srsLimit = inc >= 72000 ? SG.srs_limit : 0;
+    const taxSavings = Math.round(srsLimit * (inc >= 160000 ? 0.22 : inc >= 120000 ? 0.18 : inc >= 80000 ? 0.115 : 0));
+    
+    // Goals readiness
+    const goals = [
+      { goal: 'Retire at 65 · $3K/mo', needed: 47412, current: annualPremPaid },
+      { goal: 'Financial Freedom · $5K/mo', needed: 71986, current: annualPremPaid },
+      { goal: 'Semi-Retire at 55 · $2K/mo', needed: 30393, current: annualPremPaid },
+      { goal: 'CPF Top-Up · $1.5K/mo', needed: 53353, current: annualPremPaid },
+      { goal: 'University Fund · $2K/mo', needed: 70716, current: annualPremPaid },
+    ].map(g => ({
+      ...g,
+      pct: Math.min(100, Math.round(g.current / g.needed * 100)),
+      level: g.current >= g.needed ? 5 : g.current >= g.needed * 0.7 ? 4 : g.current >= g.needed * 0.4 ? 3 : g.current > 0 ? 2 : 1,
+    }));
+    
+    res.json({
+      client_id: req.params.id, generated_at: new Date().toISOString(),
+      risk_score: Math.round(riskScore * 100) / 100, risk_level: riskLevel, risk_label: riskLabels[riskLevel],
+      risk_components: { time_horizon: time_sc, income_stability: inc_sc, dependents: dep_sc, investment_exp: inv_sc, coverage: cov_sc },
+      required_life: Math.round(reqLife), required_ci: Math.round(reqCI),
+      current_coverage: Math.round(totalCoverage), coverage_gap: Math.round(Math.max(0, reqLife - totalCoverage)),
+      annual_premium_paid: Math.round(annualPremPaid),
+      recommendation: {
+        product: 'PVW II', annual_premium: recPremium, pay_term: payTerm, proj_years: projYears,
+        fund_allocation: allocations[riskLevel].map(([id, pct]) => ({ fund_id: id, allocation_pct: pct, annual_amount: Math.round(recPremium * pct / 100) })),
+        blended_yield_pct: Math.round(blendYield * 10000) / 100,
+        median_monthly_div: medianMonthlyDiv,
+      },
+      retirement: {
+        ilp_dividend: medianMonthlyDiv, cpf_payout: cpfPayout,
+        total_income: totalRetIncome, monthly_need: retNeed,
+        surplus_deficit: totalRetIncome - retNeed,
+      },
+      tax: { srs_limit: srsLimit, estimated_tax_savings: taxSavings },
+      goals_readiness: goals,
+      data_sources: ['MAS Financial Planning Guidelines 2024', 'CPF Board 2025', 'SingStat HES 2024', 'PRULink UIF Analysis April 2026'],
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
