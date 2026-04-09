@@ -13,6 +13,7 @@
     "express": "^4.22.1",
     "jsonwebtoken": "^9.0.3",
     "node-fetch": "^3.3.2",
+    "pg": "^8.13.3",
     "sql.js": "^1.14.0"
   },
   "engines": {
