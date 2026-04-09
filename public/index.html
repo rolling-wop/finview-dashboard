@@ -330,7 +330,7 @@ tr:hover td{background:var(--surface-2)}
       </div>
     </div>
     <div id="sidebarClientBox" class="sidebar-client">
-      <div class="sidebar-client-name" id="sidebarName">—</div>
+      <div class="sidebar-client-name" id="sidebarName">-</div>
       <div class="sidebar-client-role" id="sidebarRole">Client</div>
     </div>
     <nav class="sidebar-nav" id="sidebarNav"></nav>
@@ -378,7 +378,7 @@ const COLORS = ['#0EA5E9','#10B981','#F59E0B','#8B5CF6','#EF4444','#06B6D4','#EC
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const fmt = v => 'S$' + (parseFloat(v)||0).toLocaleString('en-SG',{minimumFractionDigits:0,maximumFractionDigits:0});
 const fmtPct = v => (parseFloat(v)||0).toFixed(1) + '%';
-const fmtDate = d => d ? new Date(d).toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'}) : '-';
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const daysUntil = d => d ? Math.ceil((new Date(d)-new Date())/(1000*60*60*24)) : null;
 
@@ -471,7 +471,7 @@ async function doLogin() {
   const btn = document.getElementById('loginBtn');
   const errEl = document.getElementById('loginError');
   errEl.classList.add('hidden');
-  btn.disabled = true; btn.textContent = 'Signing in…';
+  btn.disabled = true; btn.textContent = 'Signing in...';
   try {
     const res = await api.post('/auth/login', { username, password });
     S.token = res.token; S.role = res.role; S.user = res.client;
@@ -576,7 +576,7 @@ async function renderAdminDashboard() {
         <div class="alert alert-danger" style="cursor:pointer" onclick="navTo('adminExpiry')">
           <div class="alert-icon">🔔</div>
           <div class="alert-body"><strong>${expiry.length} ${expiry.length===1?'policy':'policies'} expiring within 30 days</strong>
-          ${expiry.slice(0,3).map(p => `${esc(p.client_name)} — ${esc(p.product_name||p.type)} (${daysUntil(p.end_date)} days)`).join(' · ')}${expiry.length > 3 ? ` · +${expiry.length-3} more` : ''} <span style="text-decoration:underline;margin-left:4px">View all →</span></div>
+          ${expiry.slice(0,3).map(p => `${esc(p.client_name)} - ${esc(p.product_name||p.type)} (${daysUntil(p.end_date)} days)`).join(' · ')}${expiry.length > 3 ? ` · +${expiry.length-3} more` : ''} <span style="text-decoration:underline;margin-left:4px">View all →</span></div>
         </div>`;
     }
     if (clients.length) {
@@ -598,7 +598,7 @@ async function renderAdminExpiry() {
       <button class="tab-btn" id="tab-60" onclick="loadExpiry(60)">60 Days</button>
       <button class="tab-btn" id="tab-90" onclick="loadExpiry(90)">90 Days</button>
     </div>`;
-  document.getElementById('mainContent').innerHTML = `<div id="expiryContent"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading…</div></div></div>`;
+  document.getElementById('mainContent').innerHTML = `<div id="expiryContent"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading...</div></div></div>`;
   loadExpiry(30);
 }
 
@@ -632,7 +632,7 @@ async function loadExpiry(days) {
               <div style="font-size:11px;color:var(--text-3);margin-top:2px">Expires ${fmtDate(p.end_date)} · Coverage ${fmt(p.coverage)}</div>
             </div>
             <div style="flex-shrink:0;text-align:right">
-              <span class="badge badge-${urgency==='level1'?'lapsed':urgency==='level2'?'lapsed':urgency==='level3'?'pending':urgency==='level4'?'pending':'active'}">${d <= 7 ? 'Level 1 — Critical' : d <= 14 ? 'Level 2 — Urgent' : d <= 30 ? 'Level 3 — Soon' : d <= 60 ? 'Level 4 — Due' : 'Level 5 — Upcoming'}</span>
+              <span class="badge badge-${urgency==='level1'?'lapsed':urgency==='level2'?'lapsed':urgency==='level3'?'pending':urgency==='level4'?'pending':'active'}">${d <= 7 ? 'Level 1 - Critical' : d <= 14 ? 'Level 2 - Urgent' : d <= 30 ? 'Level 3 - Soon' : d <= 60 ? 'Level 4 - Due' : 'Level 5 - Upcoming'}</span>
               <div style="font-size:12px;color:var(--text-3);margin-top:4px">${fmt(p.premium)}/yr</div>
             </div>
             <button class="btn btn-secondary btn-sm no-print" onclick="openClientView('${esc(p.client_id)}','${esc(p.client_name)}')" style="flex-shrink:0">View →</button>
@@ -647,7 +647,7 @@ async function renderAdminGaps() {
   document.getElementById('pageTitle').textContent = 'Coverage Gaps';
   document.getElementById('pageSub').textContent = 'Clients with underinsured areas';
   document.getElementById('topbarActions').innerHTML = '';
-  document.getElementById('mainContent').innerHTML = `<div id="gapsContent"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Analysing…</div></div></div>`;
+  document.getElementById('mainContent').innerHTML = `<div id="gapsContent"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Analysing...</div></div></div>`;
   try {
     const gaps = await api.get('/admin/coverage-gaps');
     const el = document.getElementById('gapsContent');
@@ -656,14 +656,14 @@ async function renderAdminGaps() {
       return;
     }
     el.innerHTML = `
-      <div class="alert alert-info" style="margin-bottom:20px"><div class="alert-icon">ℹ️</div><div class="alert-body"><strong>Based on Singapore financial planning benchmarks</strong>Recommendations use income multipliers: Life ${`(income × years to retire)`}, CI ${`(income × 3–5)`}, Hospitalisation ${`(S$150k)`}. Gaps are opportunities to review coverage.</div></div>
+      <div class="alert alert-info" style="margin-bottom:20px"><div class="alert-icon">i️</div><div class="alert-body"><strong>Based on Singapore financial planning benchmarks</strong>Recommendations use income multipliers: Life ${`(income × years to retire)`}, CI ${`(income × 3-5)`}, Hospitalisation ${`(S$150k)`}. Gaps are opportunities to review coverage.</div></div>
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
         <div style="font-size:11px;font-weight:600;color:#94A3B8;padding:4px 0;align-self:center">COVERAGE LEVELS:</div>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(239,68,68,0.12);color:#DC2626;font-weight:600">🔴 1 — Critical (&lt;20%)</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(249,115,22,0.12);color:#EA580C;font-weight:600">🟠 2 — At Risk (20–40%)</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(245,158,11,0.12);color:#D97706;font-weight:600">🟡 3 — Below Target (40–70%)</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(14,165,233,0.12);color:#0284C7;font-weight:600">🔵 4 — Near Target (70–99%)</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(16,185,129,0.12);color:#059669;font-weight:600">🟢 5 — Fully Protected (100%+)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(239,68,68,0.12);color:#DC2626;font-weight:600">🔴 1 - Critical (&lt;20%)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(249,115,22,0.12);color:#EA580C;font-weight:600">🟠 2 - At Risk (20-40%)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(245,158,11,0.12);color:#D97706;font-weight:600">🟡 3 - Below Target (40-70%)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(14,165,233,0.12);color:#0284C7;font-weight:600">🔵 4 - Near Target (70-99%)</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(16,185,129,0.12);color:#059669;font-weight:600">🟢 5 - Fully Protected (100%+)</span>
       </div>
       ${gaps.map(c => `
         <div class="card" style="margin-bottom:16px">
@@ -678,7 +678,7 @@ async function renderAdminGaps() {
             <div class="gap-grid">
               ${c.gaps.map(g => `
                 <div class="gap-card ${g.status}">
-                  <div class="gap-status ${g.status}">${g.status === 'level1' ? '🔴 Level 1 — Critical' : g.status === 'level2' ? '🟠 Level 2 — At Risk' : g.status === 'level3' ? '🟡 Level 3 — Below Target' : g.status === 'level4' ? '🔵 Level 4 — Near Target' : '🟢 Level 5 — Fully Protected'}</div>
+                  <div class="gap-status ${g.status}">${g.status === 'level1' ? '🔴 Level 1 - Critical' : g.status === 'level2' ? '🟠 Level 2 - At Risk' : g.status === 'level3' ? '🟡 Level 3 - Below Target' : g.status === 'level4' ? '🔵 Level 4 - Near Target' : '🟢 Level 5 - Fully Protected'}</div>
                   <div style="font-size:14px;font-weight:600;margin-bottom:8px">${esc(g.type)}</div>
                   <div style="margin-bottom:10px">
                     <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:4px"><span>Coverage</span><span>${g.pct}%</span></div>
@@ -731,7 +731,7 @@ async function renderAdminBackup() {
 
 async function downloadBackup() {
   const statusEl = document.getElementById('backupStatus');
-  statusEl.textContent = '⏳ Generating backup…';
+  statusEl.textContent = '⏳ Generating backup...';
   try {
     const token = localStorage.getItem('fv_token');
     const resp = await fetch('/api/admin/backup', { headers: { Authorization: `Bearer ${token}` } });
@@ -744,7 +744,7 @@ async function downloadBackup() {
     a.download = `finview-backup-${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    statusEl.innerHTML = `<span style="color:var(--success)">✅ Backup downloaded — ${data.counts.clients} clients, ${data.counts.policies} policies, ${data.counts.investments} investments, ${data.counts.snapshots} snapshots.</span>`;
+    statusEl.innerHTML = `<span style="color:var(--success)">✅ Backup downloaded - ${data.counts.clients} clients, ${data.counts.policies} policies, ${data.counts.investments} investments, ${data.counts.snapshots} snapshots.</span>`;
   } catch (e) {
     statusEl.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
   }
@@ -753,7 +753,7 @@ async function downloadBackup() {
 async function exportToNotionCRM() {
   const statusEl = document.getElementById('notionExportStatus');
   if (!statusEl) return;
-  statusEl.innerHTML = '<span>⏳ Exporting to Notion CRM… this may take a moment.</span>';
+  statusEl.innerHTML = '<span>⏳ Exporting to Notion CRM... this may take a moment.</span>';
   try {
     const result = await api.post('/admin/notion-crm-export', {});
     statusEl.innerHTML = `<span style="color:var(--success)">✅ Notion CRM export complete! ${result.success} clients synced, ${result.failed} failed.${result.errors?.length ? ' Errors: ' + result.errors.map(e => e.client + ': ' + e.error).join('; ') : ''}</span>`;
@@ -766,11 +766,11 @@ async function uploadRestore() {
   const statusEl = document.getElementById('restoreStatus');
   const file = document.getElementById('restoreFile').files[0];
   if (!file) { statusEl.innerHTML = `<span style="color:var(--danger)">❌ Please select a backup file first.</span>`; return; }
-  statusEl.textContent = '⏳ Restoring data…';
+  statusEl.textContent = '⏳ Restoring data...';
   try {
     const text = await file.text();
     const data = JSON.parse(text);
-    if (!data.version || !Array.isArray(data.clients)) throw new Error('Invalid backup format — not a FinView backup file.');
+    if (!data.version || !Array.isArray(data.clients)) throw new Error('Invalid backup format - not a FinView backup file.');
     const result = await api.post('/admin/restore', { clients: data.clients, policies: data.policies, investments: data.investments, snapshots: data.snapshots });
     const { imported } = result;
     statusEl.innerHTML = `<span style="color:var(--success)">✅ Restore complete! Imported: ${imported.clients} clients, ${imported.policies} policies, ${imported.investments} investments, ${imported.snapshots} snapshots. Skipped: ${imported.skipped} (already existed).</span>`;
@@ -788,10 +788,10 @@ async function renderAdminClients() {
   document.getElementById('mainContent').innerHTML = `
     <div class="card" style="margin-bottom:20px">
       <div class="card-body" style="padding:12px 16px">
-        <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="clientSearch" placeholder="Search clients by name or email…" oninput="filterClients()" style="width:100%"></div>
+        <div class="search-wrap"><span class="search-icon">🔍</span><input type="text" id="clientSearch" placeholder="Search clients by name or email..." oninput="filterClients()" style="width:100%"></div>
       </div>
     </div>
-    <div class="card"><div id="clientsList"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading…</div></div></div></div>
+    <div class="card"><div id="clientsList"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading...</div></div></div></div>
   `;
   try {
     const clients = await api.get('/admin/clients');
@@ -807,7 +807,7 @@ function clientRowHTML(c) {
       <div class="client-avatar">${initials}</div>
       <div class="client-info">
         <div class="client-name">${esc(c.name)}</div>
-        <div class="client-meta">${esc(c.username)} · ${esc(c.occupation||'—')} · ${c.policyCount||0} policies</div>
+        <div class="client-meta">${esc(c.username)} · ${esc(c.occupation||'-')} · ${c.policyCount||0} policies</div>
       </div>
       <div class="client-stats">
         <div class="client-stat"><div class="client-stat-label">Coverage</div><div class="client-stat-value">${fmt(c.totalCoverage)}</div></div>
@@ -835,7 +835,7 @@ function filterClients() {
 
 // ── Invite Link ────────────────────────────────────────────────────────────────
 async function showInviteLink(clientId, clientName) {
-  showModal(`🔗 Invite Link — ${clientName}`,
+  showModal(`🔗 Invite Link - ${clientName}`,
     `<p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Generate a 7-day invite link for <strong>${esc(clientName)}</strong> to access their portal. The link pre-fills their username on the login page.</p>
     <div id="inviteResult"><button class="btn btn-primary" onclick="generateInviteLink('${clientId}')">🔗 Generate Invite Link</button></div>`,
     null, 'Close');
@@ -848,7 +848,7 @@ async function generateInviteLink(clientId) {
     const data = await api.post(`/admin/clients/${clientId}/invite`, {});
     document.getElementById('inviteResult').innerHTML = `
       <div class="invite-box">
-        <div style="font-size:13px;font-weight:600;margin-bottom:4px">✅ Link generated — expires ${fmtDate(data.expires)}</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">✅ Link generated - expires ${fmtDate(data.expires)}</div>
         <div style="font-size:12px;color:var(--text-3);margin-bottom:10px">Share this link with your client. Previous unused links have been revoked.</div>
         <div class="invite-link-wrap">
           <input class="invite-link-input" id="inviteLinkInput" value="${esc(data.link)}" readonly>
@@ -896,7 +896,7 @@ function clientFormHTML(c = {}, isEdit = false) {
       <div class="field"><label>Username *</label><input type="text" id="cf-username" value="${esc(c.username||'')}" placeholder="sarah.tan" ${isEdit ? 'disabled' : ''}></div>
       <div class="field"><label>${isEdit ? 'New Password (leave blank to keep)' : 'Password *'}</label><input type="password" id="cf-password" placeholder="${isEdit ? 'Leave blank to keep current' : 'Min 8 characters'}"></div>
       <div class="field"><label>Age</label><input type="number" id="cf-age" value="${c.age||''}" placeholder="28" min="18" max="99"></div>
-      <div class="field"><label>Gender</label><select id="cf-gender"><option value="">—</option><option ${c.gender==='Male'?'selected':''}>Male</option><option ${c.gender==='Female'?'selected':''}>Female</option></select></div>
+      <div class="field"><label>Gender</label><select id="cf-gender"><option value="">-</option><option ${c.gender==='Male'?'selected':''}>Male</option><option ${c.gender==='Female'?'selected':''}>Female</option></select></div>
       <div class="field"><label>Occupation</label><input type="text" id="cf-occupation" value="${esc(c.occupation||'')}" placeholder="Software Engineer"></div>
       <div class="field"><label>Annual Income (SGD)</label><input type="number" id="cf-income" value="${c.annual_income||''}" placeholder="72000"></div>
       <div class="field"><label>Dependents</label><input type="number" id="cf-dependents" value="${c.dependents||0}" min="0"></div>
@@ -959,7 +959,7 @@ async function deleteClient(id, name) {
 }
 
 async function syncAllToNotion() {
-  toast('Syncing all clients to Notion…', 'success', 2000);
+  toast('Syncing all clients to Notion...', 'success', 2000);
   try {
     const r = await api.post('/sync/push-all', {});
     toast(`Synced ${r.synced} clients to Notion ✅`);
@@ -1059,10 +1059,10 @@ function openQuickAnalysis() {
   const rp = getRiskProfile(S.client);
   const gaps = [];
   if (hs.lifeCov < hs.recLife * 0.8) gaps.push(`Increase life coverage by ${fmt(hs.recLife - hs.lifeCov)} to reach recommended ${fmt(hs.recLife)}`);
-  if (hs.ciCov < hs.recCI * 0.8) gaps.push(`Add critical illness coverage — recommended ${fmt(hs.recCI)}, currently ${fmt(hs.ciCov)}`);
+  if (hs.ciCov < hs.recCI * 0.8) gaps.push(`Add critical illness coverage - recommended ${fmt(hs.recCI)}, currently ${fmt(hs.ciCov)}`);
   if (hs.hospCov === 0) gaps.push('Set up hospitalisation / Integrated Shield Plan coverage');
   if (S.investments.length === 0) gaps.push('Start an investment portfolio to build long-term wealth');
-  if (gaps.length === 0) gaps.push('Portfolio is well-structured — schedule next annual review');
+  if (gaps.length === 0) gaps.push('Portfolio is well-structured - schedule next annual review');
   showModal('⚡ Quick Financial Analysis', `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:16px;background:#F8FAFC;border-radius:10px">
       <div style="width:64px;height:64px;border-radius:50%;border:4px solid ${hs.color};display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -1070,7 +1070,7 @@ function openQuickAnalysis() {
       </div>
       <div>
         <div style="font-size:15px;font-weight:700">${S.client.name}</div>
-        <div style="font-size:12px;color:#64748B;margin-top:2px">${rp.emoji} ${rp.label} — ${rp.desc}</div>
+        <div style="font-size:12px;color:#64748B;margin-top:2px">${rp.emoji} ${rp.label} - ${rp.desc}</div>
         <div style="height:6px;background:#E2E8F0;border-radius:99px;margin-top:8px;width:200px"><div style="height:100%;width:${hs.score}%;background:${hs.color};border-radius:99px"></div></div>
       </div>
     </div>
@@ -1088,7 +1088,7 @@ function openQuickAnalysis() {
 function renderOverview(clientId, isAdmin) {
   const c = S.client;
   document.getElementById('pageTitle').textContent = `${c.name}'s Overview`;
-  document.getElementById('pageSub').textContent = `${c.occupation||''} · Age ${c.age||'—'} · Income ${fmt(c.annual_income||0)}/yr`;
+  document.getElementById('pageSub').textContent = `${c.occupation||''} · Age ${c.age||'-'} · Income ${fmt(c.annual_income||0)}/yr`;
   document.getElementById('topbarActions').innerHTML = `
     ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="api.post('/sync/push/${clientId}',{}).then(()=>toast('Synced to Notion ✅')).catch(e=>toast(e.message,'error'))">🔄 Sync Notion</button>` : ''}
     <button class="btn btn-warning btn-sm" onclick="openQuickAnalysis()">⚡ Quick Analysis</button>
@@ -1109,7 +1109,7 @@ function renderOverview(clientId, isAdmin) {
   const expiring = S.policies.filter(p => { const d = daysUntil(p.end_date); return d !== null && d >= 0 && d <= 90; });
 
   document.getElementById('mainContent').innerHTML = `
-    <div class="print-header"><h1>${esc(c.name)} — Financial Summary</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
+    <div class="print-header"><h1>${esc(c.name)} - Financial Summary</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
     ${expiring.length ? expiring.map(p => `<div class="alert alert-${daysUntil(p.end_date) <= 7 ? 'danger' : daysUntil(p.end_date) <= 30 ? 'warning' : 'info'}"><div class="alert-icon">⚠️</div><div class="alert-body"><strong>${esc(p.product_name)} expires ${daysUntil(p.end_date) <= 0 ? 'today' : `in ${daysUntil(p.end_date)} days`}</strong>End date: ${fmtDate(p.end_date)}</div></div>`).join('') : ''}
     <div class="metrics-grid">
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#0EA5E9,#6366F1)"></div><div class="metric-label">Total Coverage</div><div class="metric-value">${fmt(totalCoverage)}</div>${covChange !== null ? `<span class="metric-change ${covChange >= 0 ? 'up' : 'down'}">${covChange >= 0 ? '↑' : '↓'} ${fmt(Math.abs(covChange))} YoY</span>` : ''}</div>
@@ -1128,16 +1128,16 @@ function renderOverview(clientId, isAdmin) {
   </div>
   <div id="profileEditForm" class="card-body hidden">
     <div class="form-grid">
-      <div class="field"><label>Age</label><input type="number" id="pe-age" value="${c.age||\'\'}" min="18" max="99" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
-      <div class="field"><label>Gender</label><select id="pe-gender" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%;background:var(--surface)"><option value="">—</option><option ${c.gender===\'Male\'?\'selected\':\'\'}>Male</option><option ${c.gender===\'Female\'?\'selected\':\'\'}>Female</option></select></div>
-      <div class="field"><label>Occupation</label><input type="text" id="pe-occupation" value="${esc(c.occupation||\'\') }" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
-      <div class="field"><label>Annual Income (SGD)</label><input type="number" id="pe-income" value="${c.annual_income||\'\'}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
+      <div class="field"><label>Age</label><input type="number" id="pe-age" value="${c.age||0}" min="18" max="99" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
+      <div class="field"><label>Gender</label><select id="pe-gender" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%;background:var(--surface)"><option value="">-</option><option ${c.gender==="Male"?"selected":""}>Male</option><option ${c.gender==="Female"?"selected":""}>Female</option></select></div>
+      <div class="field"><label>Occupation</label><input type="text" id="pe-occupation" value="${esc(c.occupation||'')}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
+      <div class="field"><label>Annual Income (SGD)</label><input type="number" id="pe-income" value="${c.annual_income||0}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
       <div class="field"><label>Dependents</label><input type="number" id="pe-dependents" value="${c.dependents||0}" min="0" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%"></div>
     </div>
     <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
       <button class="btn btn-primary" id="saveProfileBtn" onclick="saveProfileEdits(\'${clientId}\')">💾 Save Changes</button>
       <button class="btn btn-secondary" onclick="toggleProfileEdit()">Cancel</button>
-      <span style="font-size:12px;color:var(--text-3)">🔒 PDPA protected — changes saved securely</span>
+      <span style="font-size:12px;color:var(--text-3)">🔒 PDPA protected - changes saved securely</span>
     </div>
   </div>
 </div>` : ''}
@@ -1178,7 +1178,7 @@ function renderOverview(clientId, isAdmin) {
 
   const byType = getCoverageByType(S.policies);
   if (Object.keys(byType).length) mkChart('chartCoverageDonut', { type: 'doughnut', data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } } } } });
-  if (S.investments.length) mkChart('chartGoals', { type: 'bar', data: { labels: S.investments.map(i => i.name.length > 15 ? i.name.slice(0,13)+'…' : i.name), datasets: [{ label: 'Current', data: S.investments.map(i => i.value_now||0), backgroundColor: '#0EA5E9', borderRadius: 6 }, { label: 'Target', data: S.investments.map(i => i.target||0), backgroundColor: 'rgba(245,158,11,0.6)', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
+  if (S.investments.length) mkChart('chartGoals', { type: 'bar', data: { labels: S.investments.map(i => i.name.length > 15 ? i.name.slice(0,13)+'...' : i.name), datasets: [{ label: 'Current', data: S.investments.map(i => i.value_now||0), backgroundColor: '#0EA5E9', borderRadius: 6 }, { label: 'Target', data: S.investments.map(i => i.target||0), backgroundColor: 'rgba(245,158,11,0.6)', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y)}` } } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true, ticks: { callback: v => fmt(v) } } } } });
 
   if (isAdmin) setTimeout(() => addNotesSection(clientId), 400);
   const byTypeArr = Object.entries(byType).map(([type, curr]) => {
@@ -1214,7 +1214,7 @@ async function renderCoverageGaps(clientId, isAdmin) {
   document.getElementById('pageTitle').textContent = 'Coverage Gap Analysis';
   document.getElementById('pageSub').textContent = `${S.client.name} · Based on income & age`;
   document.getElementById('topbarActions').innerHTML = `<button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${clientId}')">📄 Export PDF</button>`;
-  document.getElementById('mainContent').innerHTML = `<div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Analysing…</div></div>`;
+  document.getElementById('mainContent').innerHTML = `<div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Analysing...</div></div>`;
 
   try {
     const data = await api.get(`/clients/${clientId}/coverage-gaps`);
@@ -1224,26 +1224,26 @@ async function renderCoverageGaps(clientId, isAdmin) {
     const partialCount = data.gaps.filter(g => g.status === 'partial').length;
 
     document.getElementById('mainContent').innerHTML = `
-      <div class="print-header"><h1>${esc(c.name)} — Coverage Gap Analysis</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
-      <div class="alert alert-info" style="margin-bottom:20px"><div class="alert-icon">ℹ️</div><div class="alert-body"><strong>How this is calculated</strong>Recommendations are based on Singapore financial planning benchmarks — income multipliers for Life/CI/TPD, standard hospitalization coverage. Adjust by reviewing each type.</div></div>
+      <div class="print-header"><h1>${esc(c.name)} - Coverage Gap Analysis</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential</p></div>
+      <div class="alert alert-info" style="margin-bottom:20px"><div class="alert-icon">i️</div><div class="alert-body"><strong>How this is calculated</strong>Recommendations are based on Singapore financial planning benchmarks - income multipliers for Life/CI/TPD, standard hospitalization coverage. Adjust by reviewing each type.</div></div>
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
         <div style="font-size:11px;font-weight:600;color:#94A3B8;padding:4px 0;align-self:center">COVERAGE LEVELS:</div>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(239,68,68,0.12);color:#DC2626;font-weight:600">🔴 1 — Critical</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(249,115,22,0.12);color:#EA580C;font-weight:600">🟠 2 — At Risk</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(245,158,11,0.12);color:#D97706;font-weight:600">🟡 3 — Below Target</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(14,165,233,0.12);color:#0284C7;font-weight:600">🔵 4 — Near Target</span>
-        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(16,185,129,0.12);color:#059669;font-weight:600">🟢 5 — Fully Protected</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(239,68,68,0.12);color:#DC2626;font-weight:600">🔴 1 - Critical</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(249,115,22,0.12);color:#EA580C;font-weight:600">🟠 2 - At Risk</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(245,158,11,0.12);color:#D97706;font-weight:600">🟡 3 - Below Target</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(14,165,233,0.12);color:#0284C7;font-weight:600">🔵 4 - Near Target</span>
+        <span style="font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(16,185,129,0.12);color:#059669;font-weight:600">🟢 5 - Fully Protected</span>
       </div>
       <div class="metrics-grid" style="margin-bottom:20px">
         <div class="metric"><div class="metric-accent" style="background:var(--danger)"></div><div class="metric-label">Total Gap</div><div class="metric-value">${fmt(totalGap)}</div></div>
         <div class="metric"><div class="metric-accent" style="background:var(--danger)"></div><div class="metric-label">Critical Areas</div><div class="metric-value">${criticalCount}</div><span class="metric-change down">&lt;40% covered</span></div>
-        <div class="metric"><div class="metric-accent" style="background:var(--warning)"></div><div class="metric-label">Partial Areas</div><div class="metric-value">${partialCount}</div><span class="metric-change warn">40–99% covered</span></div>
+        <div class="metric"><div class="metric-accent" style="background:var(--warning)"></div><div class="metric-label">Partial Areas</div><div class="metric-value">${partialCount}</div><span class="metric-change warn">40-99% covered</span></div>
         <div class="metric"><div class="metric-accent" style="background:var(--text-3)"></div><div class="metric-label">Based On</div><div class="metric-value" style="font-size:14px">${fmt(data.income)}/yr</div><span class="metric-change neutral">Age ${data.age} · ${data.deps} dependent(s)</span></div>
       </div>
       <div class="gap-grid">
         ${data.gaps.map(g => `
           <div class="gap-card ${g.status}">
-            <div class="gap-status ${g.status}">${g.status === 'level1' ? '🔴 Level 1 — Critical' : g.status === 'level2' ? '🟠 Level 2 — At Risk' : g.status === 'level3' ? '🟡 Level 3 — Below Target' : g.status === 'level4' ? '🔵 Level 4 — Near Target' : '🟢 Level 5 — Fully Protected'}</div>
+            <div class="gap-status ${g.status}">${g.status === 'level1' ? '🔴 Level 1 - Critical' : g.status === 'level2' ? '🟠 Level 2 - At Risk' : g.status === 'level3' ? '🟡 Level 3 - Below Target' : g.status === 'level4' ? '🔵 Level 4 - Near Target' : '🟢 Level 5 - Fully Protected'}</div>
             <div style="font-size:15px;font-weight:700;margin-bottom:4px">${esc(g.type)}</div>
             <div style="margin-bottom:12px">
               <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-bottom:5px"><span>Coverage level</span><span style="font-weight:700">${g.pct}%</span></div>
@@ -1301,7 +1301,7 @@ function renderInsurance(clientId, isAdmin) {
     byType[type].curr = curr;
   });
   S.policies.forEach(p => {
-    // For recommended — still attach to the primary type
+    // For recommended - still attach to the primary type
     const ptype = p.type || 'Other';
     if (!byType[ptype]) byType[ptype] = { curr: 0, rec: 0, policies: [] };
     byType[ptype].rec = Math.max(byType[ptype].rec, p.recommended||0);
@@ -1320,7 +1320,7 @@ function renderInsurance(clientId, isAdmin) {
       <div class="card"><div class="card-header"><div class="card-title">📅 Coverage Timeline</div></div><div class="card-body" style="overflow-x:auto"><div id="coverageTimeline" style="min-width:500px"></div></div></div>
     </div>
     <div class="card"><div class="card-header"><div class="card-title">🛡️ All Policies</div></div><div id="policyList" class="card-body"></div></div>
-    <div class="card" style="margin-top:20px"><div class="card-header"><div class="card-title">📋 Needs Analysis</div><div class="card-sub">Coverage gaps vs recommended — SG benchmarks</div></div><div id="needsAnalysisSection" class="card-body"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading needs analysis…</div></div></div></div>
+    <div class="card" style="margin-top:20px"><div class="card-header"><div class="card-title">📋 Needs Analysis</div><div class="card-sub">Coverage gaps vs recommended - SG benchmarks</div></div><div id="needsAnalysisSection" class="card-body"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading needs analysis...</div></div></div></div>
   `;
 
   document.getElementById('insuranceAlerts').innerHTML = [
@@ -1452,7 +1452,7 @@ async function loadNeedsAnalysis(clientId) {
     if (!el) return;
 
     el.innerHTML = `
-      <div class="alert alert-info" style="margin-bottom:16px"><div class="alert-icon">ℹ️</div><div class="alert-body"><strong>Needs Analysis</strong>Set recommended coverage amounts, track current coverage, and document gaps with rationale. Saves automatically per coverage type.</div></div>
+      <div class="alert alert-info" style="margin-bottom:16px"><div class="alert-icon">i️</div><div class="alert-body"><strong>Needs Analysis</strong>Set recommended coverage amounts, track current coverage, and document gaps with rationale. Saves automatically per coverage type.</div></div>
       <div style="display:flex;flex-direction:column;gap:12px" id="needs-rows">
         ${NEEDS_COVERAGE_TYPES.map(ct => {
           const existing = naMap[ct] || {};
@@ -1676,7 +1676,7 @@ function calcInterest(id, type) {
 async function loadInvestmentProjection(invId) {
   const el = document.getElementById(`proj-table-${invId}`);
   if (!el) return;
-  el.innerHTML = '<div style="color:var(--text-3);font-size:12px">⏳ Loading projection…</div>';
+  el.innerHTML = '<div style="color:var(--text-3);font-size:12px">⏳ Loading projection...</div>';
   try {
     const cid = S.viewClientId || S.user?.id;
     const data = await api.get(`/clients/${cid}/investments/${invId}/projection?rates=3,4,5,6,7,8&years=5,10,15,20,25,30`);
@@ -1748,9 +1748,9 @@ function renderHistory(clientId, isAdmin) {
           return `<tr>
             <td><strong>${s.year}</strong></td>
             <td>${fmt(s.total_coverage)}</td>
-            <td>${cc != null ? `<span style="color:${cc>=0?'var(--success)':'var(--danger)'}">${cc>=0?'+':''}${fmt(cc)}</span>` : '<span style="color:var(--text-3)">—</span>'}</td>
+            <td>${cc != null ? `<span style="color:${cc>=0?'var(--success)':'var(--danger)'}">${cc>=0?'+':''}${fmt(cc)}</span>` : '<span style="color:var(--text-3)">-</span>'}</td>
             <td>${fmt(s.total_investment_value)}</td>
-            <td>${ic != null ? `<span style="color:${ic>=0?'var(--success)':'var(--danger)'}">${ic>=0?'+':''}${fmt(ic)}</span>` : '<span style="color:var(--text-3)">—</span>'}</td>
+            <td>${ic != null ? `<span style="color:${ic>=0?'var(--success)':'var(--danger)'}">${ic>=0?'+':''}${fmt(ic)}</span>` : '<span style="color:var(--text-3)">-</span>'}</td>
             <td style="color:var(--text-3);font-size:12px">${esc(s.notes)}</td>
           </tr>`;
         }).join('')}</tbody>
@@ -1786,7 +1786,7 @@ const COVERAGE_DEFS = {
     { id: 'death', label: 'Death', tag: 'core' },
     { id: 'tpd', label: 'TPD (Total Permanent Disability)', tag: 'core' },
     { id: 'ti', label: 'TI (Terminal Illness)', tag: 'core' },
-    { id: 'ci', label: 'CI (Critical Illness — 37 conditions)', tag: 'add-on' },
+    { id: 'ci', label: 'CI (Critical Illness - 37 conditions)', tag: 'add-on' },
     { id: 'eci', label: 'ECI (Early Critical Illness)', tag: 'add-on' },
     { id: 'ci_wop', label: 'CI Waiver of Premium', tag: 'add-on' },
     { id: 'payor', label: 'Payor Benefit', tag: 'add-on' },
@@ -1797,7 +1797,7 @@ const COVERAGE_DEFS = {
     { id: 'death', label: 'Death', tag: 'core' },
     { id: 'tpd', label: 'TPD (Total Permanent Disability)', tag: 'core' },
     { id: 'ti', label: 'TI (Terminal Illness)', tag: 'core' },
-    { id: 'ci', label: 'CI (Critical Illness — 37 conditions)', tag: 'add-on' },
+    { id: 'ci', label: 'CI (Critical Illness - 37 conditions)', tag: 'add-on' },
     { id: 'eci', label: 'ECI (Early Critical Illness)', tag: 'add-on' },
     { id: 'ci_wop', label: 'CI Waiver of Premium', tag: 'add-on' },
     { id: 'multiplier', label: 'Multiplier (2×/3×/4× till age 65/70)', tag: 'add-on' },
@@ -1883,8 +1883,8 @@ const COVERAGE_DEFS = {
   'Disability Income': [
     { id: 'careshield', label: 'CareShield Life (Mandatory Base)', tag: 'core' },
     { id: 'careshield_supplement', label: 'CareShield Life Supplement', tag: 'add-on' },
-    { id: 'di_own_occ', label: 'Disability Income — Own Occupation', tag: 'add-on' },
-    { id: 'di_any_occ', label: 'Disability Income — Any Occupation', tag: 'add-on' },
+    { id: 'di_own_occ', label: 'Disability Income - Own Occupation', tag: 'add-on' },
+    { id: 'di_any_occ', label: 'Disability Income - Any Occupation', tag: 'add-on' },
     { id: 'wop', label: 'Waiver of Premium on Disability', tag: 'add-on' },
   ],
   'Rider': [
@@ -2175,7 +2175,7 @@ function toggleProfileEdit() {
 
 
 // ══════════════════════════════════════════════════════════════════════
-// INVESTOR PROFILE — Equal Weight Risk Scoring (20% each factor)
+// INVESTOR PROFILE - Equal Weight Risk Scoring (20% each factor)
 // Data: MAS 2024 · CPF Board 2025 · SingStat HES 2024 · MOH 2024
 // ══════════════════════════════════════════════════════════════════════
 function classifyInvestor(client, policies, investments) {
@@ -2205,10 +2205,10 @@ function classifyInvestor(client, policies, investments) {
   const rl_colors={1:'#10B981',2:'#0EA5E9',3:'#F59E0B',4:'#8B5CF6',5:'#EF4444'};
 
   // Life stage classification (SingStat age brackets)
-  const ls=age<28?{l:1,n:'Early Career',c:'#10B981',tip:'⚡ Maximum compounding window — start now'}
+  const ls=age<28?{l:1,n:'Early Career',c:'#10B981',tip:'⚡ Maximum compounding window - start now'}
          :age<35?{l:2,n:'Young Professional',c:'#0EA5E9',tip:'📈 Aggressive growth phase'}
          :age<45?{l:3,n:'Family Builder',c:'#F59E0B',tip:'⚖️ Balance growth and protection'}
-         :age<55?{l:4,n:'Wealth Accumulator',c:'#8B5CF6',tip:'🎯 Peak earning years — maximise contributions'}
+         :age<55?{l:4,n:'Wealth Accumulator',c:'#8B5CF6',tip:'🎯 Peak earning years - maximise contributions'}
                 :{l:5,n:'Pre-Retiree / Legacy',c:'#EF4444',tip:'🏖️ Shift to income focus'};
 
   // Income tier (MAS income bands)
@@ -2263,7 +2263,7 @@ function _bar(level,color,max=5){
 
 function renderClientProfile(clientId, isAdmin) {
   const c=S.client;
-  document.getElementById('pageTitle').textContent=`${c.name} — Investor Profile`;
+  document.getElementById('pageTitle').textContent=`${c.name} - Investor Profile`;
   document.getElementById('pageSub').textContent='Classification · Goal Readiness · Recommended Path';
   document.getElementById('topbarActions').innerHTML=`<button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${clientId}')">📄 Export PDF</button>`;
   const iv=classifyInvestor(c,S.policies,S.investments);
@@ -2277,7 +2277,7 @@ function renderClientProfile(clientId, isAdmin) {
     recDiv.innerHTML = `
       <div style="background:white;border-radius:12px;border:1px solid #E2E8F0;overflow:hidden;margin-bottom:16px">
         <div style="padding:14px 18px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div style="font-size:14px;font-weight:700">💼 ILP Recommendation — ${rec.recommendation?.product}</div>
+          <div style="font-size:14px;font-weight:700">💼 ILP Recommendation - ${rec.recommendation?.product}</div>
           <div style="font-size:11px;color:#64748B">${rec.recommendation?.annual_premium?.toLocaleString()}/yr × ${rec.recommendation?.pay_term}yr · ${rec.recommendation?.proj_years}yr projection · Blended yield ${rec.recommendation?.blended_yield_pct}%</div>
         </div>
         <div style="padding:14px 18px">
@@ -2310,14 +2310,14 @@ function renderClientProfile(clientId, isAdmin) {
   const rBars='█'.repeat(iv.risk_level)+'░'.repeat(5-iv.risk_level);
 
   document.getElementById('mainContent').innerHTML=`
-    <div class="print-header"><h1>${esc(c.name)} — Investor Profile</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential Singapore</p></div>
+    <div class="print-header"><h1>${esc(c.name)} - Investor Profile</h1><p>Generated ${new Date().toLocaleDateString('en-SG',{day:'2-digit',month:'long',year:'numeric'})} · Prepared by Dylan Ho · Prudential Singapore</p></div>
 
     <div style="background:#0F172A;border-radius:12px;padding:20px 24px;margin-bottom:20px;color:white">
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="font-size:44px;line-height:1">${iv.primary.e}</div>
         <div style="flex:1;min-width:200px">
           <div style="font-size:17px;font-weight:800;color:#F59E0B">${iv.primary.n}</div>
-          <div style="font-size:12px;color:#94A3B8;margin-top:3px">${c.name} · Age ${c.age||'—'} · ${fmt(c.annual_income||0)}/yr · ${c.dependents||0} dependent(s)</div>
+          <div style="font-size:12px;color:#94A3B8;margin-top:3px">${c.name} · Age ${c.age||'-'} · ${fmt(c.annual_income||0)}/yr · ${c.dependents||0} dependent(s)</div>
           <div style="margin-top:10px;font-size:12px;color:#CBD5E1">Goal: <strong style="color:#F59E0B">${iv.primary.t}</strong></div>
           <div style="font-size:11px;color:#64748B;margin-top:3px">${iv.primary.a}</div>
         </div>
@@ -2338,7 +2338,7 @@ function renderClientProfile(clientId, isAdmin) {
         {l:'Life Stage',v:iv.ls?.n,lv:iv.ls?.l,c:iv.ls?.c,tip:iv.ls?.tip,w:'20%'},
         {l:'Income Tier',v:iv.it?.n,lv:iv.it?.l,c:iv.it?.c,tip:iv.it?.tip,w:'20%'},
         {l:'Protection',v:iv.protLabel,lv:iv.protLevel,c:iv.protColor,tip:iv.protLevel<=2?'🔴 Protect first':iv.protLevel<=3?'🟡 Close gaps first':'🟢 Optimise allocation',w:'20%'},
-        {l:'Investment',v:iv.invLabel,lv:iv.invLevel,c:iv.invColor,tip:iv.invLevel<=2?'Start ILP — delay costs returns':iv.invLevel<=3?'Add ILP alongside portfolio':'HNW strategy available',w:'20%'},
+        {l:'Investment',v:iv.invLabel,lv:iv.invLevel,c:iv.invColor,tip:iv.invLevel<=2?'Start ILP - delay costs returns':iv.invLevel<=3?'Add ILP alongside portfolio':'HNW strategy available',w:'20%'},
         {l:'Time Horizon',v:Math.max(0,65-(c.age||30))+' yrs to 65',lv:Math.min(5,Math.max(1,Math.floor(Math.max(0,65-(c.age||30))/5))),c:'#0EA5E9',tip:'Longer = more risk capacity',w:'20%'},
       ].map(d=>`<div style="background:white;border-radius:10px;border:1px solid #E2E8F0;padding:13px">
         <div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#94A3B8;font-weight:700;margin-bottom:3px">${d.l} <span style="color:#E2E8F0">${d.w}</span></div>
@@ -2388,7 +2388,7 @@ function renderClientProfile(clientId, isAdmin) {
         <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:13px">
           <div style="font-size:9px;color:#64748B;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Priority Action</div>
           ${iv.protLevel<3?'<div style="font-size:13px;font-weight:600;color:#EF4444">1. Close coverage gaps first</div><div style="font-size:10px;color:#94A3B8;margin-top:4px">MAS: protect before wealth building</div>':
-            iv.invLevel<3?'<div style="font-size:13px;font-weight:600;color:#10B981">1. Start ILP now</div><div style="font-size:10px;color:#94A3B8;margin-top:4px">Protection solid — every year of delay costs compounding</div>':
+            iv.invLevel<3?'<div style="font-size:13px;font-weight:600;color:#10B981">1. Start ILP now</div><div style="font-size:10px;color:#94A3B8;margin-top:4px">Protection solid - every year of delay costs compounding</div>':
             '<div style="font-size:13px;font-weight:600;color:#F59E0B">Optimise allocation</div><div style="font-size:10px;color:#94A3B8;margin-top:4px">Use PRU Calculator for detailed fund plan</div>'}
         </div>
         <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:13px">
@@ -2414,7 +2414,7 @@ function renderClientProfile(clientId, isAdmin) {
 
 async function saveProfileEdits(clientId) {
   const btn = document.getElementById('saveProfileBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
   const body = {
     name: S.client.name,
     age: parseInt(document.getElementById('pe-age').value) || 0,
@@ -2429,7 +2429,7 @@ async function saveProfileEdits(clientId) {
     document.getElementById('profileEditForm').classList.add('hidden');
     if (btn) { btn.disabled = false; btn.textContent = '💾 Save Changes'; }
     toast('Profile saved ✅');
-    document.getElementById('pageSub').textContent = `${body.occupation || ''} · Age ${body.age || '—'} · Income ${fmt(body.annual_income || 0)}/yr`;
+    document.getElementById('pageSub').textContent = `${body.occupation || ''} · Age ${body.age || '-'} · Income ${fmt(body.annual_income || 0)}/yr`;
     const editBtn = document.getElementById('editProfileBtn');
     if (editBtn) editBtn.textContent = '✏️ Edit Details';
   } catch (e) {
@@ -2458,7 +2458,7 @@ async function renderAdminPipeline() {
       const cards = clients.map(c => `
         <div onclick="openClientView('${c.id}','${esc(c.name)}')" style="background:white;border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer;border:1px solid #E2E8F0" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
           <div style="font-size:13px;font-weight:600;color:#0F172A;margin-bottom:3px">${esc(c.name)}</div>
-          <div style="font-size:11px;color:#64748B">${fmt(c.annual_income||0)}/yr · Age ${c.age||'—'}</div>
+          <div style="font-size:11px;color:#64748B">${fmt(c.annual_income||0)}/yr · Age ${c.age||'-'}</div>
           ${c.next_action ? `<div style="font-size:10px;color:#0EA5E9;margin-top:4px;font-weight:500">→ ${esc(c.next_action)}</div>` : ''}
           ${c.last_contact ? `<div style="font-size:10px;color:#94A3B8;margin-top:2px">Last: ${esc(c.last_contact)}</div>` : ''}
           <div onclick="event.stopPropagation()" style="margin-top:8px">
@@ -2546,14 +2546,14 @@ async function renderRollingDollar() {
   document.getElementById('pageTitle').textContent = '🎬 Rolling Dollar';
   document.getElementById('pageSub').textContent = 'Script pipeline from Notion';
   document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary" onclick="renderRollingDollar()">↻ Refresh</button>`;
-  document.getElementById('mainContent').innerHTML = `<div class="card"><div class="card-header"><div class="card-title">📋 Script Backlog</div></div><div class="card-body" id="rdScripts"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading scripts from Notion…</div></div></div></div>`;
+  document.getElementById('mainContent').innerHTML = `<div class="card"><div class="card-header"><div class="card-title">📋 Script Backlog</div></div><div class="card-body" id="rdScripts"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading scripts from Notion...</div></div></div></div>`;
   try {
     const scripts = await api.get('/rolling-dollar/scripts');
     const statusColor = {Scripted:'#3B82F6',Filmed:'#F59E0B',Uploaded:'#8B5CF6',Published:'#10B981'};
     const counts = {};
     scripts.forEach(s => { counts[s.status] = (counts[s.status]||0)+1; });
     const summary = Object.entries(counts).map(([k,v]) => `<span style="background:${statusColor[k]||'#64748B'}22;color:${statusColor[k]||'#64748B'};padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">${k}: ${v}</span>`).join(' ');
-    const rows = scripts.map(s => `<tr><td style="padding:10px 12px;font-size:13px;font-weight:500">${s.title}</td><td style="padding:10px 12px"><span style="background:${statusColor[s.status]||'#64748B'}22;color:${statusColor[s.status]||'#64748B'};padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">${s.status||'—'}</span></td><td style="padding:10px 12px;font-size:12px;color:var(--text-3)">${s.date||''}</td><td style="padding:10px 12px">${s.status!=='Published'?`<button class="btn" style="font-size:11px;padding:4px 10px" onclick="markPublished('${s.id}')">Mark Published</button>`:''}</td></tr>`).join('');
+    const rows = scripts.map(s => `<tr><td style="padding:10px 12px;font-size:13px;font-weight:500">${s.title}</td><td style="padding:10px 12px"><span style="background:${statusColor[s.status]||'#64748B'}22;color:${statusColor[s.status]||'#64748B'};padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">${s.status||'-'}</span></td><td style="padding:10px 12px;font-size:12px;color:var(--text-3)">${s.date||''}</td><td style="padding:10px 12px">${s.status!=='Published'?`<button class="btn" style="font-size:11px;padding:4px 10px" onclick="markPublished('${s.id}')">Mark Published</button>`:''}</td></tr>`).join('');
     document.getElementById('rdScripts').innerHTML = `<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">${summary}</div><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-3);text-transform:uppercase">Title</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-3);text-transform:uppercase">Status</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-3);text-transform:uppercase">Date</th><th style="padding:8px 12px"></th></tr></thead><tbody>${rows}</tbody></table>`;
   } catch(e) { document.getElementById('rdScripts').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-sub">${e.message}</div></div>`; }
 }
@@ -2576,7 +2576,7 @@ function renderPruCalc() {
 
 // ── Notion Pull / B2B Import ───────────────────────────────────────────────────
 async function pullFromNotion() {
-  toast('Pulling updates from Notion…');
+  toast('Pulling updates from Notion...');
   try {
     const r = await api._req('POST', '/sync/pull-from-notion', {});
     toast(`✅ Updated ${r.updated} clients from Notion`);
@@ -2584,7 +2584,7 @@ async function pullFromNotion() {
 }
 
 async function importB2BLeads() {
-  toast('Importing B2B leads marked Interested…');
+  toast('Importing B2B leads marked Interested...');
   try {
     const r = await api._req('POST', '/sync/import-b2b-leads', {});
     toast(`✅ Imported ${r.imported} new prospects from B2B pipeline`);
