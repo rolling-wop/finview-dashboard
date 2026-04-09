@@ -699,8 +699,12 @@ async function renderAdminBackup() {
       <div class="card-header"><div class="card-title">💾 Export Backup</div></div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Download a full JSON backup of all clients, policies, investments, and snapshots. Use this before any Railway re-deploy to preserve your data.</p>
-        <button class="btn btn-primary" onclick="downloadBackup()">⬇️ Download Backup JSON</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <button class="btn btn-primary" onclick="downloadBackup()">⬇️ Download Backup JSON</button>
+          <button class="btn btn-secondary" onclick="exportToNotionCRM()">🔄 Export to Notion CRM</button>
+        </div>
         <div id="backupStatus" style="margin-top:12px;font-size:13px;color:var(--text-3)"></div>
+        <div id="notionExportStatus" style="margin-top:8px;font-size:13px;color:var(--text-3)"></div>
       </div>
     </div>
     <div class="card">
@@ -736,6 +740,18 @@ async function downloadBackup() {
     statusEl.innerHTML = `<span style="color:var(--success)">✅ Backup downloaded — ${data.counts.clients} clients, ${data.counts.policies} policies, ${data.counts.investments} investments, ${data.counts.snapshots} snapshots.</span>`;
   } catch (e) {
     statusEl.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`;
+  }
+}
+
+async function exportToNotionCRM() {
+  const statusEl = document.getElementById('notionExportStatus');
+  if (!statusEl) return;
+  statusEl.innerHTML = '<span>⏳ Exporting to Notion CRM… this may take a moment.</span>';
+  try {
+    const result = await api.post('/admin/notion-crm-export', {});
+    statusEl.innerHTML = `<span style="color:var(--success)">✅ Notion CRM export complete! ${result.success} clients synced, ${result.failed} failed.${result.errors?.length ? ' Errors: ' + result.errors.map(e => e.client + ': ' + e.error).join('; ') : ''}</span>`;
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--danger)">❌ Export failed: ${e.message}</span>`;
   }
 }
 
@@ -1297,6 +1313,7 @@ function renderInsurance(clientId, isAdmin) {
       <div class="card"><div class="card-header"><div class="card-title">📅 Coverage Timeline</div></div><div class="card-body" style="overflow-x:auto"><div id="coverageTimeline" style="min-width:500px"></div></div></div>
     </div>
     <div class="card"><div class="card-header"><div class="card-title">🛡️ All Policies</div></div><div id="policyList" class="card-body"></div></div>
+    <div class="card" style="margin-top:20px"><div class="card-header"><div class="card-title">📋 Needs Analysis</div><div class="card-sub">Coverage gaps vs recommended — SG benchmarks</div></div><div id="needsAnalysisSection" class="card-body"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading needs analysis…</div></div></div></div>
   `;
 
   document.getElementById('insuranceAlerts').innerHTML = [
@@ -1376,7 +1393,7 @@ function renderInsurance(clientId, isAdmin) {
                   return coverageHTML;
                 })()}
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
-                  <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Annual Premium</div><div style="font-size:16px;font-weight:700">${fmt(p.premium)}</div><div style="font-size:11px;color:var(--text-3)">${fmt((p.premium||0)/12)}/mo</div></div>
+                  <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Annual Premium</div><div style="font-size:16px;font-weight:700">${fmt(p.premium)}</div><div style="font-size:11px;color:var(--text-3)">${fmt((p.premium||0)/12)}/mo · <strong>${p.payment_frequency||'annual'}</strong></div>${(p.cpf_medisave_amount||0)>0||((p.cash_amount||0)>0)?`<div style="margin-top:4px;font-size:11px;color:var(--text-3)">CPF Medisave: <strong>${fmt(p.cpf_medisave_amount||0)}</strong> · Cash: <strong>${fmt(p.cash_amount||0)}</strong></div>`:''}</div>
                   <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Period</div><div style="font-size:13px;font-weight:500">${fmtDate(p.start_date)}</div><div style="font-size:11px;color:var(--text-3)">→ ${fmtDate(p.end_date)}</div></div>
                   ${p.recommended > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:4px">Recommended</div><div style="font-size:16px;font-weight:700">${fmt(p.recommended)}</div></div>` : ''}
                 </div>
@@ -1389,6 +1406,125 @@ function renderInsurance(clientId, isAdmin) {
         </div>
       </div>`;
   }).join('');
+  // Load needs analysis section
+  const _cid = S.viewClientId || S.user?.id;
+  loadNeedsAnalysis(_cid);
+}
+
+// ── Needs Analysis Section ───────────────────────────────────────────────────
+const NEEDS_COVERAGE_TYPES = ['Death / Life','Early CI','Late Stage CI','TPD','Hospital / IP','Disability Income','Personal Accident'];
+const NEEDS_SOURCES = [
+  { label: 'MAS Insurance', url: 'https://www.mas.gov.sg/regulation/insurance' },
+  { label: 'CPF Retirement', url: 'https://www.cpf.gov.sg/member/retirement-income' },
+  { label: 'MOH Cost & Financing', url: 'https://www.moh.gov.sg/cost-financing' },
+  { label: 'LIA Singapore', url: 'https://www.lia.org.sg/media/' },
+  { label: 'MoneySense', url: 'https://www.moneysense.gov.sg/' },
+];
+
+async function loadNeedsAnalysis(clientId) {
+  try {
+    const [needsData] = await Promise.all([
+      api.get(`/clients/${clientId}/needs-analysis`)
+    ]);
+    const naMap = {};
+    needsData.forEach(n => { naMap[n.coverage_type] = n; });
+
+    // Auto-compute current coverage from policies
+    const covByType = getCoverageByType(S.policies);
+    const covMap = {
+      'Death / Life': (covByType['Death / Life']||0) + (covByType['Term Life']||0) + (covByType['Whole Life']||0),
+      'Early CI': (covByType['Early Critical Illness']||0) + (covByType['Early CI']||0),
+      'Late Stage CI': (covByType['Late Stage Critical Illness']||0) + (covByType['Standalone CI']||0),
+      'TPD': covByType['TPD']||0,
+      'Hospital / IP': (covByType['Hospitalization']||0) + (covByType['Hospital / IP']||0) + (covByType['Medical']||0),
+      'Disability Income': covByType['Disability Income']||0,
+      'Personal Accident': (covByType['Accident']||0) + (covByType['Personal Accident']||0),
+    };
+
+    const el = document.getElementById('needsAnalysisSection');
+    if (!el) return;
+
+    el.innerHTML = `
+      <div class="alert alert-info" style="margin-bottom:16px"><div class="alert-icon">ℹ️</div><div class="alert-body"><strong>Needs Analysis</strong>Set recommended coverage amounts, track current coverage, and document gaps with rationale. Saves automatically per coverage type.</div></div>
+      <div style="display:flex;flex-direction:column;gap:12px" id="needs-rows">
+        ${NEEDS_COVERAGE_TYPES.map(ct => {
+          const existing = naMap[ct] || {};
+          const current = covMap[ct] || (existing.current_amount || 0);
+          const rec = existing.recommended_amount || 0;
+          const gap = Math.max(0, rec - current);
+          const priority = existing.priority || 'medium';
+          const pColors = { critical: '#EF4444', high: '#F97316', medium: '#F59E0B', low: '#10B981' };
+          return `
+          <div style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;background:var(--surface)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+              <div style="font-size:14px;font-weight:600">${esc(ct)}</div>
+              <select id="na-priority-${esc(ct.replace(/ \//g,'').replace(/ /g,'-'))}" style="padding:4px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;color:${pColors[priority]}">
+                <option value="critical" ${priority==='critical'?'selected':''} style="color:#EF4444">🔴 Critical</option>
+                <option value="high" ${priority==='high'?'selected':''} style="color:#F97316">🟠 High</option>
+                <option value="medium" ${priority==='medium'?'selected':''} style="color:#F59E0B">🟡 Medium</option>
+                <option value="low" ${priority==='low'?'selected':''} style="color:#10B981">🟢 Low</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px">
+              <div class="field" style="margin:0">
+                <label>Recommended (S$)</label>
+                <input type="number" id="na-rec-${esc(ct.replace(/ \//g,'').replace(/ /g,'-'))}" value="${rec||''}" placeholder="0" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;width:100%" oninput="updateNeedsGap('${esc(ct.replace(/ \//g,'').replace(/ /g,'-'))}','${esc(ct)}')">
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:6px">Current (from policies)</div>
+                <div style="font-size:18px;font-weight:700;padding:8px 12px;background:var(--surface-2);border-radius:var(--radius);border:1px solid var(--border)">${fmt(current)}</div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:6px">Gap</div>
+                <div id="na-gap-display-${esc(ct.replace(/ \//g,'').replace(/ /g,'-'))}" style="font-size:18px;font-weight:700;padding:8px 12px;background:${gap>0?'var(--danger-light)':'var(--success-light)'};border-radius:var(--radius);border:1px solid ${gap>0?'rgba(239,68,68,0.3)':'rgba(16,185,129,0.3)'};color:${gap>0?'var(--danger)':'var(--success)'}">${gap>0?fmt(gap):'✓ Covered'}</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:10px">
+              <label>Rationale / Notes</label>
+              <textarea id="na-rationale-${esc(ct.replace(/ \//g,'').replace(/ /g,'-'))}" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px;resize:vertical" placeholder="e.g. Client has 2 dependents, income replacement 10x recommended...">${esc(existing.rationale||'')}</textarea>
+            </div>
+            <div style="margin-bottom:12px">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:6px">📚 Reference Sources</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${NEEDS_SOURCES.map(s => `<a href="${s.url}" target="_blank" rel="noopener" style="font-size:11px;padding:3px 8px;border-radius:99px;background:var(--primary-light);color:var(--primary);text-decoration:none;border:1px solid rgba(14,165,233,0.3)">${esc(s.label)} ↗</a>`).join('')}
+              </div>
+            </div>
+            <input type="hidden" id="na-current-${esc(ct.replace(/ \//g,'').replace(/ /g,'-'))}" value="${current}">
+            <button class="btn btn-primary btn-sm" onclick="saveNeedsAnalysis('${clientId}','${esc(ct)}')">💾 Save ${esc(ct)}</button>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch(e) { console.warn('Needs analysis load failed:', e); }
+}
+
+function updateNeedsGap(key, ct) {
+  const recEl = document.getElementById(`na-rec-${key}`);
+  const curEl = document.getElementById(`na-current-${key}`);
+  const gapEl = document.getElementById(`na-gap-display-${key}`);
+  if (!recEl || !curEl || !gapEl) return;
+  const rec = parseFloat(recEl.value) || 0;
+  const cur = parseFloat(curEl.value) || 0;
+  const gap = Math.max(0, rec - cur);
+  gapEl.textContent = gap > 0 ? 'S$' + gap.toLocaleString('en-SG') : '✓ Covered';
+  gapEl.style.background = gap > 0 ? 'var(--danger-light)' : 'var(--success-light)';
+  gapEl.style.color = gap > 0 ? 'var(--danger)' : 'var(--success)';
+  gapEl.style.borderColor = gap > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)';
+}
+
+async function saveNeedsAnalysis(clientId, ct) {
+  const key = ct.replace(/ \//g,'').replace(/ /g,'-');
+  const rec = parseFloat(document.getElementById(`na-rec-${key}`)?.value) || 0;
+  const cur = parseFloat(document.getElementById(`na-current-${key}`)?.value) || 0;
+  const gap = Math.max(0, rec - cur);
+  const rationale = document.getElementById(`na-rationale-${key}`)?.value || '';
+  const priority = document.getElementById(`na-priority-${key}`)?.value || 'medium';
+  try {
+    await api.post(`/clients/${clientId}/needs-analysis`, {
+      coverage_type: ct, recommended_amount: rec, current_amount: cur,
+      gap, rationale, priority, sources: NEEDS_SOURCES.map(s => s.url)
+    });
+    toast(`${ct} saved ✅`);
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 // ── Investments ────────────────────────────────────────────────────────────────
@@ -1443,7 +1579,7 @@ function renderInvestments(clientId, isAdmin) {
     return `
       <div style="padding:20px;border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:8px;flex-wrap:wrap">
-          <div><div style="font-size:15px;font-weight:600">${esc(i.name)}</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">${esc(i.type)} · Goal by ${fmtDate(i.goal_by)}</div></div>
+          <div><div style="font-size:15px;font-weight:600">${esc(i.name)}</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">${esc(i.investment_subtype||i.type)} · ${esc(i.type)} · ${i.payment_frequency||'annual'} · Goal by ${fmtDate(i.goal_by)}</div></div>
           <div style="display:flex;gap:6px">
             <button class="btn btn-ghost btn-sm" onclick="openInvestmentModal(${i.id})">✏️</button>
             <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteInvestment(${i.id})">🗑️</button>
@@ -1464,13 +1600,14 @@ function renderInvestments(clientId, isAdmin) {
           <div class="calc-title">📊 Projection Calculator</div>
           <div class="calc-grid">
             <div class="field" style="margin:0"><label>Principal (S$)</label><input type="number" id="cp-${i.id}" value="${i.value_now||0}" style="padding:8px 12px"></div>
-            <div class="field" style="margin:0"><label>Rate (%/yr)</label><input type="number" id="cr-${i.id}" value="6" step="0.1" style="padding:8px 12px"></div>
+            <div class="field" style="margin:0"><label>Rate (%/yr)</label><input type="number" id="cr-${i.id}" value="${i.growth_rate_assumption||6}" step="0.1" style="padding:8px 12px"></div>
             <div class="field" style="margin:0"><label>Years</label><input type="number" id="cy-${i.id}" value="10" min="1" style="padding:8px 12px"></div>
-            <div class="field" style="margin:0"><label>Monthly Contribution</label><input type="number" id="cc-${i.id}" value="${i.contribution||0}" style="padding:8px 12px"></div>
+            <div class="field" style="margin:0"><label>Contribution (${i.payment_frequency||'annual'})</label><input type="number" id="cc-${i.id}" value="${i.contribution||0}" style="padding:8px 12px"></div>
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:8px">
+          <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="calcInterest(${i.id},'simple')">Simple Interest</button>
             <button class="btn btn-primary btn-sm" onclick="calcInterest(${i.id},'compound')">Compound Interest</button>
+            <button class="btn btn-warning btn-sm" onclick="loadInvestmentProjection(${i.id})">📈 FV Table</button>
           </div>
           <div class="calc-result hidden" id="cres-${i.id}">
             <div class="calc-result-grid">
@@ -1480,6 +1617,7 @@ function renderInvestments(clientId, isAdmin) {
               <div><div class="calc-stat-label">Final Value</div><div class="calc-stat-value" style="color:var(--primary)" id="cf-${i.id}"></div></div>
             </div>
           </div>
+          <div id="proj-table-${i.id}" style="margin-top:12px"></div>
         </div>
       </div>`;
   }).join('');
@@ -1525,6 +1663,47 @@ function calcInterest(id, type) {
   document.getElementById(`cti-${id}`).textContent = fmt(contributed);
   document.getElementById(`ci-${id}`).textContent = fmt(interest);
   document.getElementById(`cf-${id}`).textContent = fmt(final);
+}
+
+// ── Investment Projection Table ───────────────────────────────────────────────
+async function loadInvestmentProjection(invId) {
+  const el = document.getElementById(`proj-table-${invId}`);
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text-3);font-size:12px">⏳ Loading projection…</div>';
+  try {
+    const cid = S.viewClientId || S.user?.id;
+    const data = await api.get(`/clients/${cid}/investments/${invId}/projection?rates=3,4,5,6,7,8&years=5,10,15,20,25,30`);
+    const { rates, years, projection, rate_labels, investment, endowment_data } = data;
+    const labelColors = { conservative: '#64748B', realistic: '#0EA5E9', optimistic: '#10B981', fixed: '#8B5CF6' };
+
+    let html = `<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px">📊 FV Comparison Table (FV = PV×(1+r)^n + PMT×((1+r)^n-1)/r)</div>`;
+    html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">`;
+    html += `<thead><tr><th style="padding:6px 10px;text-align:left;background:var(--surface-2);border-bottom:2px solid var(--border);white-space:nowrap">Rate / Years</th>`;
+    years.forEach(y => { html += `<th style="padding:6px 10px;text-align:right;background:var(--surface-2);border-bottom:2px solid var(--border)">${y}yr</th>`; });
+    html += `</tr></thead><tbody>`;
+    rates.forEach(rate => {
+      const label = rate_labels[rate] || 'moderate';
+      const color = labelColors[label] || '#0EA5E9';
+      html += `<tr>`;
+      html += `<td style="padding:6px 10px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)"><span style="color:${color};font-size:11px;font-weight:700">${rate}% <span style="background:${color}20;padding:1px 5px;border-radius:99px;font-size:10px">${label}</span></span></td>`;
+      years.forEach(y => {
+        const val = projection[rate]?.[y] || 0;
+        html += `<td style="padding:6px 10px;text-align:right;font-weight:500;border-bottom:1px solid var(--border)">S$${val.toLocaleString('en-SG')}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    if (endowment_data && endowment_data.maturity_date) {
+      html += `<div style="margin-top:10px;padding:10px 14px;background:var(--warning-light);border-radius:var(--radius);border:1px solid rgba(245,158,11,0.3);font-size:12px">
+        <strong>📋 Endowment Details</strong> · Maturity: ${endowment_data.maturity_date}
+        · Guaranteed: S$${(endowment_data.guaranteed_return||0).toLocaleString()}
+        · Projected: S$${(endowment_data.projected_return||0).toLocaleString()}
+      </div>`;
+    }
+
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div style="color:var(--danger);font-size:12px">Failed to load projection: ${e.message}</div>`; }
 }
 
 // ── History ────────────────────────────────────────────────────────────────────
@@ -1874,7 +2053,10 @@ function policyFormHTML(p = {}) {
     <div class="field"><label>Product Type</label><select id="mf-product_type">${PROD_TYPES.map(t => `<option ${(p.product_type||'Term Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Product Name</label><input id="mf-product_name" type="text" value="${esc(p.product_name||'')}" placeholder="e.g. PRUActive Protect"></div>
     <div class="field"><label>Status</label><select id="mf-status"><option ${(p.status||'Active')==='Active'?'selected':''}>Active</option><option ${p.status==='Lapsed'?'selected':''}>Lapsed</option><option ${p.status==='Cancelled'?'selected':''}>Cancelled</option><option ${p.status==='Pending'?'selected':''}>Pending</option></select></div>
+    <div class="field"><label>Payment Frequency</label><select id="mf-payment_frequency"><option value="annual" ${(p.payment_frequency||'annual')==='annual'?'selected':''}>Annual ($/yr)</option><option value="monthly" ${p.payment_frequency==='monthly'?'selected':''}>Monthly ($/mo)</option></select></div>
     <div class="field"><label>Annual Premium (S$)</label><input id="mf-premium" type="number" value="${p.premium||''}" placeholder="3600"></div>
+    <div class="field"><label>CPF Medisave Amount (S$)</label><input id="mf-cpf_medisave_amount" type="number" value="${p.cpf_medisave_amount||0}" placeholder="0"></div>
+    <div class="field"><label>Cash Amount (S$)</label><input id="mf-cash_amount" type="number" value="${p.cash_amount||0}" placeholder="0"></div>
     <div class="field"><label>Recommended Total Coverage</label><input id="mf-recommended" type="number" value="${p.recommended||''}" placeholder="0"></div>
     <div class="field"><label>Start Date</label><input id="mf-start_date" type="date" value="${p.start_date||''}"></div>
     <div class="field"><label>End Date</label><input id="mf-end_date" type="date" value="${p.end_date||''}"></div>
@@ -1889,7 +2071,7 @@ async function openPolicyModal(id) {
     const d = getFormData();
     const coverageItems = getCoverageItems();
     if (coverageItems.length === 0) { toast('Select at least one coverage type', 'error'); return false; }
-    const body = { product_name: d.product_name, policy_number: d.policy_number, insurer: d.insurer, product_type: d.product_type, coverage_items: coverageItems, premium: parseFloat(d.premium)||0, recommended: parseFloat(d.recommended)||0, status: d.status, start_date: d.start_date, end_date: d.end_date, notes: d.notes };
+    const body = { product_name: d.product_name, policy_number: d.policy_number, insurer: d.insurer, product_type: d.product_type, coverage_items: coverageItems, premium: parseFloat(d.premium)||0, recommended: parseFloat(d.recommended)||0, status: d.status, start_date: d.start_date, end_date: d.end_date, notes: d.notes, payment_frequency: document.getElementById('mf-payment_frequency')?.value || 'annual', cpf_medisave_amount: parseFloat(document.getElementById('mf-cpf_medisave_amount')?.value)||0, cash_amount: parseFloat(document.getElementById('mf-cash_amount')?.value)||0 };
     const cid = S.viewClientId || S.user?.id;
     try {
       if (existing) { const u = await api.put(`/clients/${cid}/policies/${id}`, body); S.policies = parsePolicyCoverageItems(S.policies.map(p => p.id===id?u:p)); toast('Policy updated'); }
@@ -1910,24 +2092,55 @@ async function deletePolicy(id) {
 
 // ── Investment Modal ───────────────────────────────────────────────────────────
 const INV_TYPES = ['ILP','IUL','SRS','CPF-SA','CPF-OA','Stocks','ETF','Bonds','REITs','Fixed Deposit','Crypto','Other'];
+const INV_SUBTYPES = ['ILP','Endowment','Bond','Unit Trust','SRS','CPF-OA','CPF-SA','Cash/FD','Other'];
+const GROWTH_RATE_OPTIONS = [2,3,4,5,6,7,8];
 
 function invFormHTML(i = {}) {
+  const isEndowment = (i.investment_subtype || '') === 'Endowment';
   return `<div class="form-grid">
     <div class="field"><label>Investment Name *</label><input id="mf-name" type="text" value="${esc(i.name||'')}" placeholder="PRULink Growth Fund" required></div>
-    <div class="field"><label>Type</label><select id="mf-type">${INV_TYPES.map(t => `<option ${(i.type||'ILP')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Sub-Type</label><select id="mf-investment_subtype" onchange="toggleEndowmentFields()">${INV_SUBTYPES.map(t => `<option ${(i.investment_subtype||'ILP')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Type / Category</label><select id="mf-type">${INV_TYPES.map(t => `<option ${(i.type||'ILP')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+    <div class="field"><label>Payment Frequency</label><select id="mf-payment_frequency"><option value="annual" ${(i.payment_frequency||'annual')==='annual'?'selected':''}>Annual</option><option value="semi-annual" ${i.payment_frequency==='semi-annual'?'selected':''}>Semi-Annual</option><option value="quarterly" ${i.payment_frequency==='quarterly'?'selected':''}>Quarterly</option><option value="monthly" ${i.payment_frequency==='monthly'?'selected':''}>Monthly</option></select></div>
+    <div class="field"><label>Growth Rate Assumption</label><select id="mf-growth_rate_assumption">${GROWTH_RATE_OPTIONS.map(r => `<option value="${r}" ${parseFloat(i.growth_rate_assumption||6)===r?'selected':''}>${r}%</option>`).join('')}</select></div>
     <div class="field"><label>Amount Invested (S$)</label><input id="mf-invested" type="number" value="${i.invested||''}" placeholder="20000"></div>
     <div class="field"><label>Current Value (S$)</label><input id="mf-value_now" type="number" value="${i.value_now||''}" placeholder="24000"></div>
     <div class="field"><label>Target Goal (S$)</label><input id="mf-target" type="number" value="${i.target||''}" placeholder="100000"></div>
     <div class="field"><label>Goal Date</label><input id="mf-goal_by" type="date" value="${i.goal_by||''}"></div>
-    <div class="field"><label>Monthly Contribution (S$)</label><input id="mf-contribution" type="number" value="${i.contribution||0}" placeholder="500"></div>
+    <div class="field"><label>Contribution (per payment period, S$)</label><input id="mf-contribution" type="number" value="${i.contribution||0}" placeholder="500"></div>
+    <div class="field"><label>Start Date</label><input id="mf-start_date" type="date" value="${i.start_date||''}"></div>
+    <div id="endowment-fields" style="grid-column:1/-1;display:${isEndowment?'grid':'none'};grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px 16px">
+      <div class="field"><label>Maturity Date</label><input id="mf-maturity_date" type="date" value="${i.maturity_date||''}"></div>
+      <div class="field"><label>Guaranteed Return (S$)</label><input id="mf-guaranteed_return" type="number" value="${i.guaranteed_return||''}" placeholder="0"></div>
+      <div class="field"><label>Projected Return (S$)</label><input id="mf-projected_return" type="number" value="${i.projected_return||''}" placeholder="0"></div>
+    </div>
   </div>`;
+}
+
+function toggleEndowmentFields() {
+  const sub = document.getElementById('mf-investment_subtype')?.value;
+  const el = document.getElementById('endowment-fields');
+  if (el) el.style.display = sub === 'Endowment' ? 'grid' : 'none';
 }
 
 async function openInvestmentModal(id) {
   const existing = id ? S.investments.find(i => i.id===id) : null;
   showModal(existing ? 'Edit Investment' : 'Add Investment', invFormHTML(existing||{}), async () => {
     const d = getFormData();
-    const body = { name: d.name, type: d.type, invested: parseFloat(d.invested)||0, value_now: parseFloat(d.value_now)||0, target: parseFloat(d.target)||0, goal_by: d.goal_by, contribution: parseFloat(d.contribution)||0 };
+    let growthRate = parseFloat(document.getElementById('mf-growth_rate_assumption')?.value) || 6;
+    const body = {
+      name: d.name, type: d.type,
+      invested: parseFloat(d.invested)||0, value_now: parseFloat(d.value_now)||0,
+      target: parseFloat(d.target)||0, goal_by: d.goal_by,
+      contribution: parseFloat(d.contribution)||0,
+      investment_subtype: document.getElementById('mf-investment_subtype')?.value || '',
+      payment_frequency: document.getElementById('mf-payment_frequency')?.value || 'annual',
+      growth_rate_assumption: growthRate,
+      start_date: d.start_date || '',
+      maturity_date: document.getElementById('mf-maturity_date')?.value || '',
+      guaranteed_return: parseFloat(document.getElementById('mf-guaranteed_return')?.value)||0,
+      projected_return: parseFloat(document.getElementById('mf-projected_return')?.value)||0,
+    };
     const cid = S.viewClientId || S.user?.id;
     try {
       if (existing) { const u = await api.put(`/clients/${cid}/investments/${id}`, body); S.investments = S.investments.map(i => i.id===id?u:i); toast('Investment updated'); }
@@ -1935,6 +2148,7 @@ async function openInvestmentModal(id) {
       closeModal(); renderInvestments(cid);
     } catch (e) { toast(e.message, 'error'); }
   });
+  requestAnimationFrame(() => toggleEndowmentFields());
 }
 
 async function deleteInvestment(id) {
@@ -2180,6 +2394,13 @@ function renderClientProfile(clientId, isAdmin) {
         </div>
       </div>
       <div style="margin-top:12px;font-size:9px;color:#334155">Data: MAS Financial Planning Guidelines 2024 · CPF Board Retirement Sums 2025 · SingStat HES 2024 · MOH Healthcare Costs 2024 · PRULink UIF Analysis April 2026</div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+        <a href="https://www.mas.gov.sg/regulation/insurance" target="_blank" rel="noopener" style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(14,165,233,0.15);color:#7DD3FC;text-decoration:none">MAS Insurance ↗</a>
+        <a href="https://www.cpf.gov.sg/member/retirement-income" target="_blank" rel="noopener" style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(14,165,233,0.15);color:#7DD3FC;text-decoration:none">CPF Retirement ↗</a>
+        <a href="https://www.moh.gov.sg/cost-financing" target="_blank" rel="noopener" style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(14,165,233,0.15);color:#7DD3FC;text-decoration:none">MOH Cost &amp; Financing ↗</a>
+        <a href="https://www.lia.org.sg/media/" target="_blank" rel="noopener" style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(14,165,233,0.15);color:#7DD3FC;text-decoration:none">LIA Singapore ↗</a>
+        <a href="https://www.moneysense.gov.sg/" target="_blank" rel="noopener" style="font-size:10px;padding:2px 8px;border-radius:99px;background:rgba(14,165,233,0.15);color:#7DD3FC;text-decoration:none">MoneySense ↗</a>
+      </div>
     </div>`;
 }
 // ═════════════════════════════════════════════════════════════════════
@@ -2315,4 +2536,4 @@ async function saveClientNotes(clientId) {
 </script>
 </body>
 </html>
-<!-- build: 1773817216 -->
+<!-- build: 1775710105 -->

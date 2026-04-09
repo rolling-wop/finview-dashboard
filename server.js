@@ -61,6 +61,20 @@ async function initDb() {
       expires_at TEXT, used INTEGER DEFAULT 0,
       FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS needs_analysis (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id TEXT NOT NULL,
+      coverage_type TEXT NOT NULL,
+      recommended_amount REAL DEFAULT 0,
+      current_amount REAL DEFAULT 0,
+      gap REAL DEFAULT 0,
+      rationale TEXT DEFAULT '',
+      priority TEXT DEFAULT 'medium',
+      sources TEXT DEFAULT '[]',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    );
   `);
 
   // Migration: add coverage_items column to policies
@@ -76,6 +90,19 @@ async function initDb() {
   try { db.run(`ALTER TABLE policies ADD COLUMN policy_number TEXT DEFAULT ''`); } catch {}
   try { db.run(`ALTER TABLE policies ADD COLUMN coverage_items TEXT DEFAULT '[]'`); } catch {}
   try { db.run(`CREATE TABLE IF NOT EXISTS invite_tokens (token TEXT PRIMARY KEY, client_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')), expires_at TEXT, used INTEGER DEFAULT 0, FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE)`); } catch {}
+
+  // Phase 2 migrations — policies new columns
+  try { db.run(`ALTER TABLE policies ADD COLUMN payment_frequency TEXT DEFAULT 'annual'`); } catch {}
+  try { db.run(`ALTER TABLE policies ADD COLUMN cpf_medisave_amount REAL DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE policies ADD COLUMN cash_amount REAL DEFAULT 0`); } catch {}
+  // Phase 2 migrations — investments new columns
+  try { db.run(`ALTER TABLE investments ADD COLUMN investment_subtype TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN payment_frequency TEXT DEFAULT 'annual'`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN growth_rate_assumption REAL DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN start_date TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN maturity_date TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN guaranteed_return REAL DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN projected_return REAL DEFAULT 0`); } catch {}
 
   // Auto-seed admin
   const adminExists = dbGet(`SELECT id FROM clients WHERE role='admin'`);
@@ -118,7 +145,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version / health ping — update this to confirm new deploys
-app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v5-2026-03-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items'] }));
+app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v6-2026-04-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items','needs-analysis','projection','notion-crm-export'] }));
 
 function authenticate(req, res, next) {
   const token = (req.headers.authorization || '').split(' ')[1];
@@ -346,14 +373,14 @@ app.get('/api/clients/:id/policies', authenticate, (req, res) => {
 
 app.post('/api/clients/:id/policies', authenticate, (req, res) => {
   if (!guardClient(req, res)) return;
-  const { type, product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes } = req.body;
+  const { type, product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes, payment_frequency, cpf_medisave_amount, cash_amount } = req.body;
   const items = Array.isArray(coverage_items) ? coverage_items : [];
   // coverage_items can be [{type,coverage}] objects (new) or strings (legacy)
   const totalCoverage = items.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
   const primaryType = items.length > 0 ? (items[0].type || items[0]) : (type || '');
   const itemsJson = JSON.stringify(items);
-  const id = dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,coverage_items,premium,start_date,end_date,status,recommended,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    [req.params.id, primaryType, product_name||'', policy_number||'', insurer||'', product_type||'', totalCoverage||0, itemsJson, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'']);
+  const id = dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,coverage_items,premium,start_date,end_date,status,recommended,notes,payment_frequency,cpf_medisave_amount,cash_amount) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    [req.params.id, primaryType, product_name||'', policy_number||'', insurer||'', product_type||'', totalCoverage||0, itemsJson, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'', payment_frequency||'annual', cpf_medisave_amount||0, cash_amount||0]);
   const row = dbGet('SELECT * FROM policies WHERE id=?', [id]);
   if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
   res.json(row);
@@ -368,7 +395,7 @@ app.put('/api/clients/:id/policies/:pid', authenticate, (req, res) => {
     body.type = body.coverage_items.length > 0 ? body.coverage_items[0].type : '';
     body.coverage_items = JSON.stringify(body.coverage_items);
   }
-  const f = ['type','product_name','policy_number','insurer','product_type','coverage','coverage_items','premium','start_date','end_date','status','recommended','notes'];
+  const f = ['type','product_name','policy_number','insurer','product_type','coverage','coverage_items','premium','start_date','end_date','status','recommended','notes','payment_frequency','cpf_medisave_amount','cash_amount'];
   const sets = [], vals = [];
   f.filter(k => k !== 'coverage_items').forEach(k => { if (body[k] !== undefined) { sets.push(`${k}=?`); vals.push(body[k]); } });
   if (body.coverage_items !== undefined) { sets.push('coverage_items=?'); vals.push(body.coverage_items); }
@@ -392,15 +419,15 @@ app.get('/api/clients/:id/investments', authenticate, (req, res) => {
 
 app.post('/api/clients/:id/investments', authenticate, (req, res) => {
   if (!guardClient(req, res)) return;
-  const { name, type, invested, value_now, target, goal_by, contribution } = req.body;
-  const id = dbRun('INSERT INTO investments (client_id,name,type,invested,value_now,target,goal_by,contribution) VALUES (?,?,?,?,?,?,?,?)',
-    [req.params.id, name||'', type||'', invested||0, value_now||0, target||0, goal_by||'', contribution||0]);
+  const { name, type, invested, value_now, target, goal_by, contribution, investment_subtype, payment_frequency, growth_rate_assumption, start_date, maturity_date, guaranteed_return, projected_return } = req.body;
+  const id = dbRun('INSERT INTO investments (client_id,name,type,invested,value_now,target,goal_by,contribution,investment_subtype,payment_frequency,growth_rate_assumption,start_date,maturity_date,guaranteed_return,projected_return) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    [req.params.id, name||'', type||'', invested||0, value_now||0, target||0, goal_by||'', contribution||0, investment_subtype||'', payment_frequency||'annual', growth_rate_assumption||0, start_date||'', maturity_date||'', guaranteed_return||0, projected_return||0]);
   res.json(dbGet('SELECT * FROM investments WHERE id=?', [id]));
 });
 
 app.put('/api/clients/:id/investments/:iid', authenticate, (req, res) => {
   if (!guardClient(req, res)) return;
-  const f = ['name','type','invested','value_now','target','goal_by','contribution'];
+  const f = ['name','type','invested','value_now','target','goal_by','contribution','investment_subtype','payment_frequency','growth_rate_assumption','start_date','maturity_date','guaranteed_return','projected_return'];
   const sets = [], vals = [];
   f.forEach(k => { if (req.body[k] !== undefined) { sets.push(`${k}=?`); vals.push(req.body[k]); } });
   if (sets.length) { vals.push(req.params.iid, req.params.id); dbRun(`UPDATE investments SET ${sets.join(',')} WHERE id=? AND client_id=?`, vals); }
@@ -665,6 +692,190 @@ app.get('/api/pipeline', authenticate, requireAdmin, (req, res) => {
     result[s] = dbAll(`SELECT id, name, annual_income, age, deal_stage, last_contact, next_action FROM clients WHERE deal_stage=? AND role='client' ORDER BY name`, [s]);
   });
   res.json({ stages, pipeline: result });
+});
+
+// ── Needs Analysis CRUD ────────────────────────────────────────────────────────
+app.get('/api/clients/:id/needs-analysis', authenticate, (req, res) => {
+  if (!guardClient(req, res)) return;
+  const rows = dbAll('SELECT * FROM needs_analysis WHERE client_id=? ORDER BY coverage_type', [req.params.id]);
+  rows.forEach(r => { try { r.sources = JSON.parse(r.sources || '[]'); } catch { r.sources = []; } });
+  res.json(rows);
+});
+
+app.post('/api/clients/:id/needs-analysis', authenticate, (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { coverage_type, recommended_amount, current_amount, gap, rationale, priority, sources } = req.body;
+  const sourcesJson = JSON.stringify(Array.isArray(sources) ? sources : []);
+  const existing = dbGet('SELECT id FROM needs_analysis WHERE client_id=? AND coverage_type=?', [req.params.id, coverage_type]);
+  let rowId;
+  if (existing) {
+    dbRun(`UPDATE needs_analysis SET recommended_amount=?,current_amount=?,gap=?,rationale=?,priority=?,sources=?,updated_at=datetime('now') WHERE client_id=? AND coverage_type=?`,
+      [recommended_amount||0, current_amount||0, gap||0, rationale||'', priority||'medium', sourcesJson, req.params.id, coverage_type]);
+    rowId = existing.id;
+  } else {
+    rowId = dbRun('INSERT INTO needs_analysis (client_id,coverage_type,recommended_amount,current_amount,gap,rationale,priority,sources) VALUES (?,?,?,?,?,?,?,?)',
+      [req.params.id, coverage_type||'', recommended_amount||0, current_amount||0, gap||0, rationale||'', priority||'medium', sourcesJson]);
+  }
+  const row = dbGet('SELECT * FROM needs_analysis WHERE id=?', [rowId]);
+  if (row) { try { row.sources = JSON.parse(row.sources || '[]'); } catch { row.sources = []; } }
+  res.json(row);
+});
+
+app.put('/api/clients/:id/needs-analysis/:nid', authenticate, (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { recommended_amount, current_amount, gap, rationale, priority, sources } = req.body;
+  const sourcesJson = JSON.stringify(Array.isArray(sources) ? sources : []);
+  dbRun(`UPDATE needs_analysis SET recommended_amount=?,current_amount=?,gap=?,rationale=?,priority=?,sources=?,updated_at=datetime('now') WHERE id=? AND client_id=?`,
+    [recommended_amount||0, current_amount||0, gap||0, rationale||'', priority||'medium', sourcesJson, req.params.nid, req.params.id]);
+  const row = dbGet('SELECT * FROM needs_analysis WHERE id=?', [req.params.nid]);
+  if (row) { try { row.sources = JSON.parse(row.sources || '[]'); } catch { row.sources = []; } }
+  res.json(row);
+});
+
+app.delete('/api/clients/:id/needs-analysis/:nid', authenticate, (req, res) => {
+  if (!guardClient(req, res)) return;
+  dbRun('DELETE FROM needs_analysis WHERE id=? AND client_id=?', [req.params.nid, req.params.id]);
+  res.json({ success: true });
+});
+
+// ── Investment Projection ──────────────────────────────────────────────────────
+app.get('/api/clients/:id/investments/:iid/projection', authenticate, (req, res) => {
+  if (!guardClient(req, res)) return;
+  const inv = dbGet('SELECT * FROM investments WHERE id=? AND client_id=?', [req.params.iid, req.params.id]);
+  if (!inv) return res.status(404).json({ error: 'Investment not found' });
+
+  const ratesParam = req.query.rates || '3,4,5,6,7,8';
+  const yearsParam = req.query.years || '5,10,15,20,25,30';
+  const rates = ratesParam.split(',').map(Number).filter(r => !isNaN(r));
+  const years = yearsParam.split(',').map(Number).filter(y => !isNaN(y));
+
+  const subtype = inv.investment_subtype || '';
+  const pv = parseFloat(inv.value_now) || 0;
+  let annualPmt = parseFloat(inv.contribution) || 0;
+
+  // Convert contribution to annual equivalent based on payment frequency
+  const freq = inv.payment_frequency || 'annual';
+  if (freq === 'monthly') annualPmt *= 12;
+  else if (freq === 'quarterly') annualPmt *= 4;
+  else if (freq === 'semi-annual') annualPmt *= 2;
+
+  // CPF fixed rates override user-provided rates
+  let effectiveRates = rates;
+  if (subtype === 'CPF-OA') effectiveRates = [2.5];
+  else if (subtype === 'CPF-SA') effectiveRates = [4.0];
+
+  function fvCalc(pv, r, n, pmt) {
+    if (r === 0) return pv + pmt * n;
+    return pv * Math.pow(1 + r, n) + pmt * (Math.pow(1 + r, n) - 1) / r;
+  }
+
+  const projection = {};
+  effectiveRates.forEach(rate => {
+    const r = rate / 100;
+    projection[rate] = {};
+    years.forEach(n => { projection[rate][n] = Math.round(fvCalc(pv, r, n, annualPmt)); });
+  });
+
+  // Realistic vs optimistic labels per subtype
+  const getLabel = (sub, rate) => {
+    if (sub === 'CPF-OA' || sub === 'CPF-SA') return 'fixed';
+    if (sub === 'ILP' || sub === 'Unit Trust') return rate <= 4 ? 'conservative' : rate <= 6 ? 'realistic' : 'optimistic';
+    if (sub === 'Endowment') return rate <= 3 ? 'conservative' : rate <= 5 ? 'realistic' : 'optimistic';
+    if (sub === 'Bond') return rate <= 3 ? 'realistic' : 'optimistic';
+    if (sub === 'SRS') return rate <= 5 ? 'realistic' : 'optimistic';
+    return rate <= 4 ? 'conservative' : rate <= 6 ? 'realistic' : 'optimistic';
+  };
+
+  const rateLabels = {};
+  effectiveRates.forEach(rate => { rateLabels[rate] = getLabel(subtype, rate); });
+
+  const endowmentData = subtype === 'Endowment' ? {
+    guaranteed_return: parseFloat(inv.guaranteed_return) || 0,
+    projected_return: parseFloat(inv.projected_return) || 0,
+    maturity_date: inv.maturity_date || '',
+  } : null;
+
+  res.json({
+    investment: { id: inv.id, name: inv.name, subtype, payment_frequency: freq, value_now: pv, annual_contribution: annualPmt },
+    rates: effectiveRates, years, projection, rate_labels: rateLabels, endowment_data: endowmentData,
+  });
+});
+
+// ── Notion CRM Full Export ─────────────────────────────────────────────────────
+app.post('/api/admin/notion-crm-export', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const clients = dbAll(`SELECT * FROM clients WHERE role='client'`);
+    const results = { success: 0, failed: 0, errors: [] };
+
+    for (const client of clients) {
+      try {
+        const policies = dbAll('SELECT * FROM policies WHERE client_id=?', [client.id]);
+        const investments = dbAll('SELECT * FROM investments WHERE client_id=?', [client.id]);
+        const needsAnalysis = dbAll('SELECT * FROM needs_analysis WHERE client_id=?', [client.id]);
+        const totalPremium = policies.reduce((s, p) => s + (p.premium || 0), 0);
+
+        const blocks = [
+          { object: 'block', type: 'heading_2', heading_2: { rich_text: [{ text: { content: '👤 Client Profile' } }] } },
+          { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ text: { content: `Age: ${client.age||'—'} | Gender: ${client.gender||'—'} | Occupation: ${client.occupation||'—'} | Annual Income: S$${(client.annual_income||0).toLocaleString()} | Dependents: ${client.dependents||0}` } }] } },
+          { object: 'block', type: 'paragraph', paragraph: { rich_text: [{ text: { content: `Email: ${client.email||'—'} | Phone: ${client.phone||'—'}` } }] } },
+        ];
+
+        if (policies.length) {
+          blocks.push({ object: 'block', type: 'heading_2', heading_2: { rich_text: [{ text: { content: `🛡️ Insurance Policies (${policies.length}) — Total Premium: S$${Math.round(totalPremium).toLocaleString()}/yr` } }] } });
+          policies.slice(0, 30).forEach(p => {
+            blocks.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ text: { content: `${p.product_name||p.type} (${p.insurer||'—'}) | Coverage: S$${(p.coverage||0).toLocaleString()} | Premium: S$${(p.premium||0).toLocaleString()}/yr | ${p.status} | Freq: ${p.payment_frequency||'annual'}` } }] } });
+          });
+        }
+
+        if (investments.length) {
+          blocks.push({ object: 'block', type: 'heading_2', heading_2: { rich_text: [{ text: { content: `📈 Investments (${investments.length})` } }] } });
+          investments.slice(0, 20).forEach(i => {
+            blocks.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ text: { content: `${i.name} (${i.investment_subtype||i.type||'—'}) | Value: S$${(i.value_now||0).toLocaleString()} | Invested: S$${(i.invested||0).toLocaleString()} | Target: S$${(i.target||0).toLocaleString()}` } }] } });
+          });
+        }
+
+        if (needsAnalysis.length) {
+          blocks.push({ object: 'block', type: 'heading_2', heading_2: { rich_text: [{ text: { content: `📋 Needs Analysis` } }] } });
+          needsAnalysis.forEach(n => {
+            blocks.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ text: { content: `${n.coverage_type} | Recommended: S$${(n.recommended_amount||0).toLocaleString()} | Current: S$${(n.current_amount||0).toLocaleString()} | Gap: S$${(n.gap||0).toLocaleString()} | Priority: ${n.priority}` } }] } });
+          });
+        }
+
+        const props = {
+          'Name': { title: [{ text: { content: client.name } }] },
+          'Email': { email: client.email || null },
+          'Phone': { phone_number: client.phone || null },
+          'Total Premium (SGD)': { number: totalPremium },
+          'Status': { select: { name: 'Active' } },
+          'Notes': { rich_text: [{ text: { content: `Full CRM export: ${new Date().toLocaleDateString('en-SG')} | ${policies.length} policies | ${investments.length} investments | ${needsAnalysis.length} needs analysis` } }] }
+        };
+
+        const existingPageId = client.notion_page_id;
+        if (existingPageId) {
+          await notionReq('PATCH', `/pages/${existingPageId}`, { properties: props });
+          // Append new content blocks
+          if (blocks.length > 0) {
+            await notionReq('PATCH', `/blocks/${existingPageId}/children`, { children: blocks.slice(0, 100) });
+          }
+        } else {
+          const page = await notionReq('POST', '/pages', {
+            parent: { database_id: NOTION_CLIENTS_DB },
+            properties: props,
+            children: blocks.slice(0, 100)
+          });
+          if (page.id) {
+            dbRun(`UPDATE clients SET notion_page_id=? WHERE id=?`, [page.id, client.id]);
+          }
+        }
+        results.success++;
+      } catch (e) {
+        results.failed++;
+        results.errors.push({ client: client.name, error: e.message });
+      }
+    }
+
+    res.json({ success: true, total: clients.length, ...results });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── Bootstrap admin ────────────────────────────────────────────────────────────
