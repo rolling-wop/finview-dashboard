@@ -515,8 +515,13 @@ function buildAdminNav() {
     <button class="nav-item" id="nav-adminGaps" onclick="navTo('adminGaps')"><span class="nav-icon">⚠️</span> Coverage Gaps</button>
     <div class="nav-label" style="margin-top:8px">Tools</div>
     <button class="nav-item" id="nav-adminSync" onclick="syncAllToNotion()"><span class="nav-icon">🔄</span> Sync All → Notion</button>
+    <button class="nav-item" id="nav-adminPullNotion" onclick="pullFromNotion()"><span class="nav-icon">⬇️</span> Pull from Notion</button>
+    <button class="nav-item" id="nav-adminImportB2B" onclick="importB2BLeads()"><span class="nav-icon">📥</span> Import B2B Leads</button>
     <button class="nav-item" id="nav-adminBackup" onclick="navTo('adminBackup')"><span class="nav-icon">💾</span> Backup & Restore</button>
     <button class="nav-item" id="nav-adminPipeline" onclick="navTo('adminPipeline')"><span class="nav-icon">🎯</span> Deal Pipeline</button>
+    <div class="nav-label" style="margin-top:8px">Content</div>
+    <button class="nav-item" id="nav-rollingDollar" onclick="navTo('rollingDollar')"><span class="nav-icon">🎬</span> Rolling Dollar</button>
+    <button class="nav-item" id="nav-pruCalc" onclick="navTo('pruCalc')"><span class="nav-icon">🧮</span> PRU Calc</button>
   `;
 }
 
@@ -532,6 +537,8 @@ function navTo(page, ...args) {
     adminGaps: renderAdminGaps,
     adminBackup: renderAdminBackup,
     adminPipeline: renderAdminPipeline,
+    rollingDollar: renderRollingDollar,
+    pruCalc: renderPruCalc,
     adminViewClient: () => renderAdminViewClient(...args)
   };
   if (fns[page]) fns[page]();
@@ -2533,7 +2540,57 @@ async function saveClientNotes(clientId) {
     toast('Notes saved ✅');
   } catch(e) { toast(e.message, 'error'); }
 }
+
+// ── Rolling Dollar ────────────────────────────────────────────────────────────
+async function renderRollingDollar() {
+  document.getElementById('pageTitle').textContent = '🎬 Rolling Dollar';
+  document.getElementById('pageSub').textContent = 'Script pipeline from Notion';
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-primary" onclick="renderRollingDollar()">↻ Refresh</button>`;
+  document.getElementById('mainContent').innerHTML = `<div class="card"><div class="card-header"><div class="card-title">📋 Script Backlog</div></div><div class="card-body" id="rdScripts"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading scripts from Notion…</div></div></div></div>`;
+  try {
+    const scripts = await api.get('/rolling-dollar/scripts');
+    const statusColor = {Scripted:'#3B82F6',Filmed:'#F59E0B',Uploaded:'#8B5CF6',Published:'#10B981'};
+    const counts = {};
+    scripts.forEach(s => { counts[s.status] = (counts[s.status]||0)+1; });
+    const summary = Object.entries(counts).map(([k,v]) => `<span style="background:${statusColor[k]||'#64748B'}22;color:${statusColor[k]||'#64748B'};padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">${k}: ${v}</span>`).join(' ');
+    const rows = scripts.map(s => `<tr><td style="padding:10px 12px;font-size:13px;font-weight:500">${s.title}</td><td style="padding:10px 12px"><span style="background:${statusColor[s.status]||'#64748B'}22;color:${statusColor[s.status]||'#64748B'};padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600">${s.status||'—'}</span></td><td style="padding:10px 12px;font-size:12px;color:var(--text-3)">${s.date||''}</td><td style="padding:10px 12px">${s.status!=='Published'?`<button class="btn" style="font-size:11px;padding:4px 10px" onclick="markPublished('${s.id}')">Mark Published</button>`:''}</td></tr>`).join('');
+    document.getElementById('rdScripts').innerHTML = `<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">${summary}</div><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-3);text-transform:uppercase">Title</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-3);text-transform:uppercase">Status</th><th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text-3);text-transform:uppercase">Date</th><th style="padding:8px 12px"></th></tr></thead><tbody>${rows}</tbody></table>`;
+  } catch(e) { document.getElementById('rdScripts').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-sub">${e.message}</div></div>`; }
+}
+
+async function markPublished(id) {
+  try {
+    await api._req('POST', `/rolling-dollar/scripts/${id}/update-status`, { status: 'Published' });
+    toast('Marked as Published ✅');
+    renderRollingDollar();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── PRU Calculator Embed ───────────────────────────────────────────────────────
+function renderPruCalc() {
+  document.getElementById('pageTitle').textContent = '🧮 PRU Calculator';
+  document.getElementById('pageSub').textContent = 'Prudential product calculator';
+  document.getElementById('topbarActions').innerHTML = `<a href="https://web-production-78c75.up.railway.app" target="_blank" class="btn">Open in new tab ↗</a>`;
+  document.getElementById('mainContent').innerHTML = `<div style="height:calc(100vh - 120px);border-radius:12px;overflow:hidden;border:1px solid var(--border)"><iframe src="https://web-production-78c75.up.railway.app" style="width:100%;height:100%;border:none" allow="fullscreen"></iframe></div>`;
+}
+
+// ── Notion Pull / B2B Import ───────────────────────────────────────────────────
+async function pullFromNotion() {
+  toast('Pulling updates from Notion…');
+  try {
+    const r = await api._req('POST', '/sync/pull-from-notion', {});
+    toast(`✅ Updated ${r.updated} clients from Notion`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function importB2BLeads() {
+  toast('Importing B2B leads marked Interested…');
+  try {
+    const r = await api._req('POST', '/sync/import-b2b-leads', {});
+    toast(`✅ Imported ${r.imported} new prospects from B2B pipeline`);
+  } catch(e) { toast(e.message, 'error'); }
+}
 </script>
 </body>
 </html>
-<!-- build: 1775710105 -->
+<!-- build: 1775716800 -->

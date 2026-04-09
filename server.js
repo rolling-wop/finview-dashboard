@@ -290,7 +290,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version / health ping — update this to confirm new deploys
-app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v7-2026-04-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items','needs-analysis','projection','notion-crm-export'] }));
+app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v8-2026-04-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items','needs-analysis','projection','notion-crm-export','pull-from-notion','import-b2b-leads','rolling-dollar'] }));
 
 function authenticate(req, res, next) {
   const token = (req.headers.authorization || '').split(' ')[1];
@@ -348,13 +348,27 @@ app.post('/api/admin/clients', authenticate, requireAdmin, async (req, res) => {
 
 // ── Admin: Update client ───────────────────────────────────────────────────────
 app.put('/api/admin/clients/:id', authenticate, requireAdmin, async (req, res) => {
-  const { name, age, gender, occupation, annual_income, dependents, email, phone, password } = req.body;
+  const { name, age, gender, occupation, annual_income, dependents, email, phone, password, notes, deal_stage, last_contact, next_action } = req.body;
   if (password) {
     const hash = bcrypt.hashSync(password, 10);
     await dbRun(`UPDATE clients SET password_hash=?, updated_at=datetime('now') WHERE id=?`, [hash, req.params.id]);
   }
-  await dbRun(`UPDATE clients SET name=?,age=?,gender=?,occupation=?,annual_income=?,dependents=?,email=?,phone=?,updated_at=datetime('now') WHERE id=?`,
-    [name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'', req.params.id]);
+  await dbRun(`UPDATE clients SET name=?,age=?,gender=?,occupation=?,annual_income=?,dependents=?,email=?,phone=?,notes=?,deal_stage=?,last_contact=?,next_action=?,updated_at=datetime('now') WHERE id=?`,
+    [name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'',
+     notes||'', deal_stage||'Prospect', last_contact||'', next_action||'', req.params.id]);
+  // Fire-and-forget 2nd Brain auto-log if notes is non-empty
+  if (notes && notes.trim()) {
+    const clientData = { name, occupation: occupation||'', annual_income: annual_income||0, deal_stage: deal_stage||'Prospect', last_contact: last_contact||'', next_action: next_action||'', notes };
+    setImmediate(() => {
+      try {
+        fs.mkdirSync(BRAIN_PEOPLE_DIR, { recursive: true });
+        const safeName = (clientData.name || 'unknown').replace(/[^a-zA-Z0-9 _-]/g, '').trim();
+        const mdPath = `${BRAIN_PEOPLE_DIR}/${safeName}.md`;
+        const content = `---\nname: ${clientData.name}\ntype: person\ncategory: client\n---\n# ${clientData.name}\n\n**Occupation:** ${clientData.occupation}\n**Annual Income:** S$${clientData.annual_income}\n**Deal Stage:** ${clientData.deal_stage}\n**Last Contact:** ${clientData.last_contact}\n**Next Action:** ${clientData.next_action}\n\n## Notes\n${clientData.notes}\n`;
+        fs.writeFileSync(mdPath, content, 'utf8');
+      } catch {}
+    });
+  }
   res.json({ success: true });
 });
 
@@ -645,6 +659,9 @@ app.get('/api/invite/:token', async (req, res) => {
 // ── Notion Sync ────────────────────────────────────────────────────────────────
 const NOTION_KEY = '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';
 const NOTION_CLIENTS_DB = '9b9b9db9-65ed-4da0-b833-c2ffcc96f0dc';
+const NOTION_B2B_LEADS_DB = 'bb801d58-81ac-4902-97b1-462c4ba2a42c';
+const NOTION_SCRIPT_BACKLOG_DB = 'ec7d305c-83c0-4fe8-9702-5d6c2ff50607';
+const BRAIN_PEOPLE_DIR = '/Users/dylanho/.openclaw/workspace/brain/people';
 
 function notionReq(method, p, body) {
   return new Promise((resolve, reject) => {
@@ -659,15 +676,41 @@ function notionReq(method, p, body) {
 
 async function notionPushClient(client) {
   const policies = await dbAll('SELECT * FROM policies WHERE client_id=?', [client.id]);
+  const investments = await dbAll('SELECT * FROM investments WHERE client_id=?', [client.id]);
+  const needsAnalysis = await dbAll('SELECT * FROM needs_analysis WHERE client_id=? ORDER BY gap DESC LIMIT 1', [client.id]);
   const totalPremium = policies.reduce((s, p) => s + (p.premium || 0), 0);
+  const totalCoverage = policies.reduce((s, p) => s + (p.coverage || 0), 0);
+  const policyNames = policies.map(p => p.product_name || p.type).filter(Boolean).join(', ');
+  const totalInvested = investments.reduce((s, i) => s + (i.invested || 0), 0);
+  const totalInvValue = investments.reduce((s, i) => s + (i.value_now || 0), 0);
+  const biggestGap = needsAnalysis[0] ? `${needsAnalysis[0].coverage_type}: S$${Math.round(needsAnalysis[0].gap||0).toLocaleString()} gap` : '';
+  const notesContent = [
+    `Synced: ${new Date().toLocaleDateString('en-SG')}`,
+    client.notes ? `Notes: ${client.notes}` : '',
+    biggestGap ? `Coverage gap: ${biggestGap}` : ''
+  ].filter(Boolean).join(' | ');
   const props = {
     'Name': { title: [{ text: { content: client.name } }] },
     'Email': { email: client.email || null },
     'Phone': { phone_number: client.phone || null },
     'Total Premium (SGD)': { number: totalPremium },
+    'Total Coverage (SGD)': { number: totalCoverage },
+    'Policies': { number: policies.length },
+    'Policy List': { rich_text: [{ text: { content: policyNames.slice(0, 2000) } }] },
+    'Total Invested (SGD)': { number: totalInvested },
+    'Investment Value (SGD)': { number: totalInvValue },
+    'Investments': { number: investments.length },
+    'Deal Stage': { select: { name: client.deal_stage || 'Prospect' } },
+    'Last Contact': { rich_text: [{ text: { content: client.last_contact || '' } }] },
+    'Next Action': { rich_text: [{ text: { content: client.next_action || '' } }] },
+    'Age': { number: client.age || null },
+    'Occupation': { rich_text: [{ text: { content: client.occupation || '' } }] },
+    'Annual Income (SGD)': { number: client.annual_income || null },
     'Status': { select: { name: 'Active' } },
-    'Notes': { rich_text: [{ text: { content: `Synced ${new Date().toLocaleDateString('en-SG')}` } }] }
+    'Notes': { rich_text: [{ text: { content: notesContent.slice(0, 2000) } }] }
   };
+  // Remove null-valued props to avoid Notion API errors
+  Object.keys(props).forEach(k => { if (props[k]?.email === null) delete props[k]; if (props[k]?.phone_number === null) delete props[k]; if (props[k]?.number === null) delete props[k]; });
   const existingClient = await dbGet('SELECT notion_page_id FROM clients WHERE id=?', [client.id]);
   if (existingClient?.notion_page_id) {
     await notionReq('PATCH', `/pages/${existingClient.notion_page_id}`, { properties: props });
@@ -688,10 +731,126 @@ app.post('/api/sync/push/:id', authenticate, async (req, res) => {
 
 app.post('/api/sync/push-all', authenticate, requireAdmin, async (req, res) => {
   try {
-    const clients = await dbAll(`SELECT id, username, name, age, gender, occupation, annual_income, dependents, email, phone, role, notion_page_id, created_at, updated_at FROM clients WHERE role='client'`);
+    const clients = await dbAll(`SELECT * FROM clients WHERE role='client'`);
     let synced = 0;
     for (const c of clients) { try { await notionPushClient(c); synced++; } catch {} }
     res.json({ success: true, synced });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Notion → FinView pull (two-way sync) ──────────────────────────────────────
+app.post('/api/sync/pull-from-notion', authenticate, requireAdmin, async (req, res) => {
+  try {
+    let cursor = undefined;
+    const pages = [];
+    do {
+      const body = { page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const result = await notionReq('POST', `/databases/${NOTION_CLIENTS_DB}/query`, body);
+      if (result.results) pages.push(...result.results);
+      cursor = result.has_more ? result.next_cursor : undefined;
+    } while (cursor);
+
+    let updated = 0, skipped = 0;
+    for (const page of pages) {
+      try {
+        const props = page.properties || {};
+        const nameArr = props['Name']?.title || [];
+        const name = nameArr.map(t => t.plain_text).join('').trim();
+        if (!name) { skipped++; continue; }
+        // Match by notion_page_id first, then by name
+        let client = await dbGet('SELECT * FROM clients WHERE notion_page_id=?', [page.id]);
+        if (!client) client = await dbGet('SELECT * FROM clients WHERE name=? AND role=\'client\'', [name]);
+        if (!client) { skipped++; continue; }
+        const deal_stage = props['Deal Stage']?.select?.name || client.deal_stage;
+        const last_contact = (props['Last Contact']?.rich_text || []).map(t => t.plain_text).join('').trim() || client.last_contact;
+        const next_action = (props['Next Action']?.rich_text || []).map(t => t.plain_text).join('').trim() || client.next_action;
+        const notes = (props['Notes']?.rich_text || []).map(t => t.plain_text).join('').trim() || client.notes;
+        await dbRun(`UPDATE clients SET deal_stage=?,last_contact=?,next_action=?,notes=?,notion_page_id=? WHERE id=?`,
+          [deal_stage, last_contact, next_action, notes, page.id, client.id]);
+        updated++;
+      } catch { skipped++; }
+    }
+    res.json({ success: true, pulled: pages.length, updated, skipped });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── B2B Leads → FinView Pipeline ──────────────────────────────────────────────
+app.post('/api/sync/import-b2b-leads', authenticate, requireAdmin, async (req, res) => {
+  try {
+    let cursor = undefined;
+    const pages = [];
+    do {
+      const body = { page_size: 100, filter: { property: 'Status', select: { equals: 'Interested' } } };
+      if (cursor) body.start_cursor = cursor;
+      const result = await notionReq('POST', `/databases/${NOTION_B2B_LEADS_DB}/query`, body);
+      if (result.results) pages.push(...result.results);
+      cursor = result.has_more ? result.next_cursor : undefined;
+    } while (cursor);
+
+    let imported = 0, skipped = 0;
+    for (const page of pages) {
+      try {
+        const props = page.properties || {};
+        const nameArr = props['Name']?.title || [];
+        const name = nameArr.map(t => t.plain_text).join('').trim();
+        if (!name) { skipped++; continue; }
+        const existing = await dbGet('SELECT id FROM clients WHERE name=?', [name]);
+        if (existing) { skipped++; continue; }
+        const email = props['Email']?.email || '';
+        const phone = props['Phone']?.phone_number || '';
+        const username = name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '') + '_' + Date.now().toString(36);
+        const hash = bcrypt.hashSync('client2026', 10);
+        const id = 'B2B_' + Date.now().toString(36).toUpperCase() + '_' + Math.random().toString(36).slice(2,6).toUpperCase();
+        await dbRun(`INSERT INTO clients (id,username,password_hash,name,email,phone,role,deal_stage,notes) VALUES (?,?,?,?,?,?,?,?,?)`,
+          [id, username, hash, name, email, phone, 'client', 'Prospect', 'Imported from B2B Lead Pipeline']);
+        imported++;
+        await new Promise(r => setTimeout(r, 50)); // avoid tight loop
+      } catch { skipped++; }
+    }
+    res.json({ success: true, found: pages.length, imported, skipped });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Rolling Dollar Script Backlog ─────────────────────────────────────────────
+app.get('/api/rolling-dollar/scripts', authenticate, requireAdmin, async (req, res) => {
+  try {
+    let cursor = undefined;
+    const pages = [];
+    do {
+      const body = { page_size: 100, sorts: [{ timestamp: 'created_time', direction: 'descending' }] };
+      if (cursor) body.start_cursor = cursor;
+      const result = await notionReq('POST', `/databases/${NOTION_SCRIPT_BACKLOG_DB}/query`, body);
+      if (result.results) pages.push(...result.results);
+      cursor = result.has_more ? result.next_cursor : undefined;
+    } while (cursor);
+
+    const scripts = pages.map(page => {
+      const props = page.properties || {};
+      const titleArr = props['Name']?.title || props['Title']?.title || [];
+      const title = titleArr.map(t => t.plain_text).join('').trim();
+      // Status might be a select or status property
+      const status = props['Status']?.select?.name || props['Status']?.status?.name || '';
+      return { id: page.id, title, status, url: page.url, created: page.created_time };
+    });
+
+    const counts = {};
+    scripts.forEach(s => { counts[s.status || 'Unknown'] = (counts[s.status || 'Unknown'] || 0) + 1; });
+    res.json({ success: true, total: scripts.length, counts, scripts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/rolling-dollar/scripts/:id/update-status', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const allowed = ['Scripted', 'Filmed', 'Uploaded', 'Published'];
+    if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid status. Must be: ' + allowed.join(', ') });
+    // Try select first, fallback status property
+    let result = await notionReq('PATCH', `/pages/${req.params.id}`, { properties: { 'Status': { select: { name: status } } } });
+    if (result.object === 'error') {
+      result = await notionReq('PATCH', `/pages/${req.params.id}`, { properties: { 'Status': { status: { name: status } } } });
+    }
+    res.json({ success: true, id: req.params.id, status, result: result.object });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
