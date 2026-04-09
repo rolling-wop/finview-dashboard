@@ -1,0 +1,725 @@
+[
+  {
+    "client": {
+      "id": "C1775703841890",
+      "username": "Hongpew",
+      "name": "Hong Pew",
+      "age": 59,
+      "gender": "Male",
+      "occupation": "VP of Tech ",
+      "annual_income": 220000,
+      "email": "",
+      "phone": "",
+      "role": "client",
+      "created_at": "2026-04-09 03:04:01",
+      "policyCount": 1,
+      "totalCoverage": 0,
+      "totalPremium": 3000,
+      "totalInvestments": 90985.89
+    },
+    "policies": [
+      {
+        "id": 14,
+        "client_id": "C1775703841890",
+        "type": "Hospitalization",
+        "product_name": "Hospital Plan",
+        "policy_number": "",
+        "insurer": "NTUC Income",
+        "product_type": "Medical",
+        "coverage": 0,
+        "premium": 3000,
+        "start_date": "",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "B1 Ward\n",
+        "created_at": "2026-04-09 03:49:48",
+        "updated_at": "2026-04-09 03:49:48",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      }
+    ],
+    "investments": [
+      {
+        "id": 2,
+        "client_id": "C1775703841890",
+        "name": "PruVantage Assure 2 ",
+        "type": "ILP",
+        "invested": 62000,
+        "value_now": 62132.89,
+        "target": 250000,
+        "goal_by": "",
+        "contribution": 0,
+        "created_at": "2026-04-09 03:53:50",
+        "updated_at": "2026-04-09 03:53:50"
+      },
+      {
+        "id": 3,
+        "client_id": "C1775703841890",
+        "name": "PruLink Invest Growth ",
+        "type": "SRS",
+        "invested": 31000,
+        "value_now": 28853,
+        "target": 0,
+        "goal_by": "",
+        "contribution": 0,
+        "created_at": "2026-04-09 03:58:17",
+        "updated_at": "2026-04-09 03:58:17"
+      }
+    ]
+  },
+  {
+    "client": {
+      "id": "C1775703877189",
+      "username": "Jiahuan",
+      "name": "Jia Huan",
+      "age": 28,
+      "gender": "Female",
+      "occupation": "Florist",
+      "annual_income": 30000,
+      "email": "",
+      "phone": "",
+      "role": "client",
+      "created_at": "2026-04-09 03:04:37",
+      "policyCount": 2,
+      "totalCoverage": 0,
+      "totalPremium": 999.48,
+      "totalInvestments": 0
+    },
+    "policies": [
+      {
+        "id": 15,
+        "client_id": "C1775703877189",
+        "type": "Hospitalization",
+        "product_name": "PruShield Premier",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Term Life",
+        "coverage": 0,
+        "premium": 587.48,
+        "start_date": "2025-04-21",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "Panel Private Hospital and all restructured Hospital",
+        "created_at": "2026-04-09 04:01:39",
+        "updated_at": "2026-04-09 04:01:39",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "client_id": "C1775703877189",
+        "type": "Hospitalization",
+        "product_name": "PruExtra Premier Lite Copay ",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Rider",
+        "coverage": 0,
+        "premium": 412,
+        "start_date": "2025-04-21",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "95% Deductible and Coinsurance",
+        "created_at": "2026-04-09 04:03:20",
+        "updated_at": "2026-04-09 04:03:20",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      }
+    ],
+    "investments": []
+  },
+  {
+    "client": {
+      "id": "C1775703932668",
+      "username": "Jiehan",
+      "name": "JieHan",
+      "age": 29,
+      "gender": "Male",
+      "occupation": "Financial Advisor",
+      "annual_income": 40000,
+      "email": "",
+      "phone": "",
+      "role": "client",
+      "created_at": "2026-04-09 03:05:32",
+      "policyCount": 2,
+      "totalCoverage": 0,
+      "totalPremium": 1012.48,
+      "totalInvestments": 0
+    },
+    "policies": [
+      {
+        "id": 17,
+        "client_id": "C1775703932668",
+        "type": "Hospitalization",
+        "product_name": "PruShield Premier",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Term Life",
+        "coverage": 0,
+        "premium": 587.48,
+        "start_date": "0025-04-21",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "Panel & Restructured Hospitals",
+        "created_at": "2026-04-09 04:04:28",
+        "updated_at": "2026-04-09 04:04:28",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "client_id": "C1775703932668",
+        "type": "Hospitalization",
+        "product_name": "PruExtra Premier Lite Copay",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Rider",
+        "coverage": 0,
+        "premium": 425,
+        "start_date": "",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "95% Deductible and Coinsurance",
+        "created_at": "2026-04-09 04:05:32",
+        "updated_at": "2026-04-09 04:05:32",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      }
+    ],
+    "investments": []
+  },
+  {
+    "client": {
+      "id": "C1775703752306",
+      "username": "Shee",
+      "name": "Joshua Shee",
+      "age": 29,
+      "gender": "Male",
+      "occupation": "UX UI Tester",
+      "annual_income": 72000,
+      "email": "",
+      "phone": "",
+      "role": "client",
+      "created_at": "2026-04-09 03:02:32",
+      "policyCount": 5,
+      "totalCoverage": 1455000,
+      "totalPremium": 3112.52,
+      "totalInvestments": 0
+    },
+    "policies": [
+      {
+        "id": 8,
+        "client_id": "C1775703752306",
+        "type": "Accident",
+        "product_name": "PruPersonal Accident",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Term Life",
+        "coverage": 100000,
+        "premium": 339.8,
+        "start_date": "2025-11-13",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 100000,
+        "notes": "Medical Reimbursement ($2000/Accident)\nTCM ($2000/Accident)\nFracture Care ($25,000)",
+        "created_at": "2026-04-09 03:26:16",
+        "updated_at": "2026-04-09 03:26:16",
+        "coverage_items": [
+          {
+            "type": "Accident",
+            "coverage": 100000
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "client_id": "C1775703752306",
+        "type": "Death / Life",
+        "product_name": "Living",
+        "policy_number": "",
+        "insurer": "NTUC Income",
+        "product_type": "Whole Life",
+        "coverage": 150000,
+        "premium": 530.75,
+        "start_date": "1999-12-14",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 720000,
+        "notes": "Current Cash Value ($23,071)\nTotal Premiums Payable ($43,521)",
+        "created_at": "2026-04-09 03:21:36",
+        "updated_at": "2026-04-09 03:21:36",
+        "coverage_items": [
+          {
+            "type": "Death / Life",
+            "coverage": 50000
+          },
+          {
+            "type": "TPD",
+            "coverage": 50000
+          },
+          {
+            "type": "Terminal Illness",
+            "coverage": 50000
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "client_id": "C1775703752306",
+        "type": "Death / Life",
+        "product_name": "PruLife Muliplier",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Whole Life",
+        "coverage": 955000,
+        "premium": 1856.3,
+        "start_date": "2016-05-12",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "Multiplier Benefit (300% till 65)\nCI Coverage (250% till 65)\nPremium Term (25 years)",
+        "created_at": "2026-04-09 03:24:55",
+        "updated_at": "2026-04-09 03:24:55",
+        "coverage_items": [
+          {
+            "type": "Death / Life",
+            "coverage": 210000
+          },
+          {
+            "type": "Early Critical Illness",
+            "coverage": 150000
+          },
+          {
+            "type": "Late Stage Critical Illness",
+            "coverage": 175000
+          },
+          {
+            "type": "TPD",
+            "coverage": 210000
+          },
+          {
+            "type": "Terminal Illness",
+            "coverage": 210000
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "client_id": "C1775703752306",
+        "type": "Hospitalization",
+        "product_name": "Enhanced Income Shield Basic",
+        "policy_number": "",
+        "insurer": "NTUC Income",
+        "product_type": "Medical",
+        "coverage": 250000,
+        "premium": 291.67,
+        "start_date": "2000-01-03",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "Restructured Hospital (B1 ward)\n",
+        "created_at": "2026-04-09 03:17:49",
+        "updated_at": "2026-04-09 03:17:49",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 250000
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "client_id": "C1775703752306",
+        "type": "Hospitalization",
+        "product_name": "Assist Rider",
+        "policy_number": "",
+        "insurer": "NTUC Income",
+        "product_type": "Term Life",
+        "coverage": 0,
+        "premium": 94,
+        "start_date": "2000-01-03",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "10% Co-payment",
+        "created_at": "2026-04-09 03:18:42",
+        "updated_at": "2026-04-09 03:18:42",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      }
+    ],
+    "investments": [
+      {
+        "id": 1,
+        "client_id": "C1775703752306",
+        "name": "PruFlexi Cash",
+        "type": "Other",
+        "invested": 0,
+        "value_now": 0,
+        "target": 0,
+        "goal_by": "2041-05-12",
+        "contribution": 270,
+        "created_at": "2026-04-09 03:28:20",
+        "updated_at": "2026-04-09 03:28:20"
+      }
+    ]
+  },
+  {
+    "client": {
+      "id": "C1775703680421",
+      "username": "Karisshma",
+      "name": "Karisshma",
+      "age": 28,
+      "gender": "Female",
+      "occupation": "Tech Sales",
+      "annual_income": 144000,
+      "email": "",
+      "phone": "",
+      "role": "client",
+      "created_at": "2026-04-09 03:01:20",
+      "policyCount": 5,
+      "totalCoverage": 2400000,
+      "totalPremium": 4469.74,
+      "totalInvestments": 0
+    },
+    "policies": [
+      {
+        "id": 13,
+        "client_id": "C1775703680421",
+        "type": "Accident",
+        "product_name": "PruPersonal Accident",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Term Life",
+        "coverage": 100000,
+        "premium": 339.8,
+        "start_date": "2025-03-10",
+        "end_date": "2073-03-10",
+        "status": "Active",
+        "recommended": 100000,
+        "notes": "Medical Reimbursement ($2000/Accident)\nTCM ($500/Accident)\nFracture Care ($25,000)",
+        "created_at": "2026-04-09 03:45:37",
+        "updated_at": "2026-04-09 03:45:37",
+        "coverage_items": [
+          {
+            "type": "Accident",
+            "coverage": 100000
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "client_id": "C1775703680421",
+        "type": "Death / Life",
+        "product_name": "PruActive Term",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Term Life",
+        "coverage": 1875000,
+        "premium": 1638.45,
+        "start_date": "2025-03-10",
+        "end_date": "2063-03-10",
+        "status": "Active",
+        "recommended": 500000,
+        "notes": "Crisis Waiver Included",
+        "created_at": "2026-04-09 03:41:10",
+        "updated_at": "2026-04-09 03:41:10",
+        "coverage_items": [
+          {
+            "type": "Death / Life",
+            "coverage": 500000
+          },
+          {
+            "type": "Early Critical Illness",
+            "coverage": 125000
+          },
+          {
+            "type": "Late Stage Critical Illness",
+            "coverage": 250000
+          },
+          {
+            "type": "TPD",
+            "coverage": 500000
+          },
+          {
+            "type": "Terminal Illness",
+            "coverage": 500000
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "client_id": "C1775703680421",
+        "type": "Death / Life",
+        "product_name": "PruActive Protect",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Multi-Pay CI",
+        "coverage": 425000,
+        "premium": 1913.66,
+        "start_date": "2025-03-10",
+        "end_date": "2063-03-10",
+        "status": "Active",
+        "recommended": 500000,
+        "notes": "Multi Pay (5x) \nCrisis waivers included",
+        "created_at": "2026-04-09 03:43:16",
+        "updated_at": "2026-04-09 03:43:16",
+        "coverage_items": [
+          {
+            "type": "Death / Life",
+            "coverage": 50000
+          },
+          {
+            "type": "Early Critical Illness",
+            "coverage": 125000
+          },
+          {
+            "type": "Late Stage Critical Illness",
+            "coverage": 250000
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "client_id": "C1775703680421",
+        "type": "Hospitalization",
+        "product_name": "PruShield Plus",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Medical",
+        "coverage": 0,
+        "premium": 313.83,
+        "start_date": "2025-03-10",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "Restructured Hospital A ward",
+        "created_at": "2026-04-09 03:36:12",
+        "updated_at": "2026-04-09 03:36:12",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "client_id": "C1775703680421",
+        "type": "Hospitalization",
+        "product_name": "PruExtra Plus Co-pay",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Rider",
+        "coverage": 0,
+        "premium": 264,
+        "start_date": "2025-03-10",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "95% Deductibles and Co-Insurance",
+        "created_at": "2026-04-09 03:37:22",
+        "updated_at": "2026-04-09 03:37:22",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      }
+    ],
+    "investments": []
+  },
+  {
+    "client": {
+      "id": "C1775703968773",
+      "username": "Fiona",
+      "name": "LimBoonHwee",
+      "age": 56,
+      "gender": "Female",
+      "occupation": "Housewife",
+      "annual_income": 0,
+      "email": "",
+      "phone": "",
+      "role": "client",
+      "created_at": "2026-04-09 03:06:08",
+      "policyCount": 2,
+      "totalCoverage": 0,
+      "totalPremium": 4270,
+      "totalInvestments": 0
+    },
+    "policies": [
+      {
+        "id": 19,
+        "client_id": "C1775703968773",
+        "type": "Hospitalization",
+        "product_name": "PruShield Premier",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Medical",
+        "coverage": 0,
+        "premium": 2935,
+        "start_date": "2026-04-28",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "Panel & Restructed hospitals\n$871 deducted from CPF MS",
+        "created_at": "2026-04-09 04:07:15",
+        "updated_at": "2026-04-09 04:07:15",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "client_id": "C1775703968773",
+        "type": "Hospitalization",
+        "product_name": "PruExtra Premier Lite Copay",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Rider",
+        "coverage": 0,
+        "premium": 1335,
+        "start_date": "",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "95% Deductible and Coinsurance",
+        "created_at": "2026-04-09 04:08:19",
+        "updated_at": "2026-04-09 04:08:19",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      }
+    ],
+    "investments": []
+  },
+  {
+    "client": {
+      "id": "C1775704208007",
+      "username": "Rachelle",
+      "name": "Tan Check Kian",
+      "age": 62,
+      "gender": "Female",
+      "occupation": "",
+      "annual_income": 48000,
+      "email": "",
+      "phone": "",
+      "role": "client",
+      "created_at": "2026-04-09 03:10:08",
+      "policyCount": 3,
+      "totalCoverage": 100000,
+      "totalPremium": 1559.8899999999999,
+      "totalInvestments": 0
+    },
+    "policies": [
+      {
+        "id": 3,
+        "client_id": "C1775704208007",
+        "type": "Accident",
+        "product_name": "PruPersonal Accident",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Term Life",
+        "coverage": 100000,
+        "premium": 0,
+        "start_date": "2025-11-13",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 100000,
+        "notes": "Medical Reimbursement ($2000/Accident)\nTCM ($2000/Accident)\nFracture Care ($25,000)",
+        "created_at": "2026-04-09 03:15:23",
+        "updated_at": "2026-04-09 03:15:23",
+        "coverage_items": [
+          {
+            "type": "Accident",
+            "coverage": 100000
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "client_id": "C1775704208007",
+        "type": "Hospitalization",
+        "product_name": "PruShield Plus ",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Medical",
+        "coverage": 0,
+        "premium": 1478.37,
+        "start_date": "2025-11-13",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "Restructured Hospital A ward\n",
+        "created_at": "2026-04-09 03:11:55",
+        "updated_at": "2026-04-09 03:11:55",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "client_id": "C1775704208007",
+        "type": "Hospitalization",
+        "product_name": "PruExtra Plus ",
+        "policy_number": "",
+        "insurer": "Prudential",
+        "product_type": "Rider",
+        "coverage": 0,
+        "premium": 81.52,
+        "start_date": "2025-11-13",
+        "end_date": "",
+        "status": "Active",
+        "recommended": 0,
+        "notes": "Rider : 95% Deductible Copay",
+        "created_at": "2026-04-09 03:13:33",
+        "updated_at": "2026-04-09 03:13:33",
+        "coverage_items": [
+          {
+            "type": "Hospitalization",
+            "coverage": 0
+          }
+        ]
+      }
+    ],
+    "investments": []
+  }
+]

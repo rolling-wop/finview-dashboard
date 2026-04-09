@@ -290,7 +290,7 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Version / health ping — update this to confirm new deploys
-app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v6-2026-04-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items','needs-analysis','projection','notion-crm-export'] }));
+app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v7-2026-04-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items','needs-analysis','projection','notion-crm-export'] }));
 
 function authenticate(req, res, next) {
   const token = (req.headers.authorization || '').split(' ')[1];
