@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/@fiddle-digital/string-tune@1.1.55/dist/index.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -116,7 +117,32 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;font-size:14p
 .metric-change.warn{background:var(--warning-light);color:var(--warning)}
 
 /* ── Cards ── */
-.card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden}
+.card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden;transition:box-shadow 0.2s cubic-bezier(0.16,1,0.3,1),transform 0.2s cubic-bezier(0.16,1,0.3,1)}
+.card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
+/* StringTune inview animations */
+[st-inview]{opacity:0;transform:translateY(16px);transition:opacity 0.5s cubic-bezier(0.16,1,0.3,1),transform 0.5s cubic-bezier(0.16,1,0.3,1)}
+[st-inview].visible{opacity:1;transform:translateY(0)}
+[st-inview]:nth-child(1){transition-delay:0ms}
+[st-inview]:nth-child(2){transition-delay:60ms}
+[st-inview]:nth-child(3){transition-delay:120ms}
+[st-inview]:nth-child(4){transition-delay:180ms}
+[st-inview]:nth-child(5){transition-delay:240ms}
+/* Stat card pop animation */
+.admin-stat-card{transition:box-shadow 0.2s,transform 0.2s cubic-bezier(0.16,1,0.3,1)}
+.admin-stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px) scale(1.02)}
+/* Button magnetic feel */
+.btn-primary{transition:box-shadow 0.2s,transform 0.15s cubic-bezier(0.16,1,0.3,1)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(14,165,233,0.3)}
+.btn-primary:active{transform:translateY(0) scale(0.98)}
+/* Number value flash on update */
+.stat-value-updated{animation:fv-flash 0.5s ease}
+@keyframes fv-flash{0%{color:var(--primary)}100%{color:var(--text)}}
+/* Sidebar nav item hover */
+.nav-item{transition:background 0.15s,padding-left 0.15s}
+.nav-item:hover{padding-left:18px}
+/* Page fade-in */
+.page-view{animation:page-in 0.3s cubic-bezier(0.16,1,0.3,1) both}
+@keyframes page-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .card-title{font-size:14px;font-weight:600;color:var(--text)}
 .card-sub{font-size:12px;color:var(--text-3);margin-top:2px}
@@ -2590,6 +2616,59 @@ async function importB2BLeads() {
     toast(`✅ Imported ${r.imported} new prospects from B2B pipeline`);
   } catch(e) { toast(e.message, 'error'); }
 }
+
+// ============================================================
+// STRINGTUNE — FinView Dashboard
+// ============================================================
+function initFinViewAnimations() {
+  if (typeof StringTune === 'undefined') return;
+  try {
+    new StringTune.StringTune({
+      scroll: { smooth: true, lerp: 0.12 },
+      modules: [
+        new StringTune.StringProgress(),
+        new StringTune.StringParallax(),
+        new StringTune.StringMagnetic(),
+      ]
+    });
+  } catch(e) { console.warn('StringTune:', e); }
+}
+
+function animateCardsInView() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.card, .admin-stat-card').forEach((el, i) => {
+    el.setAttribute('st-inview', '');
+    observer.observe(el);
+  });
+
+  // Apply magnetic to all primary buttons
+  document.querySelectorAll('.btn-primary').forEach(btn => {
+    btn.setAttribute('string', 'magnetic');
+    btn.setAttribute('string-radius', '70');
+    btn.setAttribute('string-strength', '0.25');
+  });
+}
+
+// Re-run after each page navigation (FinView is SPA)
+const _origNavTo = window.navTo;
+window.navTo = function(view, ...args) {
+  if (typeof _origNavTo === 'function') _origNavTo(view, ...args);
+  setTimeout(animateCardsInView, 150);
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  initFinViewAnimations();
+  setTimeout(animateCardsInView, 300);
+});
+
 </script>
 </body>
 </html>
