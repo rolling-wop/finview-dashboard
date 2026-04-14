@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fiddle-digital/string-tune@1.1.55/dist/index.js" defer></script>
+<!-- StringTune removed permanently -->
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -119,10 +119,10 @@ html,body{height:100%;font-family:'Inter',-apple-system,sans-serif;font-size:14p
 /* ── Cards ── */
 .card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden;transition:box-shadow 0.2s cubic-bezier(0.16,1,0.3,1),transform 0.2s cubic-bezier(0.16,1,0.3,1)}
 .card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}
-/* StringTune — safe inview */
-.st-inview { transition: opacity 0.5s cubic-bezier(0.16,1,0.3,1), transform 0.5s cubic-bezier(0.16,1,0.3,1); }
-.st-inview.st-hidden { opacity: 0; transform: translateY(14px); }
-.st-inview.st-visible { opacity: 1; transform: translateY(0); }
+/* UX animations — pure CSS, no JS, no opacity:0 */
+@keyframes fv-card-rise { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+.card { animation: fv-card-rise 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+.admin-stat-card { animation: fv-card-rise 0.3s cubic-bezier(0.16,1,0.3,1) both; }
 /* Stat card pop animation */
 .admin-stat-card{transition:box-shadow 0.2s,transform 0.2s cubic-bezier(0.16,1,0.3,1)}
 .admin-stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px) scale(1.02)}
@@ -2611,48 +2611,7 @@ async function importB2BLeads() {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-// StringTune — safe inview init
-(function initST() {
-  if (typeof StringTune !== 'undefined') {
-    try { new StringTune.StringTune({ scroll: { smooth: false }, modules: [new StringTune.StringProgress()] }); } catch(e) {}
-  }
-
-  function applyInview() {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.remove('st-hidden');
-          entry.target.classList.add('st-visible');
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.05 });
-
-    document.querySelectorAll('.card, .admin-stat-card').forEach((el, i) => {
-      if (el.classList.contains('st-inview')) return; // already processed
-      el.classList.add('st-inview');
-      el.style.transitionDelay = (i % 6) * 45 + 'ms';
-      const rect = el.getBoundingClientRect();
-      if (rect.top < window.innerHeight) {
-        el.classList.add('st-visible');
-      } else {
-        el.classList.add('st-hidden');
-        observer.observe(el);
-      }
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', applyInview);
-
-  // Re-run on navigation (SPA)
-  const _origNavTo = window.navTo;
-  if (typeof _origNavTo === 'function') {
-    window.navTo = function(view, ...args) {
-      _origNavTo(view, ...args);
-      setTimeout(applyInview, 200);
-    };
-  }
-})();
+// StringTune removed permanently
 
 </script>
 </body>
