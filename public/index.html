@@ -2624,11 +2624,9 @@ function initFinViewAnimations() {
   if (typeof StringTune === 'undefined') return;
   try {
     new StringTune.StringTune({
-      scroll: { smooth: true, lerp: 0.12 },
+      scroll: { smooth: false },
       modules: [
         new StringTune.StringProgress(),
-        new StringTune.StringParallax(),
-        new StringTune.StringMagnetic(),
       ]
     });
   } catch(e) { console.warn('StringTune:', e); }
@@ -2649,12 +2647,7 @@ function animateCardsInView() {
     observer.observe(el);
   });
 
-  // Apply magnetic to all primary buttons
-  document.querySelectorAll('.btn-primary').forEach(btn => {
-    btn.setAttribute('string', 'magnetic');
-    btn.setAttribute('string-radius', '70');
-    btn.setAttribute('string-strength', '0.25');
-  });
+  // Magnetic disabled — caused click misses
 }
 
 // Re-run after each page navigation (FinView is SPA)
