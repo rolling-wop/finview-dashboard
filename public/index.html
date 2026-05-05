@@ -539,6 +539,7 @@ function buildAdminNav() {
     <button class="nav-item" id="nav-adminImportB2B" onclick="importB2BLeads()"><span class="nav-icon">📥</span> Import B2B Leads</button>
     <button class="nav-item" id="nav-adminBackup" onclick="navTo('adminBackup')"><span class="nav-icon">💾</span> Backup & Restore</button>
     <button class="nav-item" id="nav-adminPipeline" onclick="navTo('adminPipeline')"><span class="nav-icon">🎯</span> Deal Pipeline</button>
+    <button class="nav-item" id="nav-prospects" onclick="navTo('prospects')"><span class="nav-icon">📄</span> Policy Parser</button>
     <div class="nav-label" style="margin-top:8px">Content</div>
     <button class="nav-item" id="nav-rollingDollar" onclick="navTo('rollingDollar')"><span class="nav-icon">🎬</span> Rolling Dollar</button>
     <button class="nav-item" id="nav-pruCalc" onclick="navTo('pruCalc')"><span class="nav-icon">🧮</span> PRU Calc</button>
@@ -557,6 +558,7 @@ function navTo(page, ...args) {
     adminGaps: renderAdminGaps,
     adminBackup: renderAdminBackup,
     adminPipeline: renderAdminPipeline,
+    prospects: renderProspects,
     rollingDollar: renderRollingDollar,
     pruCalc: renderPruCalc,
     adminViewClient: () => renderAdminViewClient(...args)
@@ -2608,6 +2610,376 @@ async function importB2BLeads() {
   try {
     const r = await api._req('POST', '/sync/import-b2b-leads', {});
     toast(`✅ Imported ${r.imported} new prospects from B2B pipeline`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// StringTune removed permanently
+
+// ── Policy Parser / Prospects ──────────────────────────────────────────────────
+let _parsedPolicies = [];
+
+async function renderProspects() {
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+  <div class="section-header">
+    <div>
+      <div class="section-title">📄 Policy Parser</div>
+      <div class="section-sub">Upload prospect's existing policies → instant gap analysis before your appointment</div>
+    </div>
+    <button class="btn btn-primary" onclick="openNewProspectModal()">+ New Prospect</button>
+  </div>
+  <div id="prospects-list"><div class="loading">Loading prospects...</div></div>
+
+  <!-- New Prospect Modal -->
+  <div id="prospect-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeProspectModal()">
+    <div class="modal" style="max-width:760px;width:95%;max-height:90vh;overflow-y:auto">
+      <div class="modal-header">
+        <h2 id="prospect-modal-title" class="modal-title">📄 New Prospect</h2>
+        <button class="modal-close" onclick="closeProspectModal()">×</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Step 1: Basic Info -->
+        <div id="step-info" class="parser-step">
+          <div class="section-title" style="font-size:14px;margin-bottom:12px">👤 Step 1 — Prospect Info</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div><label class="form-label">Name *</label><input id="p-name" class="form-input" placeholder="e.g. John Tan"></div>
+            <div><label class="form-label">Date of Birth</label><input id="p-dob" type="date" class="form-input"></div>
+            <div><label class="form-label">Gender</label>
+              <select id="p-gender" class="form-input"><option value="">Select</option><option>Male</option><option>Female</option></select>
+            </div>
+            <div><label class="form-label">Occupation</label><input id="p-occ" class="form-input" placeholder="e.g. Software Engineer"></div>
+            <div><label class="form-label">Annual Income (SGD)</label><input id="p-income" type="number" class="form-input" placeholder="e.g. 72000"></div>
+            <div><label class="form-label">Phone</label><input id="p-phone" class="form-input" placeholder="+65 9xxx xxxx"></div>
+            <div><label class="form-label">Email</label><input id="p-email" type="email" class="form-input" placeholder="john@email.com"></div>
+            <div><label class="form-label">Source</label><input id="p-source" class="form-input" placeholder="e.g. LinkedIn, Referral"></div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="goToParserStep()">Next: Parse Policies →</button>
+        </div>
+
+        <!-- Step 2: Policy Parser -->
+        <div id="step-parser" class="parser-step" style="display:none">
+          <div class="section-title" style="font-size:14px;margin-bottom:4px">🔍 Step 2 — Paste Policy Text or Upload Image</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">Paste from policy schedule / annual statement / benefit summary. Or upload a photo.</div>
+          <textarea id="p-text" class="form-input" style="min-height:180px;font-family:monospace;font-size:12px" placeholder="Paste policy text here... e.g.\n\nInsurer: AIA Singapore\nProduct: AIA Multi Pay Critical Illness\nSum Assured: $200,000\nAnnual Premium: $2,400\nStart Date: 01 Jan 2020\nMultiplier: 5x until age 70"></textarea>
+          <div style="margin:10px 0;text-align:center;color:var(--text-secondary);font-size:12px">— or —</div>
+          <input type="file" id="p-file" accept="image/*,.pdf" style="display:none" onchange="handlePolicyFile(event)">
+          <button class="btn" style="width:100%;border:2px dashed var(--border);background:none" onclick="document.getElementById('p-file').click()">
+            📷 Upload Policy Image / PDF
+          </button>
+          <div id="file-preview" style="margin-top:8px;font-size:12px;color:var(--success)"></div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn" onclick="goToInfoStep()">← Back</button>
+            <button class="btn btn-primary" style="flex:1" onclick="parseProspectPolicies()">&#x2728; Parse with AI</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Review + Gap -->
+        <div id="step-review" class="parser-step" style="display:none">
+          <div class="section-title" style="font-size:14px;margin-bottom:12px">✅ Step 3 — Review Parsed Policies</div>
+          <div id="parsed-policies-preview"></div>
+          <div id="parsed-gap-preview" style="margin-top:16px"></div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn" onclick="goToParserStep()">Re-parse</button>
+            <button class="btn btn-primary" style="flex:1" onclick="saveProspect()">💾 Save Prospect</button>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="step-loading" class="parser-step" style="display:none;text-align:center;padding:40px 20px">
+          <div style="font-size:32px;margin-bottom:12px">🤖</div>
+          <div style="font-weight:600;margin-bottom:6px">Parsing with AI...</div>
+          <div style="font-size:13px;color:var(--text-secondary)">Extracting policies from document</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prospect Detail Modal -->
+  <div id="prospect-detail-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal" style="max-width:820px;width:95%;max-height:90vh;overflow-y:auto">
+      <div class="modal-header">
+        <h2 id="detail-modal-title" class="modal-title">Prospect Detail</h2>
+        <button class="modal-close" onclick="document.getElementById('prospect-detail-modal').style.display='none'">×</button>
+      </div>
+      <div id="prospect-detail-body" class="modal-body"></div>
+    </div>
+  </div>
+  `;
+  await loadProspectsList();
+}
+
+async function loadProspectsList() {
+  try {
+    const prospects = await api._req('GET', '/prospects');
+    const el = document.getElementById('prospects-list');
+    if (!el) return;
+    if (!prospects.length) {
+      el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--text-secondary)">
+        <div style="font-size:48px;margin-bottom:12px">📄</div>
+        <div style="font-weight:600;margin-bottom:6px">No prospects yet</div>
+        <div style="font-size:13px">Click "+ New Prospect" to parse a policy and create a prospect profile</div>
+      </div>`; return;
+    }
+    const stageColors = {'New Prospect':'#3B82F6','Contacted':'#F59E0B','Meeting Set':'#8B5CF6','Proposal Sent':'#10B981','Client':'#22C55E','Not Interested':'#EF4444'};
+    el.innerHTML = `<div style="display:grid;gap:12px">${prospects.map(p => `
+      <div class="card" style="display:flex;align-items:center;gap:16px;cursor:pointer" onclick="viewProspect('${p.id}')">
+        <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366F1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👤</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px">${p.name}</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${p.occupation||''}${p.annual_income ? ` · $${Number(p.annual_income).toLocaleString()}/yr` : ''}${p.phone ? ` · ${p.phone}` : ''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${stageColors[p.deal_stage]||'#475569'}22;color:${stageColors[p.deal_stage]||'#94A3B8'}">${p.deal_stage}</span>
+          <span style="font-size:11px;color:var(--text-secondary)">${p.policy_count||0} polic${p.policy_count===1?'y':'ies'}</span>
+        </div>
+        <button class="btn" style="font-size:12px;padding:6px 10px" onclick="event.stopPropagation();deleteProspect('${p.id}','${p.name}')">🗑</button>
+      </div>
+    `).join('')}</div>`;
+  } catch(e) { console.error(e); }
+}
+
+function openNewProspectModal() {
+  _parsedPolicies = [];
+  document.getElementById('prospect-modal').style.display = 'flex';
+  showStep('step-info');
+  // clear fields
+  ['p-name','p-dob','p-gender','p-occ','p-income','p-phone','p-email','p-source','p-text'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('file-preview').textContent = '';
+  window._pFileData = null;
+}
+
+function closeProspectModal() { document.getElementById('prospect-modal').style.display = 'none'; }
+
+function showStep(id) {
+  ['step-info','step-parser','step-review','step-loading'].forEach(s => document.getElementById(s).style.display = s===id ? 'block' : 'none');
+}
+
+function goToInfoStep() { showStep('step-info'); }
+function goToParserStep() {
+  if (!document.getElementById('p-name').value.trim()) { alert('Please enter a name first'); return; }
+  showStep('step-parser');
+}
+
+function handlePolicyFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._pFileData = { base64: e.target.result.split(',')[1], type: file.type, name: file.name };
+    document.getElementById('file-preview').textContent = `✔ ${file.name} loaded (${(file.size/1024).toFixed(1)} KB)`;
+    document.getElementById('p-text').value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function parseProspectPolicies() {
+  const text = document.getElementById('p-text').value.trim();
+  const fd = window._pFileData;
+  if (!text && !fd) { alert('Paste policy text or upload an image/PDF'); return; }
+  showStep('step-loading');
+  try {
+    const body = fd ? { image_base64: fd.base64, media_type: fd.type } : { text };
+    const r = await api._req('POST', '/prospect/parse', body);
+    _parsedPolicies = r.policies || [];
+    renderParsedPreview(_parsedPolicies);
+    showStep('step-review');
+  } catch(e) { showStep('step-parser'); alert('Parse error: ' + e.message); }
+}
+
+function renderParsedPreview(policies) {
+  const el = document.getElementById('parsed-policies-preview');
+  if (!policies.length) { el.innerHTML = '<div style="color:var(--danger)">No policies extracted</div>'; return; }
+  const catColors = { Protection:'#3B82F6', ILP:'#8B5CF6', Savings:'#10B981', Annuity:'#F59E0B' };
+  el.innerHTML = `<div style="font-size:13px;font-weight:600;margin-bottom:8px">${policies.length} polic${policies.length===1?'y':'ies'} extracted:</div>
+  <div style="display:grid;gap:8px">${policies.map((p,i) => p.error ? `
+    <div class="card" style="border-left:3px solid var(--danger)">
+      <div style="color:var(--danger);font-weight:600">❌ ${p.error}: ${p.reason||''}</div>
+    </div>` : `
+    <div class="card" style="border-left:3px solid ${catColors[p.category]||'#475569'};padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <div style="font-weight:600;font-size:13px">${p.product_name||'Unknown'}</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${p.insurer||''} · ${p.sub_type||p.category||''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700;color:var(--primary)">$${Number(p.sum_assured||0).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">$${Number(p.annual_premium||0).toLocaleString()}/yr</div>
+        </div>
+      </div>
+      ${p.sub_type==='Multi CI' && (p.multiplier_end_age||p.multiplier_times) ? `
+      <div style="margin-top:8px;padding:6px 10px;background:#8B5CF622;border-radius:6px;font-size:12px">
+        ⚡ Multi-pay CI: ${p.multiplier_times ? p.multiplier_times+'x payout' : ''} ${p.multiplier_end_age ? '· Multiplier ends age '+p.multiplier_end_age : ''}
+      </div>` : ''}
+      ${p.riders?.length ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:6px">Riders: ${p.riders.map(r=>r.name).join(', ')}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <span style="padding:2px 8px;border-radius:12px;font-size:10px;background:${catColors[p.category]||'#475569'}22;color:${catColors[p.category]||'#94A3B8'}">${p.category}</span>
+        <span style="padding:2px 8px;border-radius:12px;font-size:10px;background:#1e293b">${p.status||'Active'}</span>
+        ${p.start_date ? `<span style="padding:2px 8px;border-radius:12px;font-size:10px;background:#1e293b">📅 ${p.start_date}</span>` : ''}
+      </div>
+    </div>`).join('')}</div>`;
+
+  // Gap preview
+  const income = parseFloat(document.getElementById('p-income').value)||0;
+  const gapEl = document.getElementById('parsed-gap-preview');
+  if (income > 0) {
+    const gap = computeLocalGap(income, policies);
+    gapEl.innerHTML = renderGapCard(gap);
+  } else {
+    gapEl.innerHTML = `<div style="font-size:12px;color:var(--text-secondary);padding:8px">Enter annual income in Step 1 to see gap analysis</div>`;
+  }
+}
+
+function computeLocalGap(income, policies) {
+  const active = policies.filter(p => p.status === 'Active' && !p.error);
+  const sum = arr => arr.reduce((s,p) => s+(parseFloat(p.sum_assured)||0), 0);
+  const deathPols = active.filter(p => p.sub_type==='Death');
+  const tpdPols   = active.filter(p => p.sub_type==='TPD');
+  const teciPols  = active.filter(p => ['TECI','Early CI'].includes(p.sub_type));
+  const multiPols = active.filter(p => p.sub_type==='Multi CI');
+  const allCI     = active.filter(p => ['TECI','Early CI','Multi CI'].includes(p.sub_type));
+  const hospPols  = active.filter(p => (p.sub_type||'').startsWith('Hospital'));
+  const wardRank  = {'Hospital Private':5,'Hospital B1':4,'Hospital B2+':3,'Hospital B2':2,'Hospital C':1};
+  const bestWard  = hospPols.reduce((b,p) => (wardRank[p.sub_type]||0)>(wardRank[b]||0)?p.sub_type:b, null);
+  const hasMulti  = multiPols.length > 0;
+  const multEnd   = hasMulti ? Math.min(...multiPols.map(p=>p.multiplier_end_age||99).filter(x=>x<99)) : null;
+  const multTimes = hasMulti ? Math.max(...multiPols.map(p=>p.multiplier_times||0)) : null;
+  const flag = (have,need) => need>0?(have>=need?'ok':have>=need*0.5?'partial':'gap'):(have>0?'ok':'gap');
+  return {
+    income,
+    death:    {have:sum(deathPols),need:income*10,  gap:Math.max(0,income*10 -sum(deathPols)),  status:flag(sum(deathPols),income*10)},
+    tpd:      {have:sum(tpdPols),  need:income*10,  gap:Math.max(0,income*10 -sum(tpdPols)),    status:flag(sum(tpdPols),income*10)},
+    ci:       {have:sum(allCI),    need:income*5,   gap:Math.max(0,income*5  -sum(allCI)),      status:flag(sum(allCI),income*5)},
+    early_ci: {have:sum(teciPols), need:income*3,   gap:Math.max(0,income*3  -sum(teciPols)),   status:flag(sum(teciPols),income*3)},
+    multi_ci: {has:hasMulti, sum_assured:sum(multiPols), multiplier_end_age:multEnd<99?multEnd:null, multiplier_times:multTimes||null,
+               note: hasMulti?`Multi-pay CI ✓${multEnd&&multEnd<99?` — multiplier ends age ${multEnd}`:''}${multTimes?` (${multTimes}x)`:''}`:'No multi-pay CI'},
+    hospital: {ward:bestWard, status:bestWard==='Hospital Private'?'ok':bestWard?'partial':'gap',
+               note:!bestWard?'No hospitalisation':bestWard==='Hospital Private'?'Private ✓':`${bestWard} — consider upgrading`},
+    total_premium: active.reduce((s,p)=>s+(parseFloat(p.annual_premium)||0),0),
+  };
+}
+
+function renderGapCard(gap) {
+  const stColor = {ok:'#22C55E', partial:'#F59E0B', gap:'#EF4444'};
+  const stIcon  = {ok:'✅', partial:'⚠️', gap:'❌'};
+  const row = (label, status, have, need, gapAmt, note) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:16px;width:24px;text-align:center">${stIcon[status]}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${label}</div>
+        ${note ? `<div style="font-size:11px;color:var(--text-secondary)">${note}</div>` : ''}
+      </div>
+      <div style="text-align:right">
+        ${have !== undefined ? `<div style="font-size:12px;font-weight:600;color:${stColor[status]}">$${Number(have).toLocaleString()}</div>` : ''}
+        ${gapAmt > 0 ? `<div style="font-size:11px;color:var(--danger)">Gap: $${Number(gapAmt).toLocaleString()}</div>` : ''}
+        ${need ? `<div style="font-size:10px;color:var(--text-secondary)">Target: $${Number(need).toLocaleString()}</div>` : ''}
+      </div>
+    </div>`;
+  return `
+  <div class="card">
+    <div style="font-weight:700;font-size:13px;margin-bottom:12px">📊 Coverage Gap Analysis
+      <span style="font-size:11px;font-weight:400;color:var(--text-secondary);margin-left:6px">Income: $${Number(gap.income).toLocaleString()}/yr</span>
+    </div>
+    ${row('Death Cover', gap.death.status, gap.death.have, gap.death.need, gap.death.gap, 'Target: 10x annual income')}
+    ${row('TPD Cover', gap.tpd.status, gap.tpd.have, gap.tpd.need, gap.tpd.gap, 'Target: 10x annual income')}
+    ${row('Critical Illness', gap.ci.status, gap.ci.have, gap.ci.need, gap.ci.gap, 'Target: 5x annual income')}
+    ${row('Early CI', gap.early_ci.status, gap.early_ci.have, gap.early_ci.need, gap.early_ci.gap, 'Target: 3x annual income')}
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:16px;width:24px;text-align:center">${gap.multi_ci.has ? '✅' : '❌'}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">Multi-pay CI</div>
+        <div style="font-size:11px;color:${gap.multi_ci.has ? '#22C55E' : '#EF4444'}">${gap.multi_ci.note}</div>
+        ${gap.multi_ci.has && gap.multi_ci.multiplier_end_age ? `<div style="font-size:11px;color:#F59E0B">⚠️ Multiplier ends age ${gap.multi_ci.multiplier_end_age} — note for review</div>` : ''}
+      </div>
+      ${gap.multi_ci.sum_assured ? `<div style="font-size:12px;font-weight:600;color:#22C55E">$${Number(gap.multi_ci.sum_assured).toLocaleString()}</div>` : ''}
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:16px;width:24px;text-align:center">${{ok:'✅',partial:'⚠️',gap:'❌'}[gap.hospital.status]}</span>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">Hospitalisation</div><div style="font-size:11px;color:var(--text-secondary)">${gap.hospital.note}</div></div>
+      ${gap.hospital.ward ? `<div style="font-size:12px;font-weight:600">${gap.hospital.ward.replace('Hospital ','')}</div>` : ''}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px">
+      <div style="font-size:12px;color:var(--text-secondary)">Total Annual Premium</div>
+      <div style="font-weight:700">$${Number(gap.total_premium||gap.total_annual_premium||0).toLocaleString()}
+        ${gap.income > 0 ? `<span style="font-size:11px;font-weight:400;color:var(--text-secondary)"> (${((gap.total_premium||gap.total_annual_premium||0)/gap.income*100).toFixed(1)}% of income)</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveProspect() {
+  const name = document.getElementById('p-name').value.trim();
+  if (!name) { alert('Name required'); return; }
+  try {
+    const body = {
+      name, dob: document.getElementById('p-dob').value,
+      gender: document.getElementById('p-gender').value,
+      occupation: document.getElementById('p-occ').value,
+      annual_income: parseFloat(document.getElementById('p-income').value)||0,
+      phone: document.getElementById('p-phone').value,
+      email: document.getElementById('p-email').value,
+      source: document.getElementById('p-source').value,
+      raw_input: document.getElementById('p-text').value,
+      policies: _parsedPolicies.filter(p => !p.error)
+    };
+    await api._req('POST', '/prospects', body);
+    closeProspectModal();
+    toast(`✅ ${name} saved as prospect`);
+    await loadProspectsList();
+  } catch(e) { alert('Save error: ' + e.message); }
+}
+
+async function viewProspect(id) {
+  try {
+    const { prospect, policies, gap } = await api._req('GET', `/prospects/${id}`);
+    const modal = document.getElementById('prospect-detail-modal');
+    document.getElementById('detail-modal-title').textContent = `👤 ${prospect.name}`;
+    const stColor = {ok:'#22C55E',partial:'#F59E0B',gap:'#EF4444'};
+    document.getElementById('prospect-detail-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px">
+        ${prospect.occupation ? `<div><span style="color:var(--text-secondary)">Occupation:</span> ${prospect.occupation}</div>` : ''}
+        ${prospect.annual_income ? `<div><span style="color:var(--text-secondary)">Income:</span> $${Number(prospect.annual_income).toLocaleString()}/yr</div>` : ''}
+        ${prospect.phone ? `<div><span style="color:var(--text-secondary)">Phone:</span> ${prospect.phone}</div>` : ''}
+        ${prospect.email ? `<div><span style="color:var(--text-secondary)">Email:</span> ${prospect.email}</div>` : ''}
+        ${prospect.source ? `<div><span style="color:var(--text-secondary)">Source:</span> ${prospect.source}</div>` : ''}
+        <div><span style="color:var(--text-secondary)">Stage:</span> ${prospect.deal_stage}</div>
+      </div>
+      ${gap.income > 0 ? renderGapCard(gap) : '<div style="color:var(--text-secondary);font-size:13px">Add annual income to see gap analysis</div>'}
+      <div style="margin-top:16px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:10px">🛡️ Existing Policies (${policies.length})</div>
+        ${policies.length ? `<div style="display:grid;gap:6px">${policies.map(p => `
+          <div style="padding:10px;background:var(--surface-2);border-radius:8px;font-size:12px">
+            <div style="display:flex;justify-content:space-between">
+              <strong>${p.product_name}</strong>
+              <span style="color:var(--primary)">$${Number(p.sum_assured||0).toLocaleString()}</span>
+            </div>
+            <div style="color:var(--text-secondary);margin-top:3px">${p.insurer} · ${p.sub_type||p.category} · $${Number(p.annual_premium||0).toLocaleString()}/yr${p.multiplier_end_age ? ` · Multiplier ends age ${p.multiplier_end_age}` : ''}</div>
+          </div>`).join('')}</div>` : '<div style="color:var(--text-secondary)">No policies parsed</div>'}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <button class="btn btn-primary" style="flex:1" onclick="convertProspect('${prospect.id}','${prospect.name}')">🎉 Convert to Client</button>
+        <button class="btn" style="color:var(--danger)" onclick="deleteProspect('${prospect.id}','${prospect.name}');document.getElementById('prospect-detail-modal').style.display='none'">🗑 Delete</button>
+      </div>`;
+    modal.style.display = 'flex';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function convertProspect(id, name) {
+  if (!confirm(`Convert ${name} to a full client? This will create a login account.`)) return;
+  try {
+    const r = await api._req('POST', `/prospects/${id}/convert`, {});
+    toast(`✅ ${name} is now a client! Login: ${r.username} / ${r.password}`);
+    document.getElementById('prospect-detail-modal').style.display = 'none';
+    await loadProspectsList();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteProspect(id, name) {
+  if (!confirm(`Delete ${name}?`)) return;
+  try {
+    await api._req('DELETE', `/prospects/${id}`);
+    toast(`🗑 ${name} deleted`);
+    await loadProspectsList();
   } catch(e) { toast(e.message, 'error'); }
 }
 

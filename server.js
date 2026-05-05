@@ -143,6 +143,37 @@ async function initDb() {
         FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
       )
     `);
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS prospects (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT 'Unknown',
+        dob TEXT DEFAULT '', gender TEXT DEFAULT '', occupation TEXT DEFAULT '',
+        annual_income FLOAT DEFAULT 0, phone TEXT DEFAULT '', email TEXT DEFAULT '',
+        notes TEXT DEFAULT '', source TEXT DEFAULT '',
+        deal_stage TEXT DEFAULT 'New Prospect',
+        last_contact TEXT DEFAULT '', next_action TEXT DEFAULT '',
+        raw_input TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS prospect_policies (
+        id SERIAL PRIMARY KEY, prospect_id TEXT NOT NULL,
+        insurer TEXT DEFAULT '', product_name TEXT DEFAULT '',
+        category TEXT DEFAULT '', sub_type TEXT DEFAULT '',
+        sum_assured FLOAT DEFAULT 0, annual_premium FLOAT DEFAULT 0,
+        payment_mode TEXT DEFAULT '', payment_term_years INTEGER,
+        policy_term_years INTEGER, age_bought INTEGER, age_end INTEGER,
+        start_date TEXT DEFAULT '', end_date TEXT DEFAULT '',
+        status TEXT DEFAULT 'Active',
+        total_paid_estimate FLOAT, surrender_value FLOAT,
+        projected_maturity FLOAT, deductible FLOAT, coinsurance FLOAT,
+        key_exclusions TEXT DEFAULT '[]', riders TEXT DEFAULT '[]',
+        multiplier_end_age INTEGER, multiplier_times INTEGER,
+        raw_json TEXT DEFAULT '{}',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
+      )
+    `);
     console.log('✅ PostgreSQL schema ready');
 
     // Seed admin
@@ -230,6 +261,35 @@ async function initDb() {
   try { db.run(`ALTER TABLE policies ADD COLUMN policy_number TEXT DEFAULT ''`); } catch {}
   try { db.run(`ALTER TABLE policies ADD COLUMN coverage_items TEXT DEFAULT '[]'`); } catch {}
   try { db.run(`CREATE TABLE IF NOT EXISTS invite_tokens (token TEXT PRIMARY KEY, client_id TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')), expires_at TEXT, used INTEGER DEFAULT 0, FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE)`); } catch {}
+
+  // Prospects tables (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS prospects (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT 'Unknown',
+    dob TEXT DEFAULT '', gender TEXT DEFAULT '', occupation TEXT DEFAULT '',
+    annual_income REAL DEFAULT 0, phone TEXT DEFAULT '', email TEXT DEFAULT '',
+    notes TEXT DEFAULT '', source TEXT DEFAULT '',
+    deal_stage TEXT DEFAULT 'New Prospect',
+    last_contact TEXT DEFAULT '', next_action TEXT DEFAULT '',
+    raw_input TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS prospect_policies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, prospect_id TEXT NOT NULL,
+    insurer TEXT DEFAULT '', product_name TEXT DEFAULT '',
+    category TEXT DEFAULT '', sub_type TEXT DEFAULT '',
+    sum_assured REAL DEFAULT 0, annual_premium REAL DEFAULT 0,
+    payment_mode TEXT DEFAULT '', payment_term_years INTEGER,
+    policy_term_years INTEGER, age_bought INTEGER, age_end INTEGER,
+    start_date TEXT DEFAULT '', end_date TEXT DEFAULT '',
+    status TEXT DEFAULT 'Active',
+    total_paid_estimate REAL, surrender_value REAL,
+    projected_maturity REAL, deductible REAL, coinsurance REAL,
+    key_exclusions TEXT DEFAULT '[]', riders TEXT DEFAULT '[]',
+    multiplier_end_age INTEGER, multiplier_times INTEGER,
+    raw_json TEXT DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
+  )`);
 
   // Phase 2 migrations — policies new columns
   try { db.run(`ALTER TABLE policies ADD COLUMN payment_frequency TEXT DEFAULT 'annual'`); } catch {}
@@ -1196,6 +1256,230 @@ app.post('/api/bootstrap', async (req, res) => {
   await dbRun('INSERT INTO clients (id,username,password_hash,name,role) VALUES (?,?,?,?,?)',
     ['ADMIN001', 'admin', hash, 'Dylan Ho', 'admin']);
   res.json({ success: true, username: 'admin' });
+});
+
+
+// ── Policy Parser (Prospects) ──────────────────────────────────────────────────
+
+const PARSER_SYSTEM_PROMPT = `You are a Prudential Singapore financial advisor's policy parser. Extract from insurance PDF/image (NTUC Income, Singlife, Prudential, Great Eastern, AIA, Manulife). Focus on protection + ILPs/wealth.
+
+Output ONLY valid JSON array [] of policies. Each policy:
+{
+  "insurer": "NTUC Income | Singlife | Prudential | Great Eastern | AIA | Manulife",
+  "product_name": "string",
+  "category": "Protection | ILP | Savings | Annuity",
+  "sub_type": "Death | TPD | TECI | Early CI | Multi CI | Hospital Private | Hospital B1 | Hospital B2 | Hospital C | Accident",
+  "sum_assured": number,
+  "annual_premium": number,
+  "payment_mode": "Annual | Monthly | Quarterly",
+  "payment_term_years": number or null,
+  "policy_term_years": number or null,
+  "age_bought": number or null,
+  "age_end": number or null,
+  "start_date": "YYYY-MM-DD or null",
+  "end_date": "YYYY-MM-DD or null",
+  "status": "Active | Lapsed | Paid-up | Matured",
+  "total_paid_estimate": number or null,
+  "surrender_value": number or null,
+  "projected_maturity": number or null,
+  "deductible": number or null,
+  "coinsurance": number or null,
+  "key_exclusions": ["Pre-existing conditions", ...] max 10 from doc,
+  "riders": [{"name": "string", "sum_assured": number}] or [],
+  "multiplier_end_age": number or null,
+  "multiplier_times": number or null
+}
+
+Rules:
+- key_exclusions: Extract ALL listed. Max 10. Quote exactly.
+- age_bought: Compute from start_date + DOB if provided.
+- Multi CI: Extract multiplier_end_age (age multiplier ends e.g. 65/70) and multiplier_times (how many times e.g. 5).
+- Hospital wards: Private / B1 / B2+ / B2 / C.
+- SGD numbers, no $ sign. Null for unknown.
+- If unparseable: [{"error": "unparseable", "reason": "string"}]`;
+
+async function callAnthropicParser(userContent) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('ANTHROPIC_API_KEY not configured — add it to Railway env vars');
+  const body = JSON.stringify({
+    model: 'claude-opus-4-5', max_tokens: 4096,
+    system: PARSER_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: userContent }]
+  });
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key,
+        'anthropic-version': '2023-06-01', 'Content-Length': Buffer.byteLength(body) }
+    }, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const resp = JSON.parse(data);
+          if (resp.error) return reject(new Error(resp.error.message || JSON.stringify(resp.error)));
+          const text = resp.content?.[0]?.text || '';
+          const m = text.match(/\[[\s\S]*\]/);
+          if (m) resolve(JSON.parse(m[0]));
+          else reject(new Error('No JSON array in AI response: ' + text.slice(0,200)));
+        } catch(e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body); req.end();
+  });
+}
+
+function computeGapAnalysis(prospect, policies) {
+  const income = parseFloat(prospect.annual_income) || 0;
+  const active = policies.filter(p => p.status === 'Active');
+  const sum = arr => arr.reduce((s, p) => s + (parseFloat(p.sum_assured) || 0), 0);
+
+  const deathPols = active.filter(p => p.sub_type === 'Death');
+  const tpdPols   = active.filter(p => p.sub_type === 'TPD');
+  const teciPols  = active.filter(p => ['TECI','Early CI'].includes(p.sub_type));
+  const multiPols = active.filter(p => p.sub_type === 'Multi CI');
+  const allCIPols = active.filter(p => ['TECI','Early CI','Multi CI'].includes(p.sub_type));
+  const hospPols  = active.filter(p => (p.sub_type||'').startsWith('Hospital'));
+  const accPols   = active.filter(p => p.sub_type === 'Accident');
+  const ilpPols   = active.filter(p => ['ILP','Savings','Annuity'].includes(p.category));
+
+  const deathTarget = income * 10;
+  const ciTarget    = income * 5;
+  const earlyTarget = income * 3;
+
+  const flag = (have, need) => need > 0 ? (have >= need ? 'ok' : have >= need * 0.5 ? 'partial' : 'gap') : (have > 0 ? 'ok' : 'gap');
+
+  const hasMultiCI = multiPols.length > 0;
+  const multEndAges = multiPols.map(p => p.multiplier_end_age).filter(Boolean);
+  const multTimes   = multiPols.map(p => p.multiplier_times).filter(Boolean);
+  const earliestEnd = multEndAges.length ? Math.min(...multEndAges) : null;
+
+  const wardRank = {'Hospital Private':5,'Hospital B1':4,'Hospital B2+':3,'Hospital B2':2,'Hospital C':1};
+  const bestWard = hospPols.reduce((b, p) => (wardRank[p.sub_type]||0) > (wardRank[b]||0) ? p.sub_type : b, null);
+
+  return {
+    income,
+    death:    { have: sum(deathPols), need: deathTarget, gap: Math.max(0, deathTarget - sum(deathPols)), status: flag(sum(deathPols), deathTarget), policies: deathPols.map(p => p.product_name) },
+    tpd:      { have: sum(tpdPols),   need: deathTarget, gap: Math.max(0, deathTarget - sum(tpdPols)),   status: flag(sum(tpdPols),   deathTarget), policies: tpdPols.map(p => p.product_name) },
+    ci:       { have: sum(allCIPols), need: ciTarget,    gap: Math.max(0, ciTarget    - sum(allCIPols)), status: flag(sum(allCIPols), ciTarget),    policies: allCIPols.map(p => p.product_name) },
+    early_ci: { have: sum(teciPols),  need: earlyTarget, gap: Math.max(0, earlyTarget - sum(teciPols)),  status: flag(sum(teciPols),  earlyTarget), policies: teciPols.map(p => p.product_name) },
+    multi_ci: {
+      has: hasMultiCI, sum_assured: sum(multiPols), status: hasMultiCI ? 'ok' : 'gap',
+      policies: multiPols.map(p => ({ name: p.product_name, insurer: p.insurer, sum_assured: p.sum_assured, multiplier_end_age: p.multiplier_end_age, multiplier_times: p.multiplier_times })),
+      multiplier_end_age: earliestEnd,
+      multiplier_times: multTimes.length ? Math.max(...multTimes) : null,
+      note: hasMultiCI ? `Multi-pay CI ✓${earliestEnd ? ` — multiplier ends age ${earliestEnd}` : ''}${multTimes.length ? ` (${Math.max(...multTimes)}x)` : ''}` : 'No multi-pay CI — gap to address'
+    },
+    hospital: {
+      ward: bestWard, status: bestWard === 'Hospital Private' ? 'ok' : bestWard ? 'partial' : 'gap',
+      note: !bestWard ? 'No hospitalisation coverage' : bestWard === 'Hospital Private' ? 'Private ward ✓' : `${bestWard} — consider upgrading to Private`,
+      policies: hospPols.map(p => p.product_name)
+    },
+    accident: { has: accPols.length > 0, status: accPols.length > 0 ? 'ok' : 'gap', policies: accPols.map(p => p.product_name) },
+    ilp:      { has: ilpPols.length > 0, status: ilpPols.length > 0 ? 'ok' : 'gap', total_value: sum(ilpPols), policies: ilpPols.map(p => p.product_name) },
+    total_annual_premium: active.reduce((s, p) => s + (parseFloat(p.annual_premium)||0), 0),
+    premium_benchmark: income * 0.15,
+  };
+}
+
+// POST /api/prospect/parse
+app.post('/api/prospect/parse', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { text, image_base64, media_type } = req.body;
+    if (!text && !image_base64) return res.status(400).json({ error: 'Provide text or image_base64' });
+    const userContent = image_base64
+      ? [{ type: 'image', source: { type: 'base64', media_type: media_type||'image/jpeg', data: image_base64 } },
+         { type: 'text', text: 'Extract all policies. Return ONLY valid JSON array [].' }]
+      : [{ type: 'text', text }];
+    const parsed = await callAnthropicParser(userContent);
+    res.json({ ok: true, policies: parsed, count: Array.isArray(parsed) ? parsed.length : 0 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/prospects
+app.post('/api/prospects', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { name, dob, gender, occupation, annual_income, phone, email, notes, source, deal_stage, raw_input, policies = [] } = req.body;
+    const id = 'PROS_' + Date.now() + '_' + Math.random().toString(36).slice(2,6).toUpperCase();
+    await dbRun(`INSERT INTO prospects (id,name,dob,gender,occupation,annual_income,phone,email,notes,source,deal_stage,raw_input) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, name||'Unknown', dob||'', gender||'', occupation||'', parseFloat(annual_income)||0, phone||'', email||'', notes||'', source||'', deal_stage||'New Prospect', raw_input||'']);
+    for (const p of policies) {
+      await dbRun(`INSERT INTO prospect_policies (prospect_id,insurer,product_name,category,sub_type,sum_assured,annual_premium,payment_mode,payment_term_years,policy_term_years,age_bought,age_end,start_date,end_date,status,total_paid_estimate,surrender_value,projected_maturity,deductible,coinsurance,key_exclusions,riders,multiplier_end_age,multiplier_times,raw_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [id, p.insurer||'', p.product_name||'', p.category||'', p.sub_type||'',
+         p.sum_assured||0, p.annual_premium||0, p.payment_mode||'',
+         p.payment_term_years||null, p.policy_term_years||null, p.age_bought||null, p.age_end||null,
+         p.start_date||'', p.end_date||'', p.status||'Active',
+         p.total_paid_estimate||null, p.surrender_value||null, p.projected_maturity||null,
+         p.deductible||null, p.coinsurance||null,
+         JSON.stringify(p.key_exclusions||[]), JSON.stringify(p.riders||[]),
+         p.multiplier_end_age||null, p.multiplier_times||null, JSON.stringify(p)]);
+    }
+    const prospect = await dbGet('SELECT * FROM prospects WHERE id=?', [id]);
+    const savedPolicies = await dbAll('SELECT * FROM prospect_policies WHERE prospect_id=?', [id]);
+    const parsed2 = savedPolicies.map(p => ({...p, key_exclusions: JSON.parse(p.key_exclusions||'[]'), riders: JSON.parse(p.riders||'[]')}));
+    res.status(201).json({ ok: true, prospect, policies: parsed2, gap: computeGapAnalysis(prospect, parsed2) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/prospects
+app.get('/api/prospects', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const list = await dbAll(`SELECT p.*, (SELECT COUNT(*) FROM prospect_policies pp WHERE pp.prospect_id=p.id) as policy_count FROM prospects p ORDER BY p.created_at DESC`, []);
+    res.json(list);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/prospects/:id
+app.get('/api/prospects/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const prospect = await dbGet('SELECT * FROM prospects WHERE id=?', [req.params.id]);
+    if (!prospect) return res.status(404).json({ error: 'Not found' });
+    const pols = await dbAll('SELECT * FROM prospect_policies WHERE prospect_id=? ORDER BY category,insurer', [req.params.id]);
+    const parsed2 = pols.map(p => ({...p, key_exclusions: JSON.parse(p.key_exclusions||'[]'), riders: JSON.parse(p.riders||'[]')}));
+    res.json({ prospect, policies: parsed2, gap: computeGapAnalysis(prospect, parsed2) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// PUT /api/prospects/:id
+app.put('/api/prospects/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { name, dob, gender, occupation, annual_income, phone, email, notes, deal_stage, next_action } = req.body;
+    await dbRun(`UPDATE prospects SET name=?,dob=?,gender=?,occupation=?,annual_income=?,phone=?,email=?,notes=?,deal_stage=?,next_action=?,updated_at=datetime('now') WHERE id=?`,
+      [name||'', dob||'', gender||'', occupation||'', parseFloat(annual_income)||0, phone||'', email||'', notes||'', deal_stage||'New Prospect', next_action||'', req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/prospects/:id
+app.delete('/api/prospects/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await dbRun('DELETE FROM prospects WHERE id=?', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/prospects/:id/convert — convert to full client
+app.post('/api/prospects/:id/convert', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const prospect = await dbGet('SELECT * FROM prospects WHERE id=?', [req.params.id]);
+    if (!prospect) return res.status(404).json({ error: 'Not found' });
+    const pols = await dbAll('SELECT * FROM prospect_policies WHERE prospect_id=?', [req.params.id]);
+    const clientId = 'CLI_' + Date.now();
+    const username = req.body.username || prospect.email || `client_${clientId.slice(-6)}`;
+    const password = req.body.password || 'change-me-2026';
+    const hash = bcrypt.hashSync(password, 10);
+    const age = prospect.dob ? Math.floor((Date.now() - new Date(prospect.dob).getTime()) / 31557600000) : 0;
+    await dbRun(`INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,phone,email,notes,deal_stage) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [clientId, username, hash, prospect.name, age, prospect.gender, prospect.occupation, prospect.annual_income, prospect.phone, prospect.email, prospect.notes, 'Client']);
+    for (const p of pols) {
+      const noteStr = [p.multiplier_end_age ? `Multiplier ends age ${p.multiplier_end_age}` : '', p.key_exclusions ? `Exclusions: ${p.key_exclusions}` : ''].filter(Boolean).join(' | ');
+      await dbRun(`INSERT INTO policies (client_id,insurer,product_name,type,product_type,coverage,premium,start_date,end_date,status,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [clientId, p.insurer, p.product_name, p.category, p.sub_type, p.sum_assured, p.annual_premium, p.start_date, p.end_date, p.status, noteStr]);
+    }
+    await dbRun('DELETE FROM prospects WHERE id=?', [prospect.id]);
+    res.json({ ok: true, client_id: clientId, username, password, message: `${prospect.name} converted to client` });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────────
