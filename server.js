@@ -1299,18 +1299,30 @@ Rules:
 - If unparseable: [{"error": "unparseable", "reason": "string"}]`;
 
 async function callAnthropicParser(userContent) {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) throw new Error('ANTHROPIC_API_KEY not configured — add it to Railway env vars');
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error('OPENAI_API_KEY not configured on server');
+
+  // Build OpenAI messages — convert Anthropic-style content blocks to OpenAI format
+  const messages = [
+    { role: 'system', content: PARSER_SYSTEM_PROMPT },
+    { role: 'user', content: Array.isArray(userContent)
+        ? userContent.map(c => {
+            if (c.type === 'text') return { type: 'text', text: c.text };
+            if (c.type === 'image') return { type: 'image_url', image_url: { url: `data:${c.source.media_type};base64,${c.source.data}` } };
+            return c;
+          })
+        : userContent }
+  ];
+
   const body = JSON.stringify({
-    model: 'claude-opus-4-5', max_tokens: 4096,
-    system: PARSER_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userContent }]
+    model: 'gpt-4o', max_tokens: 4096, messages
   });
+
   return new Promise((resolve, reject) => {
     const req = https.request({
-      hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key,
-        'anthropic-version': '2023-06-01', 'Content-Length': Buffer.byteLength(body) }
+      hostname: 'api.openai.com', path: '/v1/chat/completions', method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}`,
+        'Content-Length': Buffer.byteLength(body) }
     }, res => {
       let data = '';
       res.on('data', c => data += c);
@@ -1318,10 +1330,10 @@ async function callAnthropicParser(userContent) {
         try {
           const resp = JSON.parse(data);
           if (resp.error) return reject(new Error(resp.error.message || JSON.stringify(resp.error)));
-          const text = resp.content?.[0]?.text || '';
+          const text = resp.choices?.[0]?.message?.content || '';
           const m = text.match(/\[[\s\S]*\]/);
           if (m) resolve(JSON.parse(m[0]));
-          else reject(new Error('No JSON array in AI response: ' + text.slice(0,200)));
+          else reject(new Error('No JSON array in GPT-4o response: ' + text.slice(0,200)));
         } catch(e) { reject(e); }
       });
     });
