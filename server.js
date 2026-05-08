@@ -11,7 +11,7 @@ const initSqlJs = require('sql.js');
 // ─── PostgreSQL / SQLite Dual-Mode Adapter ─────────────────────────────────────
 // When DATABASE_URL is set (Railway) → PostgreSQL (persistent)
 // Otherwise → SQLite (local dev)
-const USE_POSTGRES = !!process.env.DATABASE_URL;
+let USE_POSTGRES = !!process.env.DATABASE_URL;
 
 let _pgPool = null;
 async function _getPgPool() {
@@ -62,6 +62,17 @@ async function _pgRun(sql, params = []) {
 async function _pgExec(sql) {
   const pool = await _getPgPool();
   await pool.query(_toPg(sql));
+}
+
+async function testPgConnection() {
+  try {
+    const pool = await _getPgPool();
+    await pool.query('SELECT 1');
+    return true;
+  } catch (e) {
+    console.warn('⚠️  PostgreSQL unreachable, falling back to SQLite:', e.message);
+    return false;
+  }
 }
 
 // Sync wrappers for SQLite (unchanged from original)
@@ -1495,12 +1506,31 @@ app.post('/api/prospects/:id/convert', authenticate, requireAdmin, async (req, r
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────────
-initDb().then(() => {
-  app.listen(PORT, () => {
-    console.log(`\n🚀 FinView Dashboard → http://localhost:${PORT}`);
-    console.log(`   Admin: admin / admin2026\n`);
-  });
-}).catch(e => { console.error('DB init failed:', e); process.exit(1); });
+async function startServer() {
+  // If DATABASE_URL is set, verify the connection first.
+  // If PostgreSQL is unreachable, fall back to SQLite so the app never hard-crashes.
+  if (USE_POSTGRES) {
+    const pgOk = await testPgConnection();
+    if (!pgOk) {
+      console.warn('⚠️  Falling back to SQLite — PostgreSQL unavailable');
+      USE_POSTGRES = false;
+      _pgPool = null;
+    }
+  }
+  try {
+    await initDb();
+    app.listen(PORT, () => {
+      console.log(`\n🚀 FinView Dashboard → http://localhost:${PORT}`);
+      console.log(`   Mode: ${USE_POSTGRES ? 'PostgreSQL' : 'SQLite'}`);
+      console.log(`   Admin: admin / admin2026\n`);
+    });
+  } catch (e) {
+    console.error('DB init failed:', e);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // ── Client Recommendation Engine (SG data-backed) ─────────────────────────
 app.get('/api/clients/:id/recommendation', authenticate, async (req, res) => {
