@@ -19,7 +19,10 @@ async function _getPgPool() {
     const { Pool } = require('pg');
     _pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+      ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 10000,
+      max: 5
     });
   }
   return _pgPool;
@@ -67,10 +70,16 @@ async function _pgExec(sql) {
 async function testPgConnection() {
   try {
     const pool = await _getPgPool();
-    await pool.query('SELECT 1');
+    // Hard 6-second timeout — if PG hangs, we fall back to SQLite immediately
+    await Promise.race([
+      pool.query('SELECT 1'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('PG connection timeout')), 6000))
+    ]);
     return true;
   } catch (e) {
     console.warn('⚠️  PostgreSQL unreachable, falling back to SQLite:', e.message);
+    // Close the pool so it doesn't leave hanging connections
+    try { if (_pgPool) { await _pgPool.end(); _pgPool = null; } } catch {}
     return false;
   }
 }
