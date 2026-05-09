@@ -194,6 +194,15 @@ async function initDb() {
         FOREIGN KEY (prospect_id) REFERENCES prospects(id) ON DELETE CASCADE
       )
     `);
+    // Migrations for PG: add columns that may not exist in older deployments
+    try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS deal_stage TEXT DEFAULT 'Prospect'`); } catch {}
+    try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_contact TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS next_action TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS coverage_items TEXT DEFAULT '[]'`); } catch {}
+    try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS payment_frequency TEXT DEFAULT 'annual'`); } catch {}
+    try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS cpf_medisave_amount FLOAT DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS cash_amount FLOAT DEFAULT 0`); } catch {}
     console.log('✅ PostgreSQL schema ready');
 
     // Seed admin
@@ -460,11 +469,11 @@ app.delete('/api/admin/clients/:id', authenticate, requireAdmin, async (req, res
 
 // ── Admin: Stats overview ──────────────────────────────────────────────────────
 app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
-  const totalClients = (await dbGet(`SELECT COUNT(*) as cnt FROM clients WHERE role='client'`))?.cnt || 0;
-  const totalPolicies = (await dbGet('SELECT COUNT(*) as cnt FROM policies'))?.cnt || 0;
-  const totalCoverage = (await dbGet(`SELECT SUM(p.coverage) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client' AND p.status='Active'`))?.total || 0;
-  const totalPremium = (await dbGet(`SELECT SUM(p.premium) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client'`))?.total || 0;
-  const totalInvestments = (await dbGet(`SELECT SUM(i.value_now) as total FROM investments i JOIN clients c ON i.client_id=c.id WHERE c.role='client'`))?.total || 0;
+  const totalClients = Number((await dbGet(`SELECT COUNT(*) as cnt FROM clients WHERE role='client'`))?.cnt || 0);
+  const totalPolicies = Number((await dbGet('SELECT COUNT(*) as cnt FROM policies'))?.cnt || 0);
+  const totalCoverage = Number((await dbGet(`SELECT SUM(p.coverage) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client' AND p.status='Active'`))?.total || 0);
+  const totalPremium = Number((await dbGet(`SELECT SUM(p.premium) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client'`))?.total || 0);
+  const totalInvestments = Number((await dbGet(`SELECT SUM(i.value_now) as total FROM investments i JOIN clients c ON i.client_id=c.id WHERE c.role='client'`))?.total || 0);
   res.json({ totalClients, totalPolicies, totalCoverage, totalPremium, totalInvestments });
 });
 
@@ -968,6 +977,94 @@ app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, async (req, res)
   });
 });
 
+// ── Expiry Alerts: Telegram Notify ───────────────────────────────────────────
+async function sendExpiryAlertsTelegram() {
+  const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8633895902:AAHOkhez6N1XW3fM0sM1b78NvQBupOOZcFQ';
+  const TELEGRAM_CHAT_ID = '8193595101';
+
+  const days = 90;
+  const today = new Date();
+  const cutoff = new Date(today); cutoff.setDate(today.getDate() + days);
+  const todayStr = today.toISOString().split('T')[0];
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const policies = await dbAll(`
+    SELECT p.*, c.name as client_name, c.email as client_email, c.phone as client_phone
+    FROM policies p JOIN clients c ON p.client_id = c.id
+    WHERE c.role != 'admin' AND p.end_date != '' AND p.end_date >= ? AND p.end_date <= ? AND p.status = 'Active'
+    ORDER BY p.end_date ASC
+  `, [todayStr, cutoffStr]);
+
+  if (!policies.length) return { sent: false, count: 0 };
+
+  const tagged = policies.map(p => {
+    const daysLeft = Math.ceil((new Date(p.end_date) - today) / (1000 * 60 * 60 * 24));
+    const urgency = daysLeft <= 14 ? 'critical' : daysLeft <= 30 ? 'high' : daysLeft <= 60 ? 'medium' : 'low';
+    return { ...p, days_left: daysLeft, urgency };
+  });
+
+  const critical = tagged.filter(p => p.urgency === 'critical');
+  const high = tagged.filter(p => p.urgency === 'high');
+  const medium = tagged.filter(p => p.urgency === 'medium');
+
+  const fmt = arr => arr.map(p => `  • ${p.client_name}: ${p.product_name||p.type} (${p.days_left}d)`).join('\n');
+  let msg = '⚠️ FinView Expiry Alert\n';
+  if (critical.length) msg += `\n🔴 Critical (≤14d):\n${fmt(critical)}`;
+  if (high.length) msg += `\n🟠 High (≤30d):\n${fmt(high)}`;
+  if (medium.length) msg += `\n🟡 Medium (≤60d):\n${fmt(medium)}`;
+  msg += `\n\nTotal: ${tagged.length} policies`;
+
+  await new Promise((resolve, reject) => {
+    const body = JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'HTML' });
+    const req = https.request({
+      hostname: 'api.telegram.org',
+      path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, res => { let d = ''; res.on('data', c => d += c); res.on('end', () => resolve(JSON.parse(d))); });
+    req.on('error', reject);
+    req.write(body); req.end();
+  });
+
+  return { sent: true, count: tagged.length };
+}
+
+app.post('/api/admin/expiry-alerts/notify', authenticate, requireAdmin, async (req, res) => {
+  try { res.json(await sendExpiryAlertsTelegram()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/admin/expiry-alerts/notify', authenticate, requireAdmin, async (req, res) => {
+  try { res.json(await sendExpiryAlertsTelegram()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Dashboard Overview Chart Data ─────────────────────────────────────────────
+app.get('/api/admin/overview', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const clients = await dbAll(`SELECT id, deal_stage FROM clients WHERE role='client'`);
+    const policies = await dbAll(`SELECT p.coverage, p.premium, p.type, c.deal_stage FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client' AND p.status='Active'`);
+
+    const coverage_by_stage = {};
+    const premium_by_type = {};
+    for (const p of policies) {
+      const stage = p.deal_stage || 'Unknown';
+      coverage_by_stage[stage] = (coverage_by_stage[stage] || 0) + Number(p.coverage || 0);
+      const t = p.type || 'Other';
+      premium_by_type[t] = (premium_by_type[t] || 0) + Number(p.premium || 0);
+    }
+
+    // Top clients by total coverage
+    const clientIds = clients.map(c => c.id);
+    const topClients = [];
+    for (const c of clients.slice(0, 20)) {
+      const r1 = await dbGet(`SELECT SUM(coverage) as cov, SUM(premium) as prem FROM policies WHERE client_id=? AND status='Active'`, [c.id]);
+      const nameRow = await dbGet(`SELECT name FROM clients WHERE id=?`, [c.id]);
+      topClients.push({ name: nameRow?.name || c.id, coverage: Number(r1?.cov || 0), premium: Number(r1?.prem || 0) });
+    }
+    topClients.sort((a, b) => b.coverage - a.coverage);
+
+    res.json({ coverage_by_stage, premium_by_type, top_clients: topClients.slice(0, 10) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Backup & Restore ───────────────────────────────────────────────────────────
 app.get('/api/admin/backup', authenticate, requireAdmin, async (req, res) => {
   try {
@@ -1000,10 +1097,12 @@ app.post('/api/admin/restore', authenticate, requireAdmin, async (req, res) => {
       const exists = await dbGet('SELECT id FROM clients WHERE id=?', [c.id]);
       if (exists) { imported.skipped++; continue; }
       try {
-        await dbRun(`INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,dependents,email,phone,role,notion_page_id,created_at,updated_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        await dbRun(`INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,dependents,email,phone,role,notion_page_id,notes,deal_stage,last_contact,next_action,created_at,updated_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [c.id, c.username, c.password_hash, c.name, c.age||0, c.gender||'', c.occupation||'', c.annual_income||0,
-           c.dependents||0, c.email||'', c.phone||'', c.role||'client', c.notion_page_id||'', c.created_at||new Date().toISOString(), c.updated_at||new Date().toISOString()]);
+           c.dependents||0, c.email||'', c.phone||'', c.role||'client', c.notion_page_id||'',
+           c.notes||'', c.deal_stage||'Prospect', c.last_contact||'', c.next_action||'',
+           c.created_at||new Date().toISOString(), c.updated_at||new Date().toISOString()]);
         imported.clients++;
       } catch (e) { imported.skipped++; }
     }

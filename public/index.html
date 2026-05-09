@@ -1341,6 +1341,7 @@ function renderInsurance(clientId, isAdmin) {
       <div class="card"><div class="card-header"><div class="card-title">📊 Coverage vs Recommended</div></div><div class="card-body"><div class="chart-wrap"><canvas id="chartCoverageComp"></canvas></div></div></div>
       <div class="card"><div class="card-header"><div class="card-title">📅 Coverage Timeline</div></div><div class="card-body" style="overflow-x:auto"><div id="coverageTimeline" style="min-width:500px"></div></div></div>
     </div>
+    <div class="card" id="policySummaryCard"><div class="card-header"><div class="card-title">📊 Policy Summary</div></div><div class="card-body" id="policySummaryBody"></div></div>
     <div class="card"><div class="card-header"><div class="card-title">🛡️ All Policies</div></div><div id="policyList" class="card-body"></div></div>
     <div class="card" style="margin-top:20px"><div class="card-header"><div class="card-title">📋 Needs Analysis</div><div class="card-sub">Coverage gaps vs recommended - SG benchmarks</div></div><div id="needsAnalysisSection" class="card-body"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-sub">Loading needs analysis...</div></div></div></div>
   `;
@@ -1374,6 +1375,29 @@ function renderInsurance(clientId, isAdmin) {
     const barLabel = widthPct > 8 ? fmt(p.coverage) : '';
     return `<div class="timeline-row"><div class="timeline-meta"><span class="timeline-label" title="${esc(p.product_name||p.type)}">${esc(p.product_name||p.type)}</span><span class="timeline-dates">Age ${startAge}→${endAge} · ${fmt(p.coverage)}</span></div><div class="timeline-track"><div class="timeline-fill" style="left:${startPct}%;width:${widthPct}%;background:${color}">${barLabel}</div><div class="timeline-now" style="left:${nowPct}%"></div></div><div class="timeline-ages"><span>${minAge}</span><span style="font-weight:600;color:var(--danger)">Now (${clientAge})</span><span>${maxAge}</span></div></div>`;
   }).join('') : '<div class="empty"><div class="empty-sub">Add policies with start and end dates to see the coverage timeline</div></div>';
+
+  // ── Policy Summary Card ──────────────────────────────────────────────────────
+  const expiredCount = S.policies.filter(p => p.status !== 'Active').length;
+  const totalAnnualPremium = S.policies.reduce((s, p) => s + (p.premium || 0), 0);
+  document.getElementById('policySummaryBody').innerHTML = S.policies.length ? `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px">
+      <div style="text-align:center;padding:12px;background:var(--surface-2);border-radius:var(--radius)">
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px">Total Coverage</div>
+        <div style="font-size:22px;font-weight:800;color:var(--primary);margin-top:4px">${fmt(totalCoverage)}</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--surface-2);border-radius:var(--radius)">
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px">Annual Premium</div>
+        <div style="font-size:22px;font-weight:800;color:var(--success);margin-top:4px">${fmt(totalAnnualPremium)}<span style="font-size:12px;font-weight:500">/yr</span></div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--surface-2);border-radius:var(--radius)">
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px">Active Policies</div>
+        <div style="font-size:22px;font-weight:800;color:var(--text);margin-top:4px">${activePolicies.length}</div>
+      </div>
+      <div style="text-align:center;padding:12px;background:var(--surface-2);border-radius:var(--radius)">
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px">Expired / Lapsed</div>
+        <div style="font-size:22px;font-weight:800;color:${expiredCount>0?'var(--danger)':'var(--text-3)'};margin-top:4px">${expiredCount}</div>
+      </div>
+    </div>` : '<div class="empty"><div class="empty-sub">No policies yet</div></div>';
 
   if (!S.policies.length) {
     document.getElementById('policyList').innerHTML = `<div class="empty"><div class="empty-icon">🛡️</div><div class="empty-title">No policies yet</div><div class="empty-sub">Add your first insurance policy</div><button class="btn btn-primary" onclick="openPolicyModal()">+ Add Policy</button></div>`;
