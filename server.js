@@ -1013,8 +1013,10 @@ app.post('/api/admin/restore', authenticate, requireAdmin, async (req, res) => {
       const clientExists = await dbGet('SELECT id FROM clients WHERE id=?', [p.client_id]);
       if (!clientExists) { imported.skipped++; continue; }
       try {
-        await dbRun(`INSERT OR IGNORE INTO policies (id,client_id,type,product_name,insurer,product_type,coverage,premium,start_date,end_date,status,recommended,notes,policy_number,coverage_items,created_at,updated_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        const polSql = USE_POSTGRES
+          ? `INSERT INTO policies (id,client_id,type,product_name,insurer,product_type,coverage,premium,start_date,end_date,status,recommended,notes,policy_number,coverage_items,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING`
+          : `INSERT OR IGNORE INTO policies (id,client_id,type,product_name,insurer,product_type,coverage,premium,start_date,end_date,status,recommended,notes,policy_number,coverage_items,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+        await dbRun(polSql,
           [p.id, p.client_id, p.type||'', p.product_name||'', p.insurer||'', p.product_type||'', p.coverage||0,
            p.premium||0, p.start_date||'', p.end_date||'', p.status||'Active', p.recommended||0,
            p.notes||'', p.policy_number||'', p.coverage_items||'[]', p.created_at||new Date().toISOString(), p.updated_at||new Date().toISOString()]);
@@ -1027,8 +1029,10 @@ app.post('/api/admin/restore', authenticate, requireAdmin, async (req, res) => {
       const clientExists = await dbGet('SELECT id FROM clients WHERE id=?', [i.client_id]);
       if (!clientExists) { imported.skipped++; continue; }
       try {
-        await dbRun(`INSERT OR IGNORE INTO investments (id,client_id,name,type,invested,value_now,target,goal_by,contribution,created_at,updated_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        const invSql = USE_POSTGRES
+          ? `INSERT INTO investments (id,client_id,name,type,invested,value_now,target,goal_by,contribution,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING`
+          : `INSERT OR IGNORE INTO investments (id,client_id,name,type,invested,value_now,target,goal_by,contribution,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`;
+        await dbRun(invSql,
           [i.id, i.client_id, i.name||'', i.type||'', i.invested||0, i.value_now||0,
            i.target||0, i.goal_by||'', i.contribution||0, i.created_at||new Date().toISOString(), i.updated_at||new Date().toISOString()]);
         imported.investments++;
@@ -1040,15 +1044,17 @@ app.post('/api/admin/restore', authenticate, requireAdmin, async (req, res) => {
       const clientExists = await dbGet('SELECT id FROM clients WHERE id=?', [s.client_id]);
       if (!clientExists) { imported.skipped++; continue; }
       try {
-        await dbRun(`INSERT OR IGNORE INTO snapshots (id,client_id,year,snapshot_date,total_coverage,total_investment_value,notes,created_at)
-          VALUES (?,?,?,?,?,?,?,?)`,
+        const snapSql = USE_POSTGRES
+          ? `INSERT INTO snapshots (id,client_id,year,snapshot_date,total_coverage,total_investment_value,notes,created_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING`
+          : `INSERT OR IGNORE INTO snapshots (id,client_id,year,snapshot_date,total_coverage,total_investment_value,notes,created_at) VALUES (?,?,?,?,?,?,?,?)`;
+        await dbRun(snapSql,
           [s.id, s.client_id, s.year, s.snapshot_date||'', s.total_coverage||0,
            s.total_investment_value||0, s.notes||'', s.created_at||new Date().toISOString()]);
         imported.snapshots++;
       } catch (e) { imported.skipped++; }
     }
 
-    saveDb();
+    if (!USE_POSTGRES) saveDb();
     res.json({ success: true, imported });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
