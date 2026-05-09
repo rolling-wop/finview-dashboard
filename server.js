@@ -460,11 +460,11 @@ app.delete('/api/admin/clients/:id', authenticate, requireAdmin, async (req, res
 
 // ── Admin: Stats overview ──────────────────────────────────────────────────────
 app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
-  const totalClients = await dbGet(`SELECT COUNT(*) as cnt FROM clients WHERE role='client'`)?.cnt || 0;
-  const totalPolicies = await dbGet('SELECT COUNT(*) as cnt FROM policies')?.cnt || 0;
-  const totalCoverage = await dbGet(`SELECT SUM(p.coverage) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client' AND p.status='Active'`)?.total || 0;
-  const totalPremium = await dbGet(`SELECT SUM(p.premium) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client'`)?.total || 0;
-  const totalInvestments = await dbGet(`SELECT SUM(i.value_now) as total FROM investments i JOIN clients c ON i.client_id=c.id WHERE c.role='client'`)?.total || 0;
+  const totalClients = (await dbGet(`SELECT COUNT(*) as cnt FROM clients WHERE role='client'`))?.cnt || 0;
+  const totalPolicies = (await dbGet('SELECT COUNT(*) as cnt FROM policies'))?.cnt || 0;
+  const totalCoverage = (await dbGet(`SELECT SUM(p.coverage) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client' AND p.status='Active'`))?.total || 0;
+  const totalPremium = (await dbGet(`SELECT SUM(p.premium) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client'`))?.total || 0;
+  const totalInvestments = (await dbGet(`SELECT SUM(i.value_now) as total FROM investments i JOIN clients c ON i.client_id=c.id WHERE c.role='client'`))?.total || 0;
   res.json({ totalClients, totalPolicies, totalCoverage, totalPremium, totalInvestments });
 });
 
