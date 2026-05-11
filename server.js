@@ -20,9 +20,11 @@ async function _getPgPool() {
     _pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
-      connectionTimeoutMillis: 5000,
-      idleTimeoutMillis: 10000,
-      max: 5
+      connectionTimeoutMillis: 8000,
+      idleTimeoutMillis: 30000,
+      max: 10,
+      min: 2,
+      allowExitOnIdle: false
     });
   }
   return _pgPool;
@@ -92,6 +94,17 @@ const app = express();
 const PORT = process.env.PORT || 3847;
 const JWT_SECRET = process.env.JWT_SECRET || 'dylan-findb-secret-2026-!@#';
 const DB_PATH = path.join(__dirname, 'data', 'dashboard.db');
+
+// ── Global crash prevention ────────────────────────────────────────────────────
+// Node 15+ kills the process on unhandled rejections — catch them all here
+process.on('uncaughtException', err => {
+  console.error('[FinView] Uncaught exception (server kept alive):', err.message, err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FinView] Unhandled rejection (server kept alive):', reason);
+});
+// Wraps async route handlers so thrown errors go to Express error handler
+const asyncRoute = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 let db;
 
@@ -394,7 +407,7 @@ function requireAdmin(req, res, next) {
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', asyncRoute(async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Missing credentials' });
   const client = await dbGet('SELECT * FROM clients WHERE username = ?', [username]);
@@ -405,10 +418,10 @@ app.post('/api/auth/login', async (req, res) => {
     token, role: client.role,
     client: { id: client.id, name: client.name, email: client.email, age: client.age, annual_income: client.annual_income, occupation: client.occupation, role: client.role }
   });
-});
+}));
 
 // ── Admin: List all clients ────────────────────────────────────────────────────
-app.get('/api/admin/clients', authenticate, requireAdmin, async (req, res) => {
+app.get('/api/admin/clients', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const clients = await dbAll(`SELECT id, username, name, age, gender, occupation, annual_income, email, phone, role, created_at FROM clients WHERE role != 'admin' ORDER BY name`);
   const enriched = await Promise.all(clients.map(async c => {
     const r1 = await dbGet('SELECT COUNT(*) as cnt FROM policies WHERE client_id=?', [c.id]);
@@ -418,7 +431,7 @@ app.get('/api/admin/clients', authenticate, requireAdmin, async (req, res) => {
     return { ...c, policyCount: r1?.cnt || 0, totalCoverage: r2?.total || 0, totalPremium: r3?.total || 0, totalInvestments: r4?.total || 0 };
   }));
   res.json(enriched);
-});
+}));
 
 // ── Admin: Create client ───────────────────────────────────────────────────────
 app.post('/api/admin/clients', authenticate, requireAdmin, async (req, res) => {
@@ -436,7 +449,7 @@ app.post('/api/admin/clients', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ── Admin: Update client ───────────────────────────────────────────────────────
-app.put('/api/admin/clients/:id', authenticate, requireAdmin, async (req, res) => {
+app.put('/api/admin/clients/:id', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const { name, age, gender, occupation, annual_income, dependents, email, phone, password, notes, deal_stage, last_contact, next_action } = req.body;
   if (password) {
     const hash = bcrypt.hashSync(password, 10);
@@ -459,26 +472,26 @@ app.put('/api/admin/clients/:id', authenticate, requireAdmin, async (req, res) =
     });
   }
   res.json({ success: true });
-});
+}));
 
 // ── Admin: Delete client ───────────────────────────────────────────────────────
-app.delete('/api/admin/clients/:id', authenticate, requireAdmin, async (req, res) => {
+app.delete('/api/admin/clients/:id', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   await dbRun('DELETE FROM clients WHERE id=? AND role!=?', [req.params.id, 'admin']);
   res.json({ success: true });
-});
+}));
 
 // ── Admin: Stats overview ──────────────────────────────────────────────────────
-app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
+app.get('/api/admin/stats', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const totalClients = Number((await dbGet(`SELECT COUNT(*) as cnt FROM clients WHERE role='client'`))?.cnt || 0);
   const totalPolicies = Number((await dbGet('SELECT COUNT(*) as cnt FROM policies'))?.cnt || 0);
   const totalCoverage = Number((await dbGet(`SELECT SUM(p.coverage) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client' AND p.status='Active'`))?.total || 0);
   const totalPremium = Number((await dbGet(`SELECT SUM(p.premium) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client'`))?.total || 0);
   const totalInvestments = Number((await dbGet(`SELECT SUM(i.value_now) as total FROM investments i JOIN clients c ON i.client_id=c.id WHERE c.role='client'`))?.total || 0);
   res.json({ totalClients, totalPolicies, totalCoverage, totalPremium, totalInvestments });
-});
+}));
 
 // ── Admin: Expiry alerts across all clients ────────────────────────────────────
-app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, async (req, res) => {
+app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const days = Math.min(Math.max(parseInt(req.query.days) || 90, 1), 365);
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + days);
@@ -491,10 +504,10 @@ app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, async (req, res)
     ORDER BY p.end_date ASC
   `, [today, cutoffStr]);
   res.json(policies);
-});
+}));
 
 // ── Admin: Coverage gaps across all clients ────────────────────────────────────
-app.get('/api/admin/coverage-gaps', authenticate, requireAdmin, async (req, res) => {
+app.get('/api/admin/coverage-gaps', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const clients = await dbAll(`SELECT id, name, age, annual_income, dependents, occupation FROM clients WHERE role='client'`);
   const result = clients.map(async c => {
     const income = c.annual_income || 0;
@@ -527,26 +540,26 @@ app.get('/api/admin/coverage-gaps', authenticate, requireAdmin, async (req, res)
     return { ...c, gaps, totalGap };
   }).filter(c => c.totalGap > 0).sort((a, b) => b.totalGap - a.totalGap);
   res.json(result);
-});
+}));
 
 // ── Client: Get profile ────────────────────────────────────────────────────────
-app.get('/api/clients/:id', authenticate, async (req, res) => {
+app.get('/api/clients/:id', authenticate, asyncRoute(async (req, res) => {
   if (req.user.role !== 'admin' && req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
   const c = await dbGet('SELECT id,name,age,gender,occupation,annual_income,dependents,email,phone,role,deal_stage,last_contact,next_action,notes FROM clients WHERE id=?', [req.params.id]);
   if (!c) return res.status(404).json({ error: 'Not found' });
   res.json(c);
-});
+}));
 
-app.put('/api/clients/:id', authenticate, async (req, res) => {
+app.put('/api/clients/:id', authenticate, asyncRoute(async (req, res) => {
   if (req.user.role !== 'admin' && req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
   const { name, age, gender, occupation, annual_income, dependents, email, phone } = req.body;
   await dbRun(`UPDATE clients SET name=?,age=?,gender=?,occupation=?,annual_income=?,dependents=?,email=?,phone=?,updated_at=datetime('now') WHERE id=?`,
     [name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'', req.params.id]);
   res.json({ success: true });
-});
+}));
 
 // ── Client: Coverage gap analysis ─────────────────────────────────────────────
-app.get('/api/clients/:id/coverage-gaps', authenticate, async (req, res) => {
+app.get('/api/clients/:id/coverage-gaps', authenticate, asyncRoute(async (req, res) => {
   if (req.user.role !== 'admin' && req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
   const c = await dbGet('SELECT * FROM clients WHERE id=?', [req.params.id]);
   if (!c) return res.status(404).json({ error: 'Not found' });
@@ -604,7 +617,7 @@ app.get('/api/clients/:id/coverage-gaps', authenticate, async (req, res) => {
   const totalRec = gaps.reduce((s, g) => s + g.recommended, 0);
   const totalCurrent = gaps.reduce((s, g) => s + g.current, 0);
   res.json({ gaps, totalGap, totalRec, totalCurrent, income, age, deps });
-});
+}));
 
 // ── Policies ───────────────────────────────────────────────────────────────────
 function guardClient(req, res) {
@@ -619,7 +632,7 @@ app.get('/api/clients/:id/policies', authenticate, async (req, res) => {
   res.json(rows);
 });
 
-app.post('/api/clients/:id/policies', authenticate, async (req, res) => {
+app.post('/api/clients/:id/policies', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const { type, product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes, payment_frequency, cpf_medisave_amount, cash_amount } = req.body;
   const items = Array.isArray(coverage_items) ? coverage_items : [];
@@ -632,9 +645,9 @@ app.post('/api/clients/:id/policies', authenticate, async (req, res) => {
   const row = await dbGet('SELECT * FROM policies WHERE id=?', [id]);
   if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
   res.json(row);
-});
+}));
 
-app.put('/api/clients/:id/policies/:pid', authenticate, async (req, res) => {
+app.put('/api/clients/:id/policies/:pid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const body = req.body;
   // Recompute coverage from coverage_items if provided
@@ -651,58 +664,58 @@ app.put('/api/clients/:id/policies/:pid', authenticate, async (req, res) => {
   const row = await dbGet('SELECT * FROM policies WHERE id=?', [req.params.pid]);
   if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
   res.json(row);
-});
+}));
 
-app.delete('/api/clients/:id/policies/:pid', authenticate, async (req, res) => {
+app.delete('/api/clients/:id/policies/:pid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   await dbRun('DELETE FROM policies WHERE id=? AND client_id=?', [req.params.pid, req.params.id]);
   res.json({ success: true });
-});
+}));
 
 // ── Investments ────────────────────────────────────────────────────────────────
-app.get('/api/clients/:id/investments', authenticate, async (req, res) => {
+app.get('/api/clients/:id/investments', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   res.json(await dbAll('SELECT * FROM investments WHERE client_id=? ORDER BY created_at', [req.params.id]));
-});
+}));
 
-app.post('/api/clients/:id/investments', authenticate, async (req, res) => {
+app.post('/api/clients/:id/investments', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const { name, type, invested, value_now, target, goal_by, contribution, investment_subtype, payment_frequency, growth_rate_assumption, start_date, maturity_date, guaranteed_return, projected_return } = req.body;
   const id = await dbRun('INSERT INTO investments (client_id,name,type,invested,value_now,target,goal_by,contribution,investment_subtype,payment_frequency,growth_rate_assumption,start_date,maturity_date,guaranteed_return,projected_return) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
     [req.params.id, name||'', type||'', invested||0, value_now||0, target||0, goal_by||'', contribution||0, investment_subtype||'', payment_frequency||'annual', growth_rate_assumption||0, start_date||'', maturity_date||'', guaranteed_return||0, projected_return||0]);
   res.json(await dbGet('SELECT * FROM investments WHERE id=?', [id]));
-});
+}));
 
-app.put('/api/clients/:id/investments/:iid', authenticate, async (req, res) => {
+app.put('/api/clients/:id/investments/:iid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const f = ['name','type','invested','value_now','target','goal_by','contribution','investment_subtype','payment_frequency','growth_rate_assumption','start_date','maturity_date','guaranteed_return','projected_return'];
   const sets = [], vals = [];
   f.forEach(k => { if (req.body[k] !== undefined) { sets.push(`${k}=?`); vals.push(req.body[k]); } });
   if (sets.length) { vals.push(req.params.iid, req.params.id); await dbRun(`UPDATE investments SET ${sets.join(',')} WHERE id=? AND client_id=?`, vals); }
   res.json(await dbGet('SELECT * FROM investments WHERE id=?', [req.params.iid]));
-});
+}));
 
-app.delete('/api/clients/:id/investments/:iid', authenticate, async (req, res) => {
+app.delete('/api/clients/:id/investments/:iid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   await dbRun('DELETE FROM investments WHERE id=? AND client_id=?', [req.params.iid, req.params.id]);
   res.json({ success: true });
-});
+}));
 
 // ── Snapshots ──────────────────────────────────────────────────────────────────
-app.get('/api/clients/:id/snapshots', authenticate, async (req, res) => {
+app.get('/api/clients/:id/snapshots', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   res.json(await dbAll('SELECT * FROM snapshots WHERE client_id=? ORDER BY year', [req.params.id]));
-});
+}));
 
-app.post('/api/clients/:id/snapshots', authenticate, async (req, res) => {
+app.post('/api/clients/:id/snapshots', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const { year, snapshot_date, total_coverage, total_investment_value, notes } = req.body;
   const id = await dbRun('INSERT OR REPLACE INTO snapshots (client_id,year,snapshot_date,total_coverage,total_investment_value,notes) VALUES (?,?,?,?,?,?)',
     [req.params.id, year, snapshot_date||'', total_coverage||0, total_investment_value||0, notes||'']);
   res.json({ id, year, total_coverage, total_investment_value });
-});
+}));
 
-app.post('/api/clients/:id/snapshots/auto', authenticate, async (req, res) => {
+app.post('/api/clients/:id/snapshots/auto', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const year = new Date().getFullYear();
   const policies = await dbAll('SELECT coverage FROM policies WHERE client_id=? AND status=?', [req.params.id, 'Active']);
@@ -712,10 +725,10 @@ app.post('/api/clients/:id/snapshots/auto', authenticate, async (req, res) => {
   await dbRun(`INSERT OR REPLACE INTO snapshots (client_id,year,snapshot_date,total_coverage,total_investment_value,notes) VALUES (?,?,date('now'),?,?,'Auto snapshot')`,
     [req.params.id, year, tc, ti]);
   res.json({ year, total_coverage: tc, total_investment_value: ti });
-});
+}));
 
 // ── Invite Tokens ──────────────────────────────────────────────────────────────
-app.post('/api/admin/clients/:id/invite', authenticate, requireAdmin, async (req, res) => {
+app.post('/api/admin/clients/:id/invite', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const clientId = req.params.id;
   const client = await dbGet('SELECT id, username, name FROM clients WHERE id=? AND role=?', [clientId, 'client']);
   if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -732,10 +745,10 @@ app.post('/api/admin/clients/:id/invite', authenticate, requireAdmin, async (req
 
   const baseUrl = req.headers.origin || `https://${req.headers.host}`;
   res.json({ token, link: `${baseUrl}/invite?token=${token}`, expires: expires.toISOString(), client });
-});
+}));
 
 // Resolve invite token → return client credentials info (not password)
-app.get('/api/invite/:token', async (req, res) => {
+app.get('/api/invite/:token', asyncRoute(async (req, res) => {
   const row = await dbGet('SELECT * FROM invite_tokens WHERE token=?', [req.params.token]);
   if (!row) return res.status(404).json({ error: 'Invalid or expired invite link' });
   if (row.used) return res.status(410).json({ error: 'This invite link has already been used' });
@@ -743,7 +756,7 @@ app.get('/api/invite/:token', async (req, res) => {
   const client = await dbGet('SELECT id, name, username FROM clients WHERE id=?', [row.client_id]);
   if (!client) return res.status(404).json({ error: 'Client not found' });
   res.json({ client, expires: row.expires_at });
-});
+}));
 
 // ── Notion Sync ────────────────────────────────────────────────────────────────
 const NOTION_KEY = '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';
@@ -944,7 +957,7 @@ app.post('/api/rolling-dollar/scripts/:id/update-status', authenticate, requireA
 });
 
 // ── Admin: Expiry Alerts ───────────────────────────────────────────────
-app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, async (req, res) => {
+app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const days = Math.min(Math.max(parseInt(req.query.days) || 90, 1), 365);
   const today = new Date();
   const cutoff = new Date(today); cutoff.setDate(today.getDate() + days);
@@ -975,7 +988,7 @@ app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, async (req, res)
     total: tagged.length,
     alerts: tagged
   });
-});
+}));
 
 // ── Expiry Alerts: Telegram Notify ───────────────────────────────────────────
 async function sendExpiryAlertsTelegram() {
@@ -1174,14 +1187,14 @@ app.patch('/api/clients/:id/notes', authenticate, async (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/pipeline', authenticate, requireAdmin, async (req, res) => {
+app.get('/api/pipeline', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const stages = ['Prospect','Contacted','Proposal Sent','Negotiation','Closed Won','Closed Lost'];
   const result = {};
   await Promise.all(stages.map(async s => {
     result[s] = await dbAll(`SELECT id, name, annual_income, age, deal_stage, last_contact, next_action FROM clients WHERE deal_stage=? AND role='client' ORDER BY name`, [s]);
   }));
   res.json({ stages, pipeline: result });
-});
+}));
 
 // ── Needs Analysis CRUD ────────────────────────────────────────────────────────
 app.get('/api/clients/:id/needs-analysis', authenticate, async (req, res) => {
@@ -1191,7 +1204,7 @@ app.get('/api/clients/:id/needs-analysis', authenticate, async (req, res) => {
   res.json(rows);
 });
 
-app.post('/api/clients/:id/needs-analysis', authenticate, async (req, res) => {
+app.post('/api/clients/:id/needs-analysis', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const { coverage_type, recommended_amount, current_amount, gap, rationale, priority, sources } = req.body;
   const sourcesJson = JSON.stringify(Array.isArray(sources) ? sources : []);
@@ -1208,9 +1221,9 @@ app.post('/api/clients/:id/needs-analysis', authenticate, async (req, res) => {
   const row = await dbGet('SELECT * FROM needs_analysis WHERE id=?', [rowId]);
   if (row) { try { row.sources = JSON.parse(row.sources || '[]'); } catch { row.sources = []; } }
   res.json(row);
-});
+}));
 
-app.put('/api/clients/:id/needs-analysis/:nid', authenticate, async (req, res) => {
+app.put('/api/clients/:id/needs-analysis/:nid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const { recommended_amount, current_amount, gap, rationale, priority, sources } = req.body;
   const sourcesJson = JSON.stringify(Array.isArray(sources) ? sources : []);
@@ -1219,16 +1232,16 @@ app.put('/api/clients/:id/needs-analysis/:nid', authenticate, async (req, res) =
   const row = await dbGet('SELECT * FROM needs_analysis WHERE id=?', [req.params.nid]);
   if (row) { try { row.sources = JSON.parse(row.sources || '[]'); } catch { row.sources = []; } }
   res.json(row);
-});
+}));
 
-app.delete('/api/clients/:id/needs-analysis/:nid', authenticate, async (req, res) => {
+app.delete('/api/clients/:id/needs-analysis/:nid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   await dbRun('DELETE FROM needs_analysis WHERE id=? AND client_id=?', [req.params.nid, req.params.id]);
   res.json({ success: true });
-});
+}));
 
 // ── Investment Projection ──────────────────────────────────────────────────────
-app.get('/api/clients/:id/investments/:iid/projection', authenticate, async (req, res) => {
+app.get('/api/clients/:id/investments/:iid/projection', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   const inv = await dbGet('SELECT * FROM investments WHERE id=? AND client_id=?', [req.params.iid, req.params.id]);
   if (!inv) return res.status(404).json({ error: 'Investment not found' });
@@ -1288,7 +1301,7 @@ app.get('/api/clients/:id/investments/:iid/projection', authenticate, async (req
     investment: { id: inv.id, name: inv.name, subtype, payment_frequency: freq, value_now: pv, annual_contribution: annualPmt },
     rates: effectiveRates, years, projection, rate_labels: rateLabels, endowment_data: endowmentData,
   });
-});
+}));
 
 // ── Notion CRM Full Export ─────────────────────────────────────────────────────
 app.post('/api/admin/notion-crm-export', authenticate, requireAdmin, async (req, res) => {
@@ -1368,7 +1381,7 @@ app.post('/api/admin/notion-crm-export', authenticate, requireAdmin, async (req,
 });
 
 // ── Bootstrap admin ────────────────────────────────────────────────────────────
-app.post('/api/bootstrap', async (req, res) => {
+app.post('/api/bootstrap', asyncRoute(async (req, res) => {
   const { adminPassword, bootstrapSecret } = req.body || {};
   // Require bootstrap secret to prevent unauthorized admin creation
   const requiredSecret = process.env.BOOTSTRAP_SECRET;
@@ -1381,7 +1394,7 @@ app.post('/api/bootstrap', async (req, res) => {
   await dbRun('INSERT INTO clients (id,username,password_hash,name,role) VALUES (?,?,?,?,?)',
     ['ADMIN001', 'admin', hash, 'Dylan Ho', 'admin']);
   res.json({ success: true, username: 'admin' });
-});
+}));
 
 
 // ── Policy Parser (Prospects) ──────────────────────────────────────────────────
@@ -1643,6 +1656,12 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+// ── Global Express error handler (MUST be last middleware) ─────────────────
+app.use((err, req, res, next) => {
+  console.error('[FinView] Route error on', req.method, req.path, ':', err.message);
+  if (!res.headersSent) res.status(500).json({ error: err.message || 'Internal server error' });
+});
 
 startServer();
 
