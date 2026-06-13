@@ -676,6 +676,24 @@ document.addEventListener('keydown', e => {
 
 // Expand coverage_items [{type,coverage}] into a per-type total map.
 // Falls back to p.type + p.coverage for legacy policies with no items.
+// Normalizes old type names to new standardized SG taxonomy.
+const COVERAGE_TYPE_ALIASES = {
+  'Early Critical Illness': 'Early Critical Illness (ECI)',
+  'Late Stage Critical Illness': 'Late Stage Critical Illness (CI)',
+  'Standalone CI': 'Late Stage Critical Illness (CI)',
+  'Multi-Pay CI': 'Multi-Pay Critical Illness',
+  'TPD': 'Total & Permanent Disability (TPD)',
+  'Total Permanent Disability': 'Total & Permanent Disability (TPD)',
+  'Accident': 'Personal Accident',
+  'Hospitalization': 'Hospitalization & Surgical (H&S)',
+  'Endowment': 'Savings / Endowment',
+  'Savings Plan': 'Savings / Endowment',
+  'IUL': 'Investment-Linked (ILP)',
+  'ILP': 'Investment-Linked (ILP)',
+  'Term Life': 'Death / Life',
+  'Whole Life': 'Death / Life',
+};
+function normalizeCoverageType(t) { return COVERAGE_TYPE_ALIASES[t] || t; }
 function getCoverageByType(policies) {
   const map = {};
   (policies || []).filter(p => p.status === 'Active').forEach(p => {
@@ -683,12 +701,14 @@ function getCoverageByType(policies) {
     if (items.length > 0) {
       items.forEach(ci => {
         if (ci && ci.type && (ci.coverage || 0) > 0) {
-          map[ci.type] = (map[ci.type] || 0) + (parseFloat(ci.coverage) || 0);
+          const t = normalizeCoverageType(ci.type);
+          map[t] = (map[t] || 0) + (parseFloat(ci.coverage) || 0);
         }
       });
     } else if (p.coverage > 0 && p.type) {
       // Legacy: no items, use single type
-      map[p.type] = (map[p.type] || 0) + (p.coverage || 0);
+      const t = normalizeCoverageType(p.type);
+      map[t] = (map[t] || 0) + (p.coverage || 0);
     }
   });
   return map;
@@ -1633,8 +1653,8 @@ function calcHealthScore(policies, investments, client) {
     if (!items.length && p.coverage) byType[p.type||'Other'] = (byType[p.type||'Other']||0) + p.coverage;
   });
   const lifeTypes = ['Death / Life','Term Life','Whole Life'];
-  const ciTypes = ['Early Critical Illness','Late Stage Critical Illness','Standalone CI'];
-  const hospTypes = ['Hospitalization','Medical'];
+  const ciTypes = ['Early Critical Illness','Late Stage Critical Illness','Standalone CI','Early Critical Illness (ECI)','Late Stage Critical Illness (CI)','Multi-Pay Critical Illness'];
+  const hospTypes = ['Hospitalization','Medical','Hospitalization & Surgical (H&S)'];
   const lifeCov = lifeTypes.reduce((s,t) => s + (byType[t]||0), 0);
   const ciCov = ciTypes.reduce((s,t) => s + (byType[t]||0), 0);
   const hospCov = hospTypes.reduce((s,t) => s + (byType[t]||0), 0);
@@ -2181,15 +2201,54 @@ function renderCoverageBoard() {
 
   const policies = S.policies.filter(p => p.status === 'Active' && p.start_date && p.end_date);
 
-  const TYPE_ORDER = ['Death / Life','Early Critical Illness','Late Stage Critical Illness','Accident','Hospitalization','Total Permanent Disability','Disability Income'];
+  const TYPE_ORDER = [
+    'Death / Life',
+    'Total & Permanent Disability (TPD)',
+    'Terminal Illness',
+    'Early Critical Illness (ECI)',
+    'Late Stage Critical Illness (CI)',
+    'Multi-Pay Critical Illness',
+    'Cancer',
+    'Hospitalization & Surgical (H&S)',
+    'Disability Income',
+    'Long-Term Care (LTC)',
+    'Personal Accident',
+    'Accidental Death & Dismemberment (AD&D)',
+    'Savings / Endowment',
+    'Retirement / Annuity',
+    'Investment-Linked (ILP)',
+    // Legacy aliases (old data still displays correctly)
+    'Early Critical Illness','Late Stage Critical Illness','Standalone CI',
+    'TPD','Accident','Hospitalization','Total Permanent Disability','Endowment','Savings Plan','IUL','Multi-Pay CI',
+  ];
   const TYPE_COLORS = {
     'Death / Life': '#3b82f6',
+    'Total & Permanent Disability (TPD)': '#0ea5e9',
+    'Terminal Illness': '#64748b',
+    'Early Critical Illness (ECI)': '#8b5cf6',
+    'Late Stage Critical Illness (CI)': '#7c3aed',
+    'Multi-Pay Critical Illness': '#a855f7',
+    'Cancer': '#db2777',
+    'Hospitalization & Surgical (H&S)': '#10b981',
+    'Disability Income': '#14b8a6',
+    'Long-Term Care (LTC)': '#06b6d4',
+    'Personal Accident': '#f97316',
+    'Accidental Death & Dismemberment (AD&D)': '#f59e0b',
+    'Savings / Endowment': '#84cc16',
+    'Retirement / Annuity': '#22c55e',
+    'Investment-Linked (ILP)': '#a3e635',
+    // Legacy aliases
     'Early Critical Illness': '#8b5cf6',
-    'Late Stage Critical Illness': '#a855f7',
+    'Late Stage Critical Illness': '#7c3aed',
+    'Standalone CI': '#7c3aed',
+    'TPD': '#0ea5e9',
+    'Total Permanent Disability': '#0ea5e9',
     'Accident': '#f97316',
     'Hospitalization': '#10b981',
-    'Total Permanent Disability': '#0ea5e9',
-    'Disability Income': '#ec4899',
+    'Endowment': '#84cc16',
+    'Savings Plan': '#84cc16',
+    'IUL': '#a3e635',
+    'Multi-Pay CI': '#a855f7',
   };
   const FALLBACK_COLORS = ['#14b8a6','#f59e0b','#6366f1','#e11d48'];
   let fbIdx = 0;
@@ -2590,12 +2649,12 @@ async function loadNeedsAnalysis(clientId) {
     const covByType = getCoverageByType(S.policies);
     const covMap = {
       'Death / Life': (covByType['Death / Life']||0) + (covByType['Term Life']||0) + (covByType['Whole Life']||0),
-      'Early CI': (covByType['Early Critical Illness']||0) + (covByType['Early CI']||0),
-      'Late Stage CI': (covByType['Late Stage Critical Illness']||0) + (covByType['Standalone CI']||0),
-      'TPD': covByType['TPD']||0,
-      'Hospital / IP': (covByType['Hospitalization']||0) + (covByType['Hospital / IP']||0) + (covByType['Medical']||0),
+      'Early CI': (covByType['Early Critical Illness (ECI)']||0) + (covByType['Early Critical Illness']||0) + (covByType['Early CI']||0) + (covByType['Multi-Pay Critical Illness']||0),
+      'Late Stage CI': (covByType['Late Stage Critical Illness (CI)']||0) + (covByType['Late Stage Critical Illness']||0) + (covByType['Standalone CI']||0),
+      'TPD': (covByType['Total & Permanent Disability (TPD)']||0) + (covByType['TPD']||0) + (covByType['Total Permanent Disability']||0),
+      'Hospital / IP': (covByType['Hospitalization & Surgical (H&S)']||0) + (covByType['Hospitalization']||0) + (covByType['Hospital / IP']||0) + (covByType['Medical']||0),
       'Disability Income': covByType['Disability Income']||0,
-      'Personal Accident': (covByType['Accident']||0) + (covByType['Personal Accident']||0),
+      'Personal Accident': (covByType['Personal Accident']||0) + (covByType['Accident']||0) + (covByType['Accidental Death & Dismemberment (AD&D)']||0),
     };
 
     const el = document.getElementById('needsAnalysisSection');
@@ -3467,9 +3526,106 @@ function saveCoverageItem(policyId, itemId, labelEl) {
 }
 
 // ── Policy Modal ───────────────────────────────────────────────────────────────
-const POLICY_TYPES = ['Death / Life','Early Critical Illness','Late Stage Critical Illness','TPD','Terminal Illness','Gender Specific','Endowment','Savings Plan','IUL','Hospitalization','Accident','Disability Income'];
-const INSURERS = ['Prudential','Great Eastern','AIA','Singlife','NTUC Income','Manulife','Sun Life','Other'];
-const PROD_TYPES = ['Term Life','Whole Life','ILP','IUL','Early CI','Standalone CI','Multi-Pay CI','Endowment','Savings Plan','Medical','Disability Income','TPD','Rider'];
+// Standardized SG Coverage Types
+const POLICY_TYPES = [
+  'Death / Life',
+  'Total & Permanent Disability (TPD)',
+  'Terminal Illness',
+  'Early Critical Illness (ECI)',
+  'Late Stage Critical Illness (CI)',
+  'Multi-Pay Critical Illness',
+  'Cancer',
+  'Hospitalization & Surgical (H&S)',
+  'Disability Income',
+  'Long-Term Care (LTC)',
+  'Personal Accident',
+  'Accidental Death & Dismemberment (AD&D)',
+  'Savings / Endowment',
+  'Retirement / Annuity',
+  'Investment-Linked (ILP)',
+];
+const INSURERS = ['Prudential','AIA','Great Eastern','NTUC Income','Singlife','Manulife','FWD','Tokio Marine','Sun Life','Government / CPF','Other'];
+const PROD_TYPES = ['Term Life','Whole Life','ILP','Early CI','Standalone CI','Multi-Pay CI','ISP / Shield','Endowment','Savings Plan','Disability Income','Personal Accident','Long-Term Care','Retirement / Annuity','Group','Rider'];
+
+// ── SG Insurance Product Library ─────────────────────────────────────────────
+const SG_PRODUCT_LIBRARY = [
+  // ── PRUDENTIAL ──
+  {name:'PRUActive Term',insurer:'Prudential',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'},{type:'Terminal Illness'}],riders:['Early Critical Illness (ECI)','Late Stage Critical Illness (CI)','Disability Income'],isTerm:true,notes:'Pure protection term plan.'},
+  {name:'PRUActive Protect',insurer:'Prudential',category:'Multi-Pay CI',coverageItems:[{type:'Multi-Pay Critical Illness'},{type:'Early Critical Illness (ECI)'},{type:'Late Stage Critical Illness (CI)'}],multiPay:true,notes:'Multi-pay CI, pays out multiple times.'},
+  {name:'PRUVital',insurer:'Prudential',category:'Whole Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'},{type:'Terminal Illness'}],riders:['Early Critical Illness (ECI)','Late Stage Critical Illness (CI)'],isWholeLife:true,notes:'Whole life with cash value.'},
+  {name:'PRULink',insurer:'Prudential',category:'ILP',coverageItems:[{type:'Death / Life'},{type:'Investment-Linked (ILP)'}],notes:'Investment-linked plan.'},
+  {name:'PRUMajor Critical Cover',insurer:'Prudential',category:'Standalone CI',coverageItems:[{type:'Late Stage Critical Illness (CI)'}],notes:'Late stage CI standalone.'},
+  {name:'PRUEarly Critical Cover',insurer:'Prudential',category:'Early CI',coverageItems:[{type:'Early Critical Illness (ECI)'}],notes:'ECI standalone.'},
+  {name:'PRUShield Plus',insurer:'Prudential',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'Integrated Shield Plan (ISP).'},
+  {name:'PRUExtra Plus Co-Pay',insurer:'Prudential',category:'Rider',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],notes:'Shield co-pay rider.'},
+  {name:'PRUExtra CoPay Premier',insurer:'Prudential',category:'Rider',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],notes:'Shield co-pay premier rider.'},
+  {name:'PRUPersonal Accident',insurer:'Prudential',category:'Personal Accident',coverageItems:[{type:'Personal Accident'},{type:'Accidental Death & Dismemberment (AD&D)'}],notes:'PA plan.'},
+  {name:'PRUSafe Link',insurer:'Prudential',category:'Personal Accident',coverageItems:[{type:'Personal Accident'},{type:'Accidental Death & Dismemberment (AD&D)'}],notes:'PA/accident plan.'},
+  {name:'PRUWorkSave',insurer:'Prudential',category:'Group',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],notes:'Group plan.'},
+  // ── AIA ──
+  {name:'AIA Guaranteed Protect Plus',insurer:'AIA',category:'Whole Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'},{type:'Terminal Illness'}],riders:['Early Critical Illness (ECI)','Late Stage Critical Illness (CI)'],isWholeLife:true,notes:'Whole life with guaranteed cash value.'},
+  {name:'AIA Power Critical Cover',insurer:'AIA',category:'Multi-Pay CI',coverageItems:[{type:'Multi-Pay Critical Illness'},{type:'Early Critical Illness (ECI)'},{type:'Late Stage Critical Illness (CI)'}],multiPay:true,notes:'Multi-pay CI plan.'},
+  {name:'AIA Beyond Critical Cover',insurer:'AIA',category:'Standalone CI',coverageItems:[{type:'Late Stage Critical Illness (CI)'}],notes:'Late stage CI standalone.'},
+  {name:'AIA Absolute Critical Cover',insurer:'AIA',category:'Early CI',coverageItems:[{type:'Early Critical Illness (ECI)'},{type:'Late Stage Critical Illness (CI)'}],notes:'ECI + CI combined.'},
+  {name:'AIA Smart Protect Choice',insurer:'AIA',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'},{type:'Terminal Illness'}],riders:['Early Critical Illness (ECI)','Disability Income'],isTerm:true,notes:'Flexible term plan.'},
+  {name:'AIA Term Shield',insurer:'AIA',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isTerm:true,notes:'Term life plan.'},
+  {name:'AIA HealthShield Gold Max A',insurer:'AIA',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'AIA Shield Plan - Plan A (Private hospital).'},
+  {name:'AIA HealthShield Gold Max B',insurer:'AIA',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'AIA Shield Plan - Plan B (Restructured hospital).'},
+  {name:'AIA Max VitalHealth',insurer:'AIA',category:'Rider',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],notes:'AIA shield rider.'},
+  {name:'AIA Smart Health Saver',insurer:'AIA',category:'Rider',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],notes:'AIA shield co-pay saver rider.'},
+  {name:'AIA Disability Income Plus',insurer:'AIA',category:'Disability Income',coverageItems:[{type:'Disability Income'}],notes:'Disability income plan.'},
+  {name:'AIA Smart Wealth Builder',insurer:'AIA',category:'Endowment',coverageItems:[{type:'Savings / Endowment'}],notes:'Endowment savings plan.'},
+  {name:'AIA Pro Lifetime Achiever',insurer:'AIA',category:'ILP',coverageItems:[{type:'Death / Life'},{type:'Investment-Linked (ILP)'}],isWholeLife:true,notes:'Whole life ILP.'},
+  // ── GREAT EASTERN ──
+  {name:'Great FlexiLife',insurer:'Great Eastern',category:'Whole Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'},{type:'Terminal Illness'}],isWholeLife:true,notes:'Whole life with flexible benefits.'},
+  {name:'Great CriticalCare',insurer:'Great Eastern',category:'Multi-Pay CI',coverageItems:[{type:'Multi-Pay Critical Illness'},{type:'Early Critical Illness (ECI)'},{type:'Late Stage Critical Illness (CI)'}],multiPay:true,notes:'Multi-stage CI plan.'},
+  {name:'GREAT TermShield',insurer:'Great Eastern',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isTerm:true,notes:'Term life plan.'},
+  {name:'GREAT Early Advantage',insurer:'Great Eastern',category:'Early CI',coverageItems:[{type:'Early Critical Illness (ECI)'}],notes:'ECI standalone plan.'},
+  {name:'GREAT PA Care',insurer:'Great Eastern',category:'Personal Accident',coverageItems:[{type:'Personal Accident'},{type:'Accidental Death & Dismemberment (AD&D)'}],notes:'Personal accident plan.'},
+  {name:'SupremeHealth',insurer:'Great Eastern',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'GE Integrated Shield Plan.'},
+  {name:'GREAT TotalCare',insurer:'Great Eastern',category:'Rider',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],notes:'Shield rider.'},
+  {name:'GREAT CareShield',insurer:'Great Eastern',category:'Long-Term Care',coverageItems:[{type:'Long-Term Care (LTC)'}],notes:'CareShield Life supplement.'},
+  {name:'GrowthChoice',insurer:'Great Eastern',category:'Endowment',coverageItems:[{type:'Savings / Endowment'}],notes:'Endowment plan.'},
+  // ── NTUC INCOME ──
+  {name:'Term Life Plus',insurer:'NTUC Income',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isTerm:true,notes:'Term life plan.'},
+  {name:'VivoLife',insurer:'NTUC Income',category:'Whole Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'},{type:'Terminal Illness'}],isWholeLife:true,notes:'Whole life plan.'},
+  {name:'Cancer Protect',insurer:'NTUC Income',category:'Standalone CI',coverageItems:[{type:'Cancer'}],notes:'Cancer-specific plan.'},
+  {name:'MultiPay CI',insurer:'NTUC Income',category:'Multi-Pay CI',coverageItems:[{type:'Multi-Pay Critical Illness'},{type:'Early Critical Illness (ECI)'},{type:'Late Stage Critical Illness (CI)'}],multiPay:true,notes:'Multi-pay CI plan.'},
+  {name:'IncomeShield',insurer:'NTUC Income',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'Income Integrated Shield Plan.'},
+  {name:'PA Protector',insurer:'NTUC Income',category:'Personal Accident',coverageItems:[{type:'Personal Accident'},{type:'Accidental Death & Dismemberment (AD&D)'}],notes:'Personal accident plan.'},
+  {name:'Disability Income',insurer:'NTUC Income',category:'Disability Income',coverageItems:[{type:'Disability Income'}],notes:'Disability income plan.'},
+  {name:'Gro Cash Sure',insurer:'NTUC Income',category:'Endowment',coverageItems:[{type:'Savings / Endowment'}],notes:'Endowment plan.'},
+  {name:'Retire Ready Plus',insurer:'NTUC Income',category:'Retirement / Annuity',coverageItems:[{type:'Retirement / Annuity'}],notes:'Retirement plan.'},
+  // ── SINGLIFE ──
+  {name:'Singlife Term Life',insurer:'Singlife',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isTerm:true,notes:'Term life plan.'},
+  {name:'Singlife Whole Life',insurer:'Singlife',category:'Whole Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isWholeLife:true,notes:'Whole life plan.'},
+  {name:'Singlife Multi CI Care',insurer:'Singlife',category:'Multi-Pay CI',coverageItems:[{type:'Multi-Pay Critical Illness'},{type:'Early Critical Illness (ECI)'},{type:'Late Stage Critical Illness (CI)'}],multiPay:true,notes:'Multi-pay CI plan.'},
+  {name:'Singlife Shield',insurer:'Singlife',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'Singlife Integrated Shield Plan.'},
+  {name:'MyShield',insurer:'Singlife',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'MyShield ISP (formerly Aviva).'},
+  {name:'Singlife CareShield Supplement',insurer:'Singlife',category:'Long-Term Care',coverageItems:[{type:'Long-Term Care (LTC)'}],notes:'CareShield Life supplement.'},
+  {name:'Singlife Disability Income',insurer:'Singlife',category:'Disability Income',coverageItems:[{type:'Disability Income'}],notes:'Disability income plan.'},
+  // ── MANULIFE ──
+  {name:'Manulife Term Life',insurer:'Manulife',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isTerm:true,notes:'Term life plan.'},
+  {name:'Manulife Whole Life',insurer:'Manulife',category:'Whole Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isWholeLife:true,notes:'Whole life plan.'},
+  {name:'Manulife CI FlexiCare',insurer:'Manulife',category:'Standalone CI',coverageItems:[{type:'Late Stage Critical Illness (CI)'}],notes:'CI standalone plan.'},
+  {name:'Manulife MultiCare',insurer:'Manulife',category:'Multi-Pay CI',coverageItems:[{type:'Multi-Pay Critical Illness'},{type:'Early Critical Illness (ECI)'},{type:'Late Stage Critical Illness (CI)'}],multiPay:true,notes:'Multi-pay CI plan.'},
+  {name:'ManuShield',insurer:'Manulife',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'Manulife Shield Plan.'},
+  // ── FWD ──
+  {name:'FWD Term Life',insurer:'FWD',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isTerm:true,notes:'Term life plan.'},
+  {name:'FWD Whole Life',insurer:'FWD',category:'Whole Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isWholeLife:true,notes:'Whole life plan.'},
+  {name:'FWD Big 3 CI',insurer:'FWD',category:'Standalone CI',coverageItems:[{type:'Late Stage Critical Illness (CI)'},{type:'Cancer'}],notes:'Cancer, Heart Attack, Stroke coverage.'},
+  {name:'FWD Cancer Insurance',insurer:'FWD',category:'Standalone CI',coverageItems:[{type:'Cancer'}],notes:'Cancer-specific standalone plan.'},
+  {name:'FWD Shield',insurer:'FWD',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'FWD Shield ISP.'},
+  // ── TOKIO MARINE ──
+  {name:'TM Term Life',insurer:'Tokio Marine',category:'Term Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isTerm:true,notes:'Term life plan.'},
+  {name:'TM Whole Life',insurer:'Tokio Marine',category:'Whole Life',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],isWholeLife:true,notes:'Whole life plan.'},
+  // ── GOVERNMENT / NATIONAL SCHEMES ──
+  {name:'MediShield Life',insurer:'Government / CPF',category:'ISP / Shield',coverageItems:[{type:'Hospitalization & Surgical (H&S)'}],isShield:true,notes:'Basic mandatory hospitalization scheme.'},
+  {name:'CareShield Life',insurer:'Government / CPF',category:'Long-Term Care',coverageItems:[{type:'Long-Term Care (LTC)'}],notes:'Basic mandatory LTC scheme.'},
+  {name:'Dependants Protection Scheme',insurer:'Government / CPF',category:'Group',coverageItems:[{type:'Death / Life'},{type:'Total & Permanent Disability (TPD)'}],notes:'DPS - basic group term via CPF.'},
+  {name:'CPF Life',insurer:'Government / CPF',category:'Retirement / Annuity',coverageItems:[{type:'Retirement / Annuity'}],notes:'CPF Life retirement annuity.'},
+  {name:'ElderShield',insurer:'Government / CPF',category:'Long-Term Care',coverageItems:[{type:'Long-Term Care (LTC)'}],notes:'Legacy LTC scheme (pre-CareShield Life).'},
+];
 
 function coverageChecklistModalHTML(existingItems = []) {
   const itemMap = {};
@@ -3534,10 +3690,16 @@ function getCoverageItems() {
 
 function policyFormHTML(p = {}) {
   const existingItems = Array.isArray(p.coverage_items) ? p.coverage_items : [];
+  const productListId = 'sg-product-list';
   return `<div class="form-grid">
+    <datalist id="${productListId}">${SG_PRODUCT_LIBRARY.map(pr => `<option value="${esc(pr.name)}" label="${esc(pr.insurer)}">`).join('')}</datalist>
+    <div class="field" style="grid-column:1/-1">
+      <label>Product Name <span style="font-size:11px;font-weight:400;color:var(--text-3)">(type to search SG product library)</span></label>
+      <input id="mf-product_name" type="text" list="${productListId}" value="${esc(p.product_name||'')}" placeholder="e.g. PRUActive Protect, AIA Power Critical Cover..." style="width:100%">
+      <div id="product-autofill-conf" style="display:none;margin-top:4px;font-size:12px;color:var(--success);font-weight:600;gap:6px;align-items:center">✓ Coverage auto-filled from product library</div>
+    </div>
     <div class="field"><label>Insurer</label><select id="mf-insurer">${INSURERS.map(i => `<option ${(p.insurer||'Prudential')===i?'selected':''}>${i}</option>`).join('')}</select></div>
     <div class="field"><label>Product Type</label><select id="mf-product_type">${PROD_TYPES.map(t => `<option ${(p.product_type||'Term Life')===t?'selected':''}>${t}</option>`).join('')}</select></div>
-    <div class="field"><label>Product Name</label><input id="mf-product_name" type="text" value="${esc(p.product_name||'')}" placeholder="e.g. PRUActive Protect"></div>
     <div class="field"><label>Status</label><select id="mf-status"><option ${(p.status||'Active')==='Active'?'selected':''}>Active</option><option ${p.status==='Lapsed'?'selected':''}>Lapsed</option><option ${p.status==='Cancelled'?'selected':''}>Cancelled</option><option ${p.status==='Pending'?'selected':''}>Pending</option></select></div>
     <div class="field"><label>Payment Frequency</label><select id="mf-payment_frequency"><option value="annual" ${(p.payment_frequency||'annual')==='annual'?'selected':''}>Annual ($/yr)</option><option value="monthly" ${p.payment_frequency==='monthly'?'selected':''}>Monthly ($/mo)</option></select></div>
     <div class="field"><label>Annual Premium (S$)</label><input id="mf-premium" type="number" value="${p.premium||''}" placeholder="3600"></div>
@@ -3549,6 +3711,40 @@ function policyFormHTML(p = {}) {
     ${coverageChecklistModalHTML(existingItems)}
     <div class="field" style="grid-column:1/-1"><label>Notes</label><textarea id="mf-notes" rows="2" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;resize:vertical">${esc(p.notes||'')}</textarea></div>
   </div>`;
+}
+
+function bindProductAutofill() {
+  const input = document.getElementById('mf-product_name');
+  if (!input) return;
+  const handler = () => {
+    const name = input.value.trim();
+    const product = SG_PRODUCT_LIBRARY.find(p => p.name.toLowerCase() === name.toLowerCase());
+    if (!product) return;
+    // Auto-fill insurer
+    const insurerEl = document.getElementById('mf-insurer');
+    if (insurerEl) insurerEl.value = product.insurer;
+    // Auto-fill product type
+    const typeEl = document.getElementById('mf-product_type');
+    if (typeEl) typeEl.value = product.category;
+    // Auto-fill coverage checkboxes
+    const covTypes = product.coverageItems.map(ci => ci.type);
+    document.querySelectorAll('.cov-chk').forEach(chk => {
+      const matched = covTypes.includes(chk.dataset.type);
+      chk.checked = matched;
+      const amt = document.querySelector(`.cov-amt[data-type="${chk.dataset.type}"]`);
+      if (amt) {
+        amt.disabled = !matched;
+        amt.style.background = matched ? 'var(--surface-2)' : 'var(--surface-3)';
+        if (!matched) amt.value = '';
+      }
+    });
+    updateCoverageTotal();
+    // Show confirmation
+    const conf = document.getElementById('product-autofill-conf');
+    if (conf) { conf.style.display = 'flex'; conf.textContent = `✓ Auto-filled from ${product.insurer} product library`; }
+  };
+  input.addEventListener('input', handler);
+  input.addEventListener('change', handler);
 }
 
 async function openPolicyModal(id) {
@@ -3564,8 +3760,8 @@ async function openPolicyModal(id) {
       closeModal(); renderInsurance(cid);
     } catch (e) { toast(e.message, 'error'); }
   });
-  // Bind checklist interactivity after modal renders
-  requestAnimationFrame(() => bindCoverageChecklist());
+  // Bind checklist + product autofill after modal renders
+  requestAnimationFrame(() => { bindCoverageChecklist(); bindProductAutofill(); });
 }
 
 async function deletePolicy(id) {
