@@ -265,6 +265,40 @@ html,body{height:100%;font-family:'Plus Jakarta Sans','Inter',system-ui,sans-ser
 .timeline-now{position:absolute;top:0;bottom:0;width:2px;background:rgba(239,68,68,0.7)}
 .timeline-ages{display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px}
 
+/* ── Coverage Board ── */
+.cb-section{margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.cb-section-header{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface-2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.cb-type-name{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text)}
+.cb-type-total{font-size:12px;font-weight:600;color:var(--text);margin-left:auto}
+.cb-overlap-pill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(245,158,11,0.15);color:#d97706;border:1px solid rgba(245,158,11,0.35);white-space:nowrap}
+.cb-multipay-pill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:rgba(139,92,246,0.15);color:#7c3aed;border:1px solid rgba(139,92,246,0.35);white-space:nowrap}
+.cb-row{display:grid;grid-template-columns:170px 1fr 110px;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--border)}
+.cb-row:last-child{border-bottom:none}
+.cb-row-label{font-size:12px;font-weight:500;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb-row-amount{font-size:12px;font-weight:600;color:var(--text);text-align:right;line-height:1.4}
+.cb-track{height:28px;background:var(--surface-2);border-radius:var(--radius);position:relative;border:1px solid var(--border);overflow:visible}
+.cb-bar{position:absolute;top:0;bottom:0;border-radius:var(--radius);display:flex;align-items:center;padding:0 7px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.95);white-space:nowrap;overflow:hidden;min-width:3px;cursor:default;transition:filter 0.15s}
+.cb-bar:hover{filter:brightness(1.15)}
+.cb-now-line{position:absolute;top:-5px;bottom:-5px;width:2px;background:rgba(239,68,68,0.75);z-index:10;pointer-events:none}
+.cb-now-label{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:700;color:var(--danger);white-space:nowrap;background:var(--surface);padding:0 2px;border-radius:2px}
+.cb-overlap-row{padding:5px 16px 5px;background:rgba(245,158,11,0.04);border-top:1px dashed rgba(245,158,11,0.3)}
+.cb-overlap-inner{display:grid;grid-template-columns:170px 1fr 110px;gap:8px;align-items:center}
+.cb-overlap-track{position:relative;height:20px}
+.cb-overlap-fill{position:absolute;top:2px;bottom:2px;border-radius:var(--radius);background:rgba(245,158,11,0.3);border:1.5px solid rgba(245,158,11,0.6);display:flex;align-items:center;padding:0 6px;font-size:9px;font-weight:700;color:#92400e;white-space:nowrap;overflow:hidden;gap:4px}
+.cb-multipay-row{padding:5px 16px;background:rgba(139,92,246,0.04);border-top:1px dashed rgba(139,92,246,0.25)}
+.cb-multipay-inner{display:grid;grid-template-columns:170px 1fr;gap:8px;align-items:center;font-size:11px;color:#6d28d9}
+.cb-axis-row{display:grid;grid-template-columns:170px 1fr 110px;gap:8px;padding:4px 16px;align-items:center}
+.cb-axis-track{position:relative;height:18px}
+.cb-ladder{width:100%;border-collapse:collapse;font-size:12px}
+.cb-ladder th{background:var(--surface-2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);padding:8px 12px;border-bottom:2px solid var(--border);text-align:center;white-space:nowrap}
+.cb-ladder th:first-child{text-align:left}
+.cb-ladder td{padding:8px 12px;border-bottom:1px solid var(--border);text-align:center;color:var(--text-2);font-size:12px}
+.cb-ladder td:first-child{text-align:left;font-weight:500;color:var(--text)}
+.cb-ladder .zero{color:var(--text-3);font-style:italic}
+.cb-ladder .now-col{font-weight:700;color:var(--text);background:rgba(14,165,233,0.06)}
+.cb-ladder tr:last-child td{border-bottom:none}
+.cb-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+
 /* ── Investment calc ── */
 .calc-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-top:12px}
 .calc-title{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:12px}
@@ -2135,11 +2169,228 @@ async function renderCoverageGaps(clientId, isAdmin) {
 }
 
 // ── Insurance ──────────────────────────────────────────────────────────────────
+function renderCoverageBoard() {
+  const clientAge = S.client.age || 30;
+  const currentYear = new Date().getFullYear();
+  const MIN_AGE = 18, MAX_AGE = 100;
+  const cid = S.viewClientId || S.user?.id;
+
+  document.getElementById('pageTitle').textContent = 'Coverage Board';
+  document.getElementById('pageSub').textContent = `${S.client.name} · Full Coverage Timeline`;
+  document.getElementById('topbarActions').innerHTML = `<button class="btn btn-secondary" onclick="renderInsurance()">← Back to Policies</button>`;
+
+  const policies = S.policies.filter(p => p.status === 'Active' && p.start_date && p.end_date);
+
+  const TYPE_ORDER = ['Death / Life','Early Critical Illness','Late Stage Critical Illness','Accident','Hospitalization','Total Permanent Disability','Disability Income'];
+  const TYPE_COLORS = {
+    'Death / Life': '#3b82f6',
+    'Early Critical Illness': '#8b5cf6',
+    'Late Stage Critical Illness': '#a855f7',
+    'Accident': '#f97316',
+    'Hospitalization': '#10b981',
+    'Total Permanent Disability': '#0ea5e9',
+    'Disability Income': '#ec4899',
+  };
+  const FALLBACK_COLORS = ['#14b8a6','#f59e0b','#6366f1','#e11d48'];
+  let fbIdx = 0;
+
+  // Build per-type entry map
+  const typeMap = {};
+  policies.forEach(p => {
+    const startAge = Math.round(clientAge + (new Date(p.start_date).getFullYear() - currentYear));
+    const endAge = Math.round(clientAge + (new Date(p.end_date).getFullYear() - currentYear));
+    const items = Array.isArray(p.coverage_items) && p.coverage_items.length > 0
+      ? p.coverage_items
+      : (p.coverage > 0 && p.type ? [{ type: p.type, coverage: p.coverage }] : []);
+    items.forEach(ci => {
+      if (!ci.type || !(parseFloat(ci.coverage) > 0)) return;
+      if (!typeMap[ci.type]) typeMap[ci.type] = [];
+      typeMap[ci.type].push({ policy: p, amount: parseFloat(ci.coverage), startAge, endAge });
+    });
+  });
+
+  const typeNames = [...TYPE_ORDER.filter(t => typeMap[t]), ...Object.keys(typeMap).filter(t => !TYPE_ORDER.includes(t))];
+
+  if (!typeNames.length) {
+    document.getElementById('mainContent').innerHTML = `<div class="empty"><div class="empty-icon">📊</div><div class="empty-sub">No active policies with coverage data and dates.<br>Add start/end dates to your policies to see the Coverage Board.</div></div>`;
+    return;
+  }
+
+  const agePct = age => Math.max(0, Math.min(100, ((age - MIN_AGE) / (MAX_AGE - MIN_AGE)) * 100));
+  const nowPct = agePct(clientAge);
+
+  function getMultiPayInfo(policy) {
+    const flags = Array.isArray(policy.feature_flags) ? policy.feature_flags : [];
+    const allText = [...flags, policy.product_type || '', policy.notes || ''].join(' ');
+    const m = allText.match(/(\d+)\s*[x×]\s*[Mm]ulti|[Mm]ulti[\s-]?[Pp]ay.*?(\d+)\s*[x×]?|(\d+)\s*[x×]\s*[Pp]ay/i);
+    if (m) return parseInt(m[1] || m[2] || m[3]);
+    if (/multi.?pay/i.test(allText)) return 5;
+    return null;
+  }
+
+  function findOverlaps(entries) {
+    const segs = [];
+    if (entries.length < 2) return segs;
+    for (let i = 0; i < entries.length; i++) {
+      for (let j = i + 1; j < entries.length; j++) {
+        const a = entries[i], b = entries[j];
+        const oS = Math.max(a.startAge, b.startAge);
+        const oE = Math.min(a.endAge, b.endAge);
+        if (oE > oS) {
+          const ex = segs.find(s => s.startAge === oS && s.endAge === oE);
+          if (ex) { if (!ex.entries.includes(b)) ex.entries.push(b); ex.totalAmount = ex.entries.reduce((s,e)=>s+e.amount,0); }
+          else segs.push({ startAge: oS, endAge: oE, entries: [a, b], totalAmount: a.amount + b.amount });
+        }
+      }
+    }
+    return segs;
+  }
+
+  // Axis ticks
+  const AXIS_AGES = [];
+  for (let a = Math.ceil(MIN_AGE / 5) * 5; a <= MAX_AGE; a += 5) AXIS_AGES.push(a);
+  const axisTicks = AXIS_AGES.map(a => {
+    const isNow = Math.abs(a - clientAge) < 3;
+    return `<div style="position:absolute;left:${agePct(a)}%;transform:translateX(-50%);font-size:9px;color:${isNow?'var(--danger)':'var(--text-3)'};font-weight:${isNow?'700':'400'}">${a}</div>`;
+  }).join('');
+
+  // Build sections
+  let sectionsHTML = '';
+  typeNames.forEach(typeName => {
+    const entries = typeMap[typeName];
+    const color = TYPE_COLORS[typeName] || (FALLBACK_COLORS[fbIdx++ % FALLBACK_COLORS.length]);
+    const totalCoverage = entries.reduce((s, e) => s + e.amount, 0);
+    const overlaps = findOverlaps(entries);
+    const hasOverlap = overlaps.length > 0;
+    const multiPayEntries = entries.filter(e => getMultiPayInfo(e.policy) !== null);
+    const hasMultiPay = multiPayEntries.length > 0;
+
+    const headerHTML = `<div class="cb-section-header">
+      <div class="cb-dot" style="background:${color}"></div>
+      <div class="cb-type-name">${esc(typeName)}</div>
+      ${hasOverlap ? '<div class="cb-overlap-pill">⚡ OVERLAPPING</div>' : ''}
+      ${hasMultiPay ? '<div class="cb-multipay-pill">✦ MULTI-PAY</div>' : ''}
+      <div class="cb-type-total">${fmt(totalCoverage)}</div>
+    </div>`;
+
+    let rowsHTML = '';
+    entries.forEach((entry, ei) => {
+      const { policy, amount, startAge, endAge } = entry;
+      const left = agePct(startAge);
+      const width = Math.max(agePct(endAge) - agePct(startAge), 0.5);
+      const mp = getMultiPayInfo(policy);
+      const barLabel = (agePct(endAge) - agePct(startAge)) > 14 ? `${fmt(amount)} · ends ${endAge}` : (agePct(endAge) - agePct(startAge)) > 6 ? `${endAge}` : '';
+      const isLifetime = !policy.end_date || policy.end_date === '';
+      rowsHTML += `<div class="cb-row">
+        <div class="cb-row-label" title="${esc(policy.product_name)}">${esc(policy.product_name)}</div>
+        <div class="cb-track">
+          <div class="cb-bar" style="left:${left}%;width:${width}%;background:${color};opacity:${Math.min(0.6 + ei*0.15,1)}" title="${esc(policy.product_name)} | ${esc(typeName)}: ${fmt(amount)} | Age ${startAge}→${endAge}">${barLabel}</div>
+          <div class="cb-now-line" style="left:${nowPct}%"><div class="cb-now-label">▼ ${clientAge}</div></div>
+        </div>
+        <div class="cb-row-amount">${fmt(amount)}${mp ? `<br><span style="font-size:9px;color:#7c3aed;font-weight:700">up to ${fmt(amount*mp)}</span>` : ''}</div>
+      </div>`;
+    });
+
+    let overlapHTML = '';
+    if (hasOverlap) {
+      overlaps.forEach(ov => {
+        const left = agePct(ov.startAge);
+        const width = Math.max(agePct(ov.endAge) - agePct(ov.startAge), 1);
+        const names = ov.entries.map(e => e.policy.product_name).join(' + ');
+        overlapHTML += `<div class="cb-overlap-row">
+          <div class="cb-overlap-inner">
+            <div style="font-size:10px;font-weight:700;color:#d97706;white-space:nowrap">⚡ Overlap</div>
+            <div class="cb-overlap-track">
+              <div class="cb-overlap-fill" style="left:${left}%;width:${width}%" title="${esc(names)}">
+                Age ${ov.startAge}→${ov.endAge} &nbsp;·&nbsp; Combined ${fmt(ov.totalAmount)} &nbsp;·&nbsp; ${ov.entries.length} policies
+              </div>
+              <div class="cb-now-line" style="left:${nowPct}%"></div>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#d97706;text-align:right">${fmt(ov.totalAmount)}</div>
+          </div>
+        </div>`;
+      });
+    }
+
+    let multiPayHTML = '';
+    multiPayEntries.forEach(entry => {
+      const mp = getMultiPayInfo(entry.policy);
+      if (mp) {
+        multiPayHTML += `<div class="cb-multipay-row">
+          <div class="cb-multipay-inner">
+            <div style="font-size:10px;font-weight:700">✦ Multi-Pay</div>
+            <div>${esc(entry.policy.product_name)} &nbsp;·&nbsp; ${mp}× separate payouts of ${fmt(entry.amount)} each &nbsp;·&nbsp; Max total: <strong>${fmt(entry.amount * mp)}</strong></div>
+          </div>
+        </div>`;
+      }
+    });
+
+    sectionsHTML += `<div class="cb-section">${headerHTML}${rowsHTML}${overlapHTML}${multiPayHTML}</div>`;
+  });
+
+  // Coverage Ladder
+  function covAtAge(entries, age) {
+    return entries.filter(e => e.startAge <= age && e.endAge > age).reduce((s,e)=>s+e.amount,0);
+  }
+  const rawLadderAges = [clientAge, 35, 40, 45, 50, 55, 60, 65];
+  const ladderAges = [...new Set(rawLadderAges.filter(a => a >= clientAge && a <= MAX_AGE))].sort((a,b)=>a-b);
+  const ladderHeaders = ladderAges.map(a => `<th class="${a===clientAge?'now-col':''}">Age ${a}${a===clientAge?' (Now)':''}</th>`).join('');
+  const ladderRows = typeNames.map(typeName => {
+    const entries = typeMap[typeName];
+    const color = TYPE_COLORS[typeName] || '#6b7280';
+    const cells = ladderAges.map(a => {
+      const val = covAtAge(entries, a);
+      return val > 0 ? `<td class="${a===clientAge?'now-col':''}">${fmt(val)}</td>` : `<td class="zero">—</td>`;
+    }).join('');
+    return `<tr><td><span class="cb-dot" style="background:${color};margin-right:6px"></span>${esc(typeName)}</td>${cells}</tr>`;
+  }).join('');
+
+  // Total row
+  const totalCells = ladderAges.map(a => {
+    const total = typeNames.reduce((s, t) => s + covAtAge(typeMap[t], a), 0);
+    return total > 0 ? `<td class="${a===clientAge?'now-col':''}" style="font-weight:700;color:var(--text)">${fmt(total)}</td>` : `<td class="zero">—</td>`;
+  }).join('');
+
+  document.getElementById('mainContent').innerHTML = `
+    <div style="margin-bottom:12px">
+      <div class="card">
+        <div class="card-body" style="padding:8px 0 4px">
+          <div class="cb-axis-row">
+            <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3)">Policy</div>
+            <div style="position:relative;height:22px">
+              ${axisTicks}
+              <div style="position:absolute;left:${nowPct}%;top:0;bottom:0;width:2px;background:rgba(239,68,68,0.35)"></div>
+            </div>
+            <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);text-align:right">Amount</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${sectionsHTML}
+    <div class="card" style="margin-top:8px">
+      <div class="card-header">
+        <div class="card-title">📊 Coverage Ladder</div>
+        <div class="card-sub">Total active coverage by type at key ages</div>
+      </div>
+      <div class="card-body" style="overflow-x:auto;padding:0">
+        <table class="cb-ladder">
+          <thead><tr><th>Coverage Type</th>${ladderHeaders}</tr></thead>
+          <tbody>
+            ${ladderRows}
+            <tr style="border-top:2px solid var(--border)"><td style="font-weight:700;color:var(--text)">TOTAL</td>${totalCells}</tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 function renderInsurance(clientId, isAdmin) {
   const cid = S.viewClientId || S.user?.id;
   document.getElementById('pageTitle').textContent = 'Insurance Policies';
   document.getElementById('pageSub').textContent = `${S.client.name} · ${S.policies.filter(p=>p.status==='Active').length} active policies`;
   document.getElementById('topbarActions').innerHTML = `
+    <button class="btn btn-secondary btn-sm no-print" onclick="renderCoverageBoard()">📊 Coverage Board</button>
     <button class="btn btn-secondary btn-sm no-print" onclick="printClientReport('${cid}')">📄 Export PDF</button>
     <button class="btn btn-primary" onclick="openPolicyModal()">+ Add Policy</button>`;
 
