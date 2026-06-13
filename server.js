@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const { seedIfEmpty } = require('./seed');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const cors = require('cors');
@@ -70,20 +71,27 @@ async function _pgExec(sql) {
 }
 
 async function testPgConnection() {
-  try {
-    const pool = await _getPgPool();
-    // Hard 6-second timeout — if PG hangs, we fall back to SQLite immediately
-    await Promise.race([
-      pool.query('SELECT 1'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('PG connection timeout')), 6000))
-    ]);
-    return true;
-  } catch (e) {
-    console.warn('⚠️  PostgreSQL unreachable, falling back to SQLite:', e.message);
-    // Close the pool so it doesn't leave hanging connections
-    try { if (_pgPool) { await _pgPool.end(); _pgPool = null; } } catch {}
-    return false;
+  const maxAttempts = 8;
+  const delayMs = 3000;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const pool = await _getPgPool();
+      await Promise.race([
+        pool.query('SELECT 1'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('PG connection timeout')), 8000))
+      ]);
+      if (attempt > 1) console.log(`✅ PostgreSQL connected on attempt ${attempt}`);
+      return true;
+    } catch (e) {
+      console.warn(`⚠️  PostgreSQL attempt ${attempt}/${maxAttempts} failed: ${e.message}`);
+      try { if (_pgPool) { await _pgPool.end(); _pgPool = null; } } catch {}
+      if (attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
   }
+  console.warn('⚠️  Falling back to SQLite after all retries exhausted');
+  return false;
 }
 
 // Sync wrappers for SQLite (unchanged from original)
@@ -94,6 +102,11 @@ const app = express();
 const PORT = process.env.PORT || 3847;
 const JWT_SECRET = process.env.JWT_SECRET || 'dylan-findb-secret-2026-!@#';
 const DB_PATH = path.join(__dirname, 'data', 'dashboard.db');
+
+// ── Dylan Contact Info (for CTAs, booking) ─────────────────────────────────────
+const DYLAN_WHATSAPP = '+65 8484 7001';
+const DYLAN_WHATSAPP_LINK = 'https://wa.me/6584847001?text=Hi%20Dylan%2C%20I%27d%20like%20to%20schedule%20a%20financial%20planning%20consultation';
+const DYLAN_EMAIL = 'dylanjh.cjo@gmail.com';
 
 // ── Global crash prevention ────────────────────────────────────────────────────
 // Node 15+ kills the process on unhandled rejections — catch them all here
@@ -132,6 +145,7 @@ async function initDb() {
         recommended FLOAT DEFAULT 0, notes TEXT DEFAULT '', coverage_items TEXT DEFAULT '[]',
         payment_frequency TEXT DEFAULT 'annual', cpf_medisave_amount FLOAT DEFAULT 0,
         cash_amount FLOAT DEFAULT 0,
+        feature_flags TEXT DEFAULT '[]',
         created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(),
         FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
       )
@@ -145,8 +159,29 @@ async function initDb() {
         growth_rate_assumption FLOAT DEFAULT 0, start_date TEXT DEFAULT '',
         maturity_date TEXT DEFAULT '', guaranteed_return FLOAT DEFAULT 0,
         projected_return FLOAT DEFAULT 0,
+        premium_type TEXT DEFAULT 'regular',
+        term_years INTEGER DEFAULT 0,
+        units_held FLOAT DEFAULT 0,
+        nav_price FLOAT DEFAULT 0,
+        fund_name TEXT DEFAULT '',
+        irr FLOAT DEFAULT 0,
+        break_even_year INTEGER DEFAULT 0,
+        notes TEXT DEFAULT '',
         created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(),
         FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS dca_entries (
+        id SERIAL PRIMARY KEY,
+        investment_id INTEGER NOT NULL,
+        entry_date TEXT NOT NULL DEFAULT '',
+        amount FLOAT DEFAULT 0,
+        units FLOAT DEFAULT 0,
+        nav FLOAT DEFAULT 0,
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE
       )
     `);
     await _pgExec(`
@@ -212,11 +247,69 @@ async function initDb() {
     try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS deal_stage TEXT DEFAULT 'Prospect'`); } catch {}
     try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_contact TEXT DEFAULT ''`); } catch {}
     try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS next_action TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS referral_source TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS referred_by TEXT DEFAULT ''`); } catch {}
     try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS coverage_items TEXT DEFAULT '[]'`); } catch {}
     try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS payment_frequency TEXT DEFAULT 'annual'`); } catch {}
     try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS cpf_medisave_amount FLOAT DEFAULT 0`); } catch {}
     try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS cash_amount FLOAT DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE policies ADD COLUMN IF NOT EXISTS feature_flags TEXT DEFAULT '[]'`); } catch {}
+    // Investments migrations for new columns
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS premium_type TEXT DEFAULT 'regular'`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS term_years INTEGER DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS units_held FLOAT DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS nav_price FLOAT DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS fund_name TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS irr FLOAT DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS break_even_year INTEGER DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''`); } catch {}
+
+    // Documents table
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS documents (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        file_type TEXT DEFAULT '',
+        file_size INTEGER DEFAULT 0,
+        category TEXT DEFAULT 'other',
+        notes TEXT DEFAULT '',
+        uploaded_by TEXT DEFAULT 'admin',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Commissions table
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS commissions (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        policy_id INTEGER,
+        product_name TEXT DEFAULT '',
+        insurer TEXT DEFAULT '',
+        commission_type TEXT DEFAULT 'first_year',
+        amount FLOAT DEFAULT 0,
+        expected_date TEXT DEFAULT '',
+        received_date TEXT DEFAULT '',
+        status TEXT DEFAULT 'pending',
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
     console.log('✅ PostgreSQL schema ready');
+
+    // Reset sequences to avoid duplicate key errors after backup/restore
+    await _pgExec(`SELECT setval('policies_id_seq', COALESCE((SELECT MAX(id) FROM policies), 0) + 1, false)`);
+    await _pgExec(`SELECT setval('investments_id_seq', COALESCE((SELECT MAX(id) FROM investments), 0) + 1, false)`);
+    await _pgExec(`SELECT setval('snapshots_id_seq', COALESCE((SELECT MAX(id) FROM snapshots), 0) + 1, false)`);
+    await _pgExec(`SELECT setval('needs_analysis_id_seq', COALESCE((SELECT MAX(id) FROM needs_analysis), 0) + 1, false)`);
+    try { await _pgExec(`SELECT setval('dca_entries_id_seq', COALESCE((SELECT MAX(id) FROM dca_entries), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('commissions_id_seq', COALESCE((SELECT MAX(id) FROM commissions), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('documents_id_seq', COALESCE((SELECT MAX(id) FROM documents), 0) + 1, false)`); } catch {}
+    console.log('✅ Sequences synced');
 
     // Seed admin
     const adminExists = await _pgGet(`SELECT id FROM clients WHERE role='admin'`);
@@ -226,6 +319,8 @@ async function initDb() {
         ['ADMIN001', 'admin', hash, 'Dylan Ho', 'admin']);
       console.log('✅ Admin seeded');
     }
+    // Auto-seed clients + policies if DB is empty
+    await seedIfEmpty(_pgGet, _pgAll, _pgRun);
     return;
   }
 
@@ -345,6 +440,63 @@ async function initDb() {
   try { db.run(`ALTER TABLE investments ADD COLUMN maturity_date TEXT DEFAULT ''`); } catch {}
   try { db.run(`ALTER TABLE investments ADD COLUMN guaranteed_return REAL DEFAULT 0`); } catch {}
   try { db.run(`ALTER TABLE investments ADD COLUMN projected_return REAL DEFAULT 0`); } catch {}
+  // Phase 3 migrations — investments single/DCA columns
+  try { db.run(`ALTER TABLE investments ADD COLUMN premium_type TEXT DEFAULT 'regular'`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN term_years INTEGER DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN units_held REAL DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN nav_price REAL DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN fund_name TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN irr REAL DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN break_even_year INTEGER DEFAULT 0`); } catch {}
+  try { db.run(`ALTER TABLE investments ADD COLUMN notes TEXT DEFAULT ''`); } catch {}
+  // DCA entries table
+  db.run(`CREATE TABLE IF NOT EXISTS dca_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    investment_id INTEGER NOT NULL,
+    entry_date TEXT NOT NULL DEFAULT '',
+    amount REAL DEFAULT 0,
+    units REAL DEFAULT 0,
+    nav REAL DEFAULT 0,
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE
+  )`);
+
+  // Documents table
+  db.run(`CREATE TABLE IF NOT EXISTS documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    name TEXT NOT NULL DEFAULT '',
+    file_type TEXT DEFAULT '',
+    file_size INTEGER DEFAULT 0,
+    category TEXT DEFAULT 'other',
+    notes TEXT DEFAULT '',
+    uploaded_by TEXT DEFAULT 'admin',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
+  // Commissions table
+  db.run(`CREATE TABLE IF NOT EXISTS commissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    policy_id INTEGER,
+    product_name TEXT DEFAULT '',
+    insurer TEXT DEFAULT '',
+    commission_type TEXT DEFAULT 'first_year',
+    amount REAL DEFAULT 0,
+    expected_date TEXT DEFAULT '',
+    received_date TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
+  // Referral columns on clients
+  try { db.run(`ALTER TABLE clients ADD COLUMN referral_source TEXT DEFAULT ''`); } catch {}
+  try { db.run(`ALTER TABLE clients ADD COLUMN referred_by TEXT DEFAULT ''`); } catch {}
 
   // Auto-seed admin
   const adminExists = await dbGet(`SELECT id FROM clients WHERE role='admin'`);
@@ -353,6 +505,8 @@ async function initDb() {
     db.run(`INSERT INTO clients (id,username,password_hash,name,role) VALUES ('ADMIN001','admin',?,'Dylan Ho','admin')`, [hash]);
     console.log('✅ Admin user seeded');
   }
+  // Auto-seed clients + policies if DB is empty (SQLite local dev)
+  await seedIfEmpty(dbGet, dbAll, dbRun);
 
   saveDb();
   console.log('✅ Database ready');
@@ -391,8 +545,26 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// PWA manifest
+app.get('/manifest.json', (req, res) => {
+  res.json({
+    name: 'FinView Dashboard',
+    short_name: 'FinView',
+    description: 'Financial planning dashboard for clients and prospects',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#EEF2FF',
+    theme_color: '#0EA5E9',
+    orientation: 'portrait-primary',
+    icons: [
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png' }
+    ]
+  });
+});
+
 // Version / health ping — update this to confirm new deploys
-app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v8-2026-04-09', routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items','needs-analysis','projection','notion-crm-export','pull-from-notion','import-b2b-leads','rolling-dollar'] }));
+app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v11-2026-06-10', anthropicEnabled: !!process.env.ANTHROPIC_API_KEY, routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items','needs-analysis','projection','notion-crm-export','pull-from-notion','import-b2b-leads','rolling-dollar'] }));
 
 function authenticate(req, res, next) {
   const token = (req.headers.authorization || '').split(' ')[1];
@@ -403,6 +575,11 @@ function authenticate(req, res, next) {
 
 function requireAdmin(req, res, next) {
   if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+  next();
+}
+
+function requireNotAdmin(req, res, next) {
+  if (req.user?.role === 'admin') return res.status(403).json({ error: 'Not for admin' });
   next();
 }
 
@@ -435,14 +612,15 @@ app.get('/api/admin/clients', authenticate, requireAdmin, asyncRoute(async (req,
 
 // ── Admin: Create client ───────────────────────────────────────────────────────
 app.post('/api/admin/clients', authenticate, requireAdmin, async (req, res) => {
-  const { username, password, name, age, gender, occupation, annual_income, dependents, email, phone } = req.body;
+  const { username, password, name, age, gender, occupation, annual_income, dependents, email, phone, referral_source, referred_by } = req.body;
   if (!username || !password || !name) return res.status(400).json({ error: 'username, password and name required' });
+  const roleToCreate = req.body.role === 'prospect' ? 'prospect' : 'client'; // Support prospect role
   try {
     const hash = bcrypt.hashSync(password, 10);
     const id = `C${Date.now()}`;
-    await dbRun('INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,dependents,email,phone,role) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-      [id, username, hash, name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'', 'client']);
-    const newClient = await dbGet('SELECT id,username,name,age,gender,occupation,annual_income,email,phone,role FROM clients WHERE id=?', [id]);
+    await dbRun('INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,dependents,email,phone,role,referral_source,referred_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [id, username, hash, name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'', roleToCreate, referral_source||'', referred_by||'']);
+    const newClient = await dbGet('SELECT id,username,name,age,gender,occupation,annual_income,email,phone,role,referral_source,referred_by FROM clients WHERE id=?', [id]);
     notionPushClient(newClient).catch(() => {});
     res.json(newClient);
   } catch (e) { res.status(400).json({ error: e.message }); }
@@ -450,14 +628,18 @@ app.post('/api/admin/clients', authenticate, requireAdmin, async (req, res) => {
 
 // ── Admin: Update client ───────────────────────────────────────────────────────
 app.put('/api/admin/clients/:id', authenticate, requireAdmin, asyncRoute(async (req, res) => {
-  const { name, age, gender, occupation, annual_income, dependents, email, phone, password, notes, deal_stage, last_contact, next_action } = req.body;
+  const { name, age, gender, occupation, annual_income, dependents, email, phone, password, notes, deal_stage, last_contact, next_action, role, referral_source, referred_by } = req.body;
   if (password) {
     const hash = bcrypt.hashSync(password, 10);
     await dbRun(`UPDATE clients SET password_hash=?, updated_at=datetime('now') WHERE id=?`, [hash, req.params.id]);
   }
-  await dbRun(`UPDATE clients SET name=?,age=?,gender=?,occupation=?,annual_income=?,dependents=?,email=?,phone=?,notes=?,deal_stage=?,last_contact=?,next_action=?,updated_at=datetime('now') WHERE id=?`,
+  // Support role update (prospect -> client conversion)
+  if (role && (role === 'client' || role === 'prospect')) {
+    await dbRun(`UPDATE clients SET role=?, updated_at=datetime('now') WHERE id=?`, [role, req.params.id]);
+  }
+  await dbRun(`UPDATE clients SET name=?,age=?,gender=?,occupation=?,annual_income=?,dependents=?,email=?,phone=?,notes=?,deal_stage=?,last_contact=?,next_action=?,referral_source=?,referred_by=?,updated_at=datetime('now') WHERE id=?`,
     [name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'',
-     notes||'', deal_stage||'Prospect', last_contact||'', next_action||'', req.params.id]);
+     notes||'', deal_stage||'Prospect', last_contact||'', next_action||'', referral_source||'', referred_by||'', req.params.id]);
   // Fire-and-forget 2nd Brain auto-log if notes is non-empty
   if (notes && notes.trim()) {
     const clientData = { name, occupation: occupation||'', annual_income: annual_income||0, deal_stage: deal_stage||'Prospect', last_contact: last_contact||'', next_action: next_action||'', notes };
@@ -509,7 +691,7 @@ app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, asyncRoute(async
 // ── Admin: Coverage gaps across all clients ────────────────────────────────────
 app.get('/api/admin/coverage-gaps', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const clients = await dbAll(`SELECT id, name, age, annual_income, dependents, occupation FROM clients WHERE role='client'`);
-  const result = clients.map(async c => {
+  const resolved = await Promise.all(clients.map(async c => {
     const income = c.annual_income || 0;
     const age = c.age || 30;
     const deps = c.dependents || 0;
@@ -532,13 +714,15 @@ app.get('/api/admin/coverage-gaps', authenticate, requireAdmin, asyncRoute(async
       const current = covByType[type] || 0;
       const gap = Math.max(0, recommended - current);
       const pct = recommended > 0 ? Math.min(100, Math.round(current / recommended * 100)) : 100;
-      const status = pct >= 100 ? 'adequate' : pct >= 40 ? 'partial' : 'critical';
+      // level1=Critical(<20%), level2=At Risk(20-40%), level3=Below Target(40-70%), level4=Near Target(70-99%), level5=Protected(100%+)
+      const status = pct >= 100 ? 'level5' : pct >= 70 ? 'level4' : pct >= 40 ? 'level3' : pct >= 20 ? 'level2' : 'level1';
       return { type, current, recommended, gap, pct, status };
     }).filter(g => g.gap > 0);
 
     const totalGap = gaps.reduce((s, g) => s + g.gap, 0);
     return { ...c, gaps, totalGap };
-  }).filter(c => c.totalGap > 0).sort((a, b) => b.totalGap - a.totalGap);
+  }));
+  const result = resolved.filter(c => c.totalGap > 0).sort((a, b) => b.totalGap - a.totalGap);
   res.json(result);
 }));
 
@@ -609,7 +793,7 @@ app.get('/api/clients/:id/coverage-gaps', authenticate, asyncRoute(async (req, r
     const current = covByType[type] || 0;
     const gap = Math.max(0, recommended - current);
     const pct = recommended > 0 ? Math.min(100, Math.round(current / recommended * 100)) : 100;
-    const status = pct >= 100 ? 'adequate' : pct >= 60 ? 'partial' : 'critical';
+    const status = pct >= 100 ? 'level5' : pct >= 70 ? 'level4' : pct >= 40 ? 'level3' : pct >= 20 ? 'level2' : 'level1';
     return { type, current, recommended, gap, pct, status };
   });
 
@@ -628,22 +812,29 @@ function guardClient(req, res) {
 app.get('/api/clients/:id/policies', authenticate, async (req, res) => {
   if (!guardClient(req, res)) return;
   const rows = await dbAll('SELECT * FROM policies WHERE client_id=? ORDER BY type, created_at', [req.params.id]);
-  rows.forEach(r => { try { r.coverage_items = JSON.parse(r.coverage_items || '[]'); } catch { r.coverage_items = []; } });
+  rows.forEach(r => {
+    try { r.coverage_items = JSON.parse(r.coverage_items || '[]'); } catch { r.coverage_items = []; }
+    try { r.feature_flags = JSON.parse(r.feature_flags || '[]'); } catch { r.feature_flags = []; }
+  });
   res.json(rows);
 });
 
 app.post('/api/clients/:id/policies', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
-  const { type, product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes, payment_frequency, cpf_medisave_amount, cash_amount } = req.body;
+  const { type, product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes, payment_frequency, cpf_medisave_amount, cash_amount, feature_flags } = req.body;
   const items = Array.isArray(coverage_items) ? coverage_items : [];
   // coverage_items can be [{type,coverage}] objects (new) or strings (legacy)
   const totalCoverage = items.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
   const primaryType = items.length > 0 ? (items[0].type || items[0]) : (type || '');
   const itemsJson = JSON.stringify(items);
-  const id = await dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,coverage_items,premium,start_date,end_date,status,recommended,notes,payment_frequency,cpf_medisave_amount,cash_amount) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    [req.params.id, primaryType, product_name||'', policy_number||'', insurer||'', product_type||'', totalCoverage||0, itemsJson, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'', payment_frequency||'annual', cpf_medisave_amount||0, cash_amount||0]);
+  const flagsJson = JSON.stringify(Array.isArray(feature_flags) ? feature_flags : []);
+  const id = await dbRun('INSERT INTO policies (client_id,type,product_name,policy_number,insurer,product_type,coverage,coverage_items,feature_flags,premium,start_date,end_date,status,recommended,notes,payment_frequency,cpf_medisave_amount,cash_amount) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    [req.params.id, primaryType, product_name||'', policy_number||'', insurer||'', product_type||'', totalCoverage||0, itemsJson, flagsJson, premium||0, start_date||'', end_date||'', status||'Active', recommended||0, notes||'', payment_frequency||'annual', cpf_medisave_amount||0, cash_amount||0]);
   const row = await dbGet('SELECT * FROM policies WHERE id=?', [id]);
-  if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
+  if (row) {
+    try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; }
+    try { row.feature_flags = JSON.parse(row.feature_flags || '[]'); } catch { row.feature_flags = []; }
+  }
   res.json(row);
 }));
 
@@ -652,17 +843,33 @@ app.put('/api/clients/:id/policies/:pid', authenticate, asyncRoute(async (req, r
   const body = req.body;
   // Recompute coverage from coverage_items if provided
   if (Array.isArray(body.coverage_items)) {
-    body.coverage = body.coverage_items.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
-    body.type = body.coverage_items.length > 0 ? body.coverage_items[0].type : '';
-    body.coverage_items = JSON.stringify(body.coverage_items);
+    const hasObjects = body.coverage_items.some(i => i !== null && typeof i === 'object' && 'coverage' in i);
+    if (hasObjects) {
+      // Modal format: [{type, coverage}] — update coverage totals
+      body.coverage = body.coverage_items.filter(i => i && typeof i === 'object').reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
+      body.type = body.coverage_items.find(i => i && typeof i === 'object')?.type || '';
+      body.coverage_items = JSON.stringify(body.coverage_items);
+    } else {
+      // String-only IDs (feature-flag checklist) — do NOT overwrite coverage/type
+      delete body.coverage;
+      delete body.type;
+      delete body.coverage_items; // skip coverage_items update entirely
+    }
   }
-  const f = ['type','product_name','policy_number','insurer','product_type','coverage','coverage_items','premium','start_date','end_date','status','recommended','notes','payment_frequency','cpf_medisave_amount','cash_amount'];
+  // Handle feature_flags update (JSON array of string IDs)
+  if (Array.isArray(body.feature_flags)) {
+    body.feature_flags = JSON.stringify(body.feature_flags);
+  }
+  const f = ['type','product_name','policy_number','insurer','product_type','coverage','coverage_items','feature_flags','premium','start_date','end_date','status','recommended','notes','payment_frequency','cpf_medisave_amount','cash_amount'];
   const sets = [], vals = [];
-  f.filter(k => k !== 'coverage_items').forEach(k => { if (body[k] !== undefined) { sets.push(`${k}=?`); vals.push(body[k]); } });
-  if (body.coverage_items !== undefined) { sets.push('coverage_items=?'); vals.push(body.coverage_items); }
+  const jsonFields = new Set(['coverage_items','feature_flags']);
+  f.forEach(k => { if (body[k] !== undefined) { sets.push(`${k}=?`); vals.push(body[k]); } });
   if (sets.length) { vals.push(req.params.pid, req.params.id); await dbRun(`UPDATE policies SET ${sets.join(',')} WHERE id=? AND client_id=?`, vals); }
   const row = await dbGet('SELECT * FROM policies WHERE id=?', [req.params.pid]);
-  if (row) { try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; } }
+  if (row) {
+    try { row.coverage_items = JSON.parse(row.coverage_items || '[]'); } catch { row.coverage_items = []; }
+    try { row.feature_flags = JSON.parse(row.feature_flags || '[]'); } catch { row.feature_flags = []; }
+  }
   res.json(row);
 }));
 
@@ -680,15 +887,15 @@ app.get('/api/clients/:id/investments', authenticate, asyncRoute(async (req, res
 
 app.post('/api/clients/:id/investments', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
-  const { name, type, invested, value_now, target, goal_by, contribution, investment_subtype, payment_frequency, growth_rate_assumption, start_date, maturity_date, guaranteed_return, projected_return } = req.body;
-  const id = await dbRun('INSERT INTO investments (client_id,name,type,invested,value_now,target,goal_by,contribution,investment_subtype,payment_frequency,growth_rate_assumption,start_date,maturity_date,guaranteed_return,projected_return) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    [req.params.id, name||'', type||'', invested||0, value_now||0, target||0, goal_by||'', contribution||0, investment_subtype||'', payment_frequency||'annual', growth_rate_assumption||0, start_date||'', maturity_date||'', guaranteed_return||0, projected_return||0]);
+  const { name, type, invested, value_now, target, goal_by, contribution, investment_subtype, payment_frequency, growth_rate_assumption, start_date, maturity_date, guaranteed_return, projected_return, premium_type, term_years, units_held, nav_price, fund_name, irr, break_even_year, notes } = req.body;
+  const id = await dbRun('INSERT INTO investments (client_id,name,type,invested,value_now,target,goal_by,contribution,investment_subtype,payment_frequency,growth_rate_assumption,start_date,maturity_date,guaranteed_return,projected_return,premium_type,term_years,units_held,nav_price,fund_name,irr,break_even_year,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    [req.params.id, name||'', type||'', invested||0, value_now||0, target||0, goal_by||'', contribution||0, investment_subtype||'', payment_frequency||'annual', growth_rate_assumption||0, start_date||'', maturity_date||'', guaranteed_return||0, projected_return||0, premium_type||'regular', term_years||0, units_held||0, nav_price||0, fund_name||'', irr||0, break_even_year||0, notes||'']);
   res.json(await dbGet('SELECT * FROM investments WHERE id=?', [id]));
 }));
 
 app.put('/api/clients/:id/investments/:iid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
-  const f = ['name','type','invested','value_now','target','goal_by','contribution','investment_subtype','payment_frequency','growth_rate_assumption','start_date','maturity_date','guaranteed_return','projected_return'];
+  const f = ['name','type','invested','value_now','target','goal_by','contribution','investment_subtype','payment_frequency','growth_rate_assumption','start_date','maturity_date','guaranteed_return','projected_return','premium_type','term_years','units_held','nav_price','fund_name','irr','break_even_year','notes'];
   const sets = [], vals = [];
   f.forEach(k => { if (req.body[k] !== undefined) { sets.push(`${k}=?`); vals.push(req.body[k]); } });
   if (sets.length) { vals.push(req.params.iid, req.params.id); await dbRun(`UPDATE investments SET ${sets.join(',')} WHERE id=? AND client_id=?`, vals); }
@@ -698,6 +905,56 @@ app.put('/api/clients/:id/investments/:iid', authenticate, asyncRoute(async (req
 app.delete('/api/clients/:id/investments/:iid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   await dbRun('DELETE FROM investments WHERE id=? AND client_id=?', [req.params.iid, req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── DCA Entries ────────────────────────────────────────────────────────────────
+// Helper to recalculate investment totals from DCA entries
+async function recalcDcaTotals(investmentId) {
+  const entries = await dbAll('SELECT amount, units, nav, entry_date FROM dca_entries WHERE investment_id=? ORDER BY entry_date DESC', [investmentId]);
+  const totalInvested = entries.reduce((s, e) => s + (e.amount || 0), 0);
+  const totalUnits = entries.reduce((s, e) => s + (e.units || 0), 0);
+  const latestNav = entries.length > 0 ? (entries[0].nav || 0) : 0;
+  await dbRun('UPDATE investments SET invested=?, units_held=?, nav_price=? WHERE id=?', [totalInvested, totalUnits, latestNav, investmentId]);
+}
+
+app.get('/api/clients/:id/investments/:iid/dca', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  // Verify investment belongs to client
+  const inv = await dbGet('SELECT id FROM investments WHERE id=? AND client_id=?', [req.params.iid, req.params.id]);
+  if (!inv) return res.status(404).json({ error: 'Investment not found' });
+  res.json(await dbAll('SELECT * FROM dca_entries WHERE investment_id=? ORDER BY entry_date DESC', [req.params.iid]));
+}));
+
+app.post('/api/clients/:id/investments/:iid/dca', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const inv = await dbGet('SELECT id FROM investments WHERE id=? AND client_id=?', [req.params.iid, req.params.id]);
+  if (!inv) return res.status(404).json({ error: 'Investment not found' });
+  const { entry_date, amount, units, nav, notes } = req.body;
+  const id = await dbRun('INSERT INTO dca_entries (investment_id,entry_date,amount,units,nav,notes) VALUES (?,?,?,?,?,?)',
+    [req.params.iid, entry_date||'', amount||0, units||0, nav||0, notes||'']);
+  await recalcDcaTotals(req.params.iid);
+  res.json(await dbGet('SELECT * FROM dca_entries WHERE id=?', [id]));
+}));
+
+app.put('/api/clients/:id/investments/:iid/dca/:did', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const inv = await dbGet('SELECT id FROM investments WHERE id=? AND client_id=?', [req.params.iid, req.params.id]);
+  if (!inv) return res.status(404).json({ error: 'Investment not found' });
+  const f = ['entry_date','amount','units','nav','notes'];
+  const sets = [], vals = [];
+  f.forEach(k => { if (req.body[k] !== undefined) { sets.push(`${k}=?`); vals.push(req.body[k]); } });
+  if (sets.length) { vals.push(req.params.did, req.params.iid); await dbRun(`UPDATE dca_entries SET ${sets.join(',')} WHERE id=? AND investment_id=?`, vals); }
+  await recalcDcaTotals(req.params.iid);
+  res.json(await dbGet('SELECT * FROM dca_entries WHERE id=?', [req.params.did]));
+}));
+
+app.delete('/api/clients/:id/investments/:iid/dca/:did', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const inv = await dbGet('SELECT id FROM investments WHERE id=? AND client_id=?', [req.params.iid, req.params.id]);
+  if (!inv) return res.status(404).json({ error: 'Investment not found' });
+  await dbRun('DELETE FROM dca_entries WHERE id=? AND investment_id=?', [req.params.did, req.params.iid]);
+  await recalcDcaTotals(req.params.iid);
   res.json({ success: true });
 }));
 
@@ -730,8 +987,9 @@ app.post('/api/clients/:id/snapshots/auto', authenticate, asyncRoute(async (req,
 // ── Invite Tokens ──────────────────────────────────────────────────────────────
 app.post('/api/admin/clients/:id/invite', authenticate, requireAdmin, asyncRoute(async (req, res) => {
   const clientId = req.params.id;
-  const client = await dbGet('SELECT id, username, name FROM clients WHERE id=? AND role=?', [clientId, 'client']);
-  if (!client) return res.status(404).json({ error: 'Client not found' });
+  // Support invite for both client and prospect roles
+  const client = await dbGet('SELECT id, username, name, role FROM clients WHERE id=? AND role IN (?,?)', [clientId, 'client', 'prospect']);
+  if (!client) return res.status(404).json({ error: 'Client or prospect not found' });
 
   // Revoke old unused tokens for this client
   db.run('DELETE FROM invite_tokens WHERE client_id=? AND used=0', [clientId]);
@@ -757,6 +1015,129 @@ app.get('/api/invite/:token', asyncRoute(async (req, res) => {
   if (!client) return res.status(404).json({ error: 'Client not found' });
   res.json({ client, expires: row.expires_at });
 }));
+
+// ── Prospect Profile Endpoints ──────────────────────────────────────────────────
+app.get('/api/prospect/:id/profile', authenticate, asyncRoute(async (req, res) => {
+  // Admin or own prospect can view
+  if (req.user.role !== 'admin' && req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
+  const p = await dbGet('SELECT id,name,age,gender,occupation,annual_income,dependents,email,phone,notes,role FROM clients WHERE id=? AND role=?', [req.params.id, 'prospect']);
+  if (!p) return res.status(404).json({ error: 'Prospect not found' });
+  res.json(p);
+}));
+
+app.put('/api/prospect/:id/profile', authenticate, asyncRoute(async (req, res) => {
+  // Only own prospect can update
+  if (req.user.id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
+  const existing = await dbGet('SELECT role FROM clients WHERE id=?', [req.params.id]);
+  if (!existing || existing.role !== 'prospect') return res.status(403).json({ error: 'Only prospects can update via this endpoint' });
+  const { name, age, gender, occupation, annual_income, dependents, email, phone } = req.body;
+  await dbRun(`UPDATE clients SET name=?,age=?,gender=?,occupation=?,annual_income=?,dependents=?,email=?,phone=?,updated_at=datetime('now') WHERE id=?`,
+    [name||'', age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'', req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── CPF Calculator (public, no auth needed) ──────────────────────────────────
+app.get('/api/cpf/calculate', (req, res) => {
+  const age = parseInt(req.query.age) || 30;
+  const annualIncome = parseFloat(req.query.income) || 60000;
+  const bonusMonths = parseFloat(req.query.bonus) || 1;
+  const yearsToProject = parseInt(req.query.years) || 35;
+  const initOA = parseFloat(req.query.oa) || 0;
+  const initSA = parseFloat(req.query.sa) || 0;
+  const initMA = parseFloat(req.query.ma) || 0;
+
+  // CPF contribution rates by age band [employee%, employer%]
+  function getRates(a) {
+    if (a <= 35) return [0.20, 0.17];
+    if (a <= 45) return [0.19, 0.15];
+    if (a <= 50) return [0.18, 0.13];
+    if (a <= 55) return [0.15, 0.13];
+    if (a <= 60) return [0.115, 0.105];
+    if (a <= 65) return [0.09, 0.085];
+    return [0.075, 0.06];
+  }
+
+  // OA/SA/MA allocation by age
+  function getAlloc(a) {
+    if (a <= 35) return [0.6217, 0.1621, 0.2162];
+    if (a <= 45) return [0.5677, 0.1891, 0.2432];
+    if (a <= 50) return [0.5136, 0.2162, 0.2702];
+    if (a <= 55) return [0.4025, 0.3108, 0.2867];
+    if (a <= 60) return [0.0000, 0.6800, 0.3200];
+    if (a <= 65) return [0.0000, 0.7143, 0.2857];
+    return [0.0000, 0.7143, 0.2857];
+  }
+
+  const CPF_CEILING = 6000; // monthly ceiling
+  const OA_INTEREST = 0.025;
+  const SA_INTEREST = 0.04;
+  const MA_INTEREST = 0.04;
+  const EXTRA_RATE = 0.01; // extra 1% on first $20k OA + first $40k SA
+  const FRS = 205800, BRS = 102900, ERS = 308700;
+
+  let oa = initOA, sa = initSA, ma = initMA;
+  const projections = [];
+  const totalMonthlyIncome = (annualIncome * (1 + bonusMonths / 12)) / 12;
+  const cappedMonthly = Math.min(totalMonthlyIncome, CPF_CEILING);
+
+  let summary55 = null, summary60 = null, summary65 = null;
+
+  for (let y = 0; y < yearsToProject; y++) {
+    const currentAge = age + y;
+    if (currentAge > 65) break;
+
+    const [empRate, erRate] = getRates(currentAge);
+    const [oaAlloc, saAlloc, maAlloc] = getAlloc(currentAge);
+    const totalRate = empRate + erRate;
+    const annualContrib = cappedMonthly * 12 * totalRate;
+
+    oa += annualContrib * oaAlloc;
+    sa += annualContrib * saAlloc;
+    ma += annualContrib * maAlloc;
+
+    // Interest (simplified annual)
+    const oaInterest = oa * OA_INTEREST + Math.min(oa, 20000) * EXTRA_RATE;
+    const saInterest = sa * SA_INTEREST + Math.min(sa + oa, 40000) * EXTRA_RATE;
+    const maInterest = ma * MA_INTEREST;
+
+    oa += oaInterest;
+    sa += saInterest;
+    ma += maInterest;
+
+    projections.push({
+      age: currentAge + 1,
+      year: y + 1,
+      oa: Math.round(oa),
+      sa: Math.round(sa),
+      ma: Math.round(ma),
+      total: Math.round(oa + sa + ma),
+      annual_contribution: Math.round(annualContrib)
+    });
+
+    if (currentAge + 1 === 55) summary55 = { oa: Math.round(oa), sa: Math.round(sa), ma: Math.round(ma), total: Math.round(oa + sa + ma) };
+    if (currentAge + 1 === 60) summary60 = { oa: Math.round(oa), sa: Math.round(sa), ma: Math.round(ma), total: Math.round(oa + sa + ma) };
+    if (currentAge + 1 === 65) summary65 = { oa: Math.round(oa), sa: Math.round(sa), ma: Math.round(ma), total: Math.round(oa + sa + ma) };
+  }
+
+  const finalAge65 = summary65 || projections[projections.length - 1] || { oa: 0, sa: 0, ma: 0, total: 0 };
+  const rsType = finalAge65.sa >= ERS ? 'Above ERS' : finalAge65.sa >= FRS ? 'FRS' : finalAge65.sa >= BRS ? 'BRS' : 'Below BRS';
+  const monthlyPayout = Math.round((Math.min(finalAge65.sa, FRS) * 0.065) / 12);
+
+  res.json({
+    projections,
+    summary: {
+      at55: summary55,
+      at60: summary60,
+      at65: summary65,
+      retirement_sum_type: rsType,
+      monthly_payout_estimate: monthlyPayout,
+      frs: FRS,
+      brs: BRS,
+      ers: ERS
+    },
+    input: { age, income: annualIncome, bonus: bonusMonths, years: yearsToProject }
+  });
+});
 
 // ── Notion Sync ────────────────────────────────────────────────────────────────
 const NOTION_KEY = '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';
@@ -956,39 +1337,6 @@ app.post('/api/rolling-dollar/scripts/:id/update-status', authenticate, requireA
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Admin: Expiry Alerts ───────────────────────────────────────────────
-app.get('/api/admin/expiry-alerts', authenticate, requireAdmin, asyncRoute(async (req, res) => {
-  const days = Math.min(Math.max(parseInt(req.query.days) || 90, 1), 365);
-  const today = new Date();
-  const cutoff = new Date(today); cutoff.setDate(today.getDate() + days);
-  const todayStr = today.toISOString().split('T')[0];
-  const cutoffStr = cutoff.toISOString().split('T')[0];
-
-  const policies = await dbAll(`
-    SELECT p.*, c.name as client_name, c.email as client_email, c.phone as client_phone
-    FROM policies p
-    JOIN clients c ON p.client_id = c.id
-    WHERE c.role != 'admin'
-      AND p.end_date != ''
-      AND p.end_date >= ?
-      AND p.end_date <= ?
-      AND p.status = 'Active'
-    ORDER BY p.end_date ASC
-  `, [todayStr, cutoffStr]);
-
-  const tagged = policies.map(p => {
-    const daysLeft = Math.ceil((new Date(p.end_date) - today) / (1000 * 60 * 60 * 24));
-    const urgency = daysLeft <= 14 ? 'critical' : daysLeft <= 30 ? 'high' : daysLeft <= 60 ? 'medium' : 'low';
-    return { ...p, days_left: daysLeft, urgency };
-  });
-
-  res.json({
-    generated_at: new Date().toISOString(),
-    window_days: days,
-    total: tagged.length,
-    alerts: tagged
-  });
-}));
 
 // ── Expiry Alerts: Telegram Notify ───────────────────────────────────────────
 async function sendExpiryAlertsTelegram() {
@@ -1081,15 +1429,17 @@ app.get('/api/admin/overview', authenticate, requireAdmin, async (req, res) => {
 // ── Backup & Restore ───────────────────────────────────────────────────────────
 app.get('/api/admin/backup', authenticate, requireAdmin, async (req, res) => {
   try {
-    const clients = await dbAll(`SELECT id, username, name, age, gender, occupation, annual_income, dependents, email, phone, role, notion_page_id, created_at, updated_at FROM clients WHERE role='client'`);
+    const clients = await dbAll(`SELECT id, username, name, age, gender, occupation, annual_income, dependents, email, phone, role, notion_page_id, referral_source, referred_by, created_at, updated_at FROM clients WHERE role='client'`);
     const policies = await dbAll(`SELECT * FROM policies`);
     const investments = await dbAll(`SELECT * FROM investments`);
     const snapshots = await dbAll(`SELECT * FROM snapshots`);
+    const dca_entries = await dbAll(`SELECT * FROM dca_entries`);
+    const commissions = await dbAll(`SELECT * FROM commissions`);
     const backup = {
-      version: 1,
+      version: 3,
       exported_at: new Date().toISOString(),
-      counts: { clients: clients.length, policies: policies.length, investments: investments.length, snapshots: snapshots.length },
-      clients, policies, investments, snapshots
+      counts: { clients: clients.length, policies: policies.length, investments: investments.length, snapshots: snapshots.length, dca_entries: dca_entries.length, commissions: commissions.length },
+      clients, policies, investments, snapshots, dca_entries, commissions
     };
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="finview-backup-${new Date().toISOString().slice(0,10)}.json"`);
@@ -1099,10 +1449,10 @@ app.get('/api/admin/backup', authenticate, requireAdmin, async (req, res) => {
 
 app.post('/api/admin/restore', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { clients = [], policies = [], investments = [], snapshots = [] } = req.body;
+    const { clients = [], policies = [], investments = [], snapshots = [], dca_entries = [], commissions = [] } = req.body;
     if (!Array.isArray(clients)) return res.status(400).json({ error: 'Invalid backup format' });
 
-    let imported = { clients: 0, policies: 0, investments: 0, snapshots: 0, skipped: 0 };
+    let imported = { clients: 0, policies: 0, investments: 0, snapshots: 0, dca_entries: 0, commissions: 0, skipped: 0 };
 
     // Restore clients (skip admin, skip duplicates by id)
     for (const c of clients) {
@@ -1110,11 +1460,12 @@ app.post('/api/admin/restore', authenticate, requireAdmin, async (req, res) => {
       const exists = await dbGet('SELECT id FROM clients WHERE id=?', [c.id]);
       if (exists) { imported.skipped++; continue; }
       try {
-        await dbRun(`INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,dependents,email,phone,role,notion_page_id,notes,deal_stage,last_contact,next_action,created_at,updated_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        await dbRun(`INSERT INTO clients (id,username,password_hash,name,age,gender,occupation,annual_income,dependents,email,phone,role,notion_page_id,notes,deal_stage,last_contact,next_action,referral_source,referred_by,created_at,updated_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [c.id, c.username, c.password_hash, c.name, c.age||0, c.gender||'', c.occupation||'', c.annual_income||0,
            c.dependents||0, c.email||'', c.phone||'', c.role||'client', c.notion_page_id||'',
            c.notes||'', c.deal_stage||'Prospect', c.last_contact||'', c.next_action||'',
+           c.referral_source||'', c.referred_by||'',
            c.created_at||new Date().toISOString(), c.updated_at||new Date().toISOString()]);
         imported.clients++;
       } catch (e) { imported.skipped++; }
@@ -1166,7 +1517,47 @@ app.post('/api/admin/restore', authenticate, requireAdmin, async (req, res) => {
       } catch (e) { imported.skipped++; }
     }
 
+    // Restore DCA entries (after investments so FKs are satisfied)
+    for (const d of dca_entries) {
+      const invExists = await dbGet('SELECT id FROM investments WHERE id=?', [d.investment_id]);
+      if (!invExists) { imported.skipped++; continue; }
+      try {
+        const dcaSql = USE_POSTGRES
+          ? `INSERT INTO dca_entries (id,investment_id,entry_date,amount,units,nav,notes,created_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING`
+          : `INSERT OR IGNORE INTO dca_entries (id,investment_id,entry_date,amount,units,nav,notes,created_at) VALUES (?,?,?,?,?,?,?,?)`;
+        await dbRun(dcaSql,
+          [d.id, d.investment_id, d.entry_date||'', d.amount||0, d.units||0, d.nav||0, d.notes||'', d.created_at||new Date().toISOString()]);
+        imported.dca_entries++;
+      } catch (e) { imported.skipped++; }
+    }
+
+    // Restore commissions
+    for (const cm of commissions) {
+      const clientExists = await dbGet('SELECT id FROM clients WHERE id=?', [cm.client_id]);
+      if (!clientExists) { imported.skipped++; continue; }
+      try {
+        const commSql = USE_POSTGRES
+          ? `INSERT INTO commissions (id,client_id,policy_id,product_name,insurer,commission_type,amount,expected_date,received_date,status,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING`
+          : `INSERT OR IGNORE INTO commissions (id,client_id,policy_id,product_name,insurer,commission_type,amount,expected_date,received_date,status,notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+        await dbRun(commSql,
+          [cm.id, cm.client_id, cm.policy_id||null, cm.product_name||'', cm.insurer||'', cm.commission_type||'first_year',
+           cm.amount||0, cm.expected_date||'', cm.received_date||'', cm.status||'pending', cm.notes||'',
+           cm.created_at||new Date().toISOString(), cm.updated_at||new Date().toISOString()]);
+        imported.commissions++;
+      } catch (e) { imported.skipped++; }
+    }
+
     if (!USE_POSTGRES) saveDb();
+
+    // Reset PostgreSQL sequences after restore so next INSERT doesn't collide
+    if (USE_POSTGRES) {
+      await dbRun(`SELECT setval('policies_id_seq', COALESCE((SELECT MAX(id) FROM policies), 0) + 1, false)`);
+      await dbRun(`SELECT setval('investments_id_seq', COALESCE((SELECT MAX(id) FROM investments), 0) + 1, false)`);
+      await dbRun(`SELECT setval('snapshots_id_seq', COALESCE((SELECT MAX(id) FROM snapshots), 0) + 1, false)`);
+      try { await dbRun(`SELECT setval('dca_entries_id_seq', COALESCE((SELECT MAX(id) FROM dca_entries), 0) + 1, false)`); } catch {}
+      try { await dbRun(`SELECT setval('commissions_id_seq', COALESCE((SELECT MAX(id) FROM commissions), 0) + 1, false)`); } catch {}
+    }
+
     res.json({ success: true, imported });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1194,6 +1585,111 @@ app.get('/api/pipeline', authenticate, requireAdmin, asyncRoute(async (req, res)
     result[s] = await dbAll(`SELECT id, name, annual_income, age, deal_stage, last_contact, next_action FROM clients WHERE deal_stage=? AND role='client' ORDER BY name`, [s]);
   }));
   res.json({ stages, pipeline: result });
+}));
+
+// ── Commissions CRUD ────────────────────────────────────────────────────────────
+app.get('/api/admin/commissions', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { year, status } = req.query;
+  let sql = `SELECT c.*, cl.name as client_name FROM commissions c LEFT JOIN clients cl ON c.client_id = cl.id`;
+  const conditions = [], params = [];
+  if (year) { conditions.push(`strftime('%Y', COALESCE(c.received_date, c.expected_date)) = ?`); params.push(year); }
+  if (status) { conditions.push(`c.status = ?`); params.push(status); }
+  if (conditions.length) sql += ` WHERE ` + conditions.join(' AND ');
+  sql += ` ORDER BY COALESCE(c.received_date, c.expected_date) DESC`;
+  const rows = await dbAll(sql, params);
+  res.json(rows);
+}));
+
+app.get('/api/admin/commissions/summary', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const currentYear = new Date().getFullYear();
+  const all = await dbAll(`SELECT * FROM commissions`);
+  const ytd = all.filter(c => {
+    const d = c.received_date || c.expected_date;
+    return d && new Date(d).getFullYear() === currentYear;
+  });
+  const received = ytd.filter(c => c.status === 'received').reduce((s, c) => s + (c.amount || 0), 0);
+  const pending = ytd.filter(c => c.status === 'pending').reduce((s, c) => s + (c.amount || 0), 0);
+  const clawback = ytd.filter(c => c.status === 'clawback').reduce((s, c) => s + (c.amount || 0), 0);
+  
+  // Monthly breakdown
+  const months = [];
+  for (let m = 0; m < 12; m++) {
+    const monthReceived = all.filter(c => {
+      if (c.status !== 'received' || !c.received_date) return false;
+      const d = new Date(c.received_date);
+      return d.getFullYear() === currentYear && d.getMonth() === m;
+    }).reduce((s, c) => s + (c.amount || 0), 0);
+    const monthPending = all.filter(c => {
+      if (c.status !== 'pending' || !c.expected_date) return false;
+      const d = new Date(c.expected_date);
+      return d.getFullYear() === currentYear && d.getMonth() === m;
+    }).reduce((s, c) => s + (c.amount || 0), 0);
+    months.push({ month: m, received: monthReceived, pending: monthPending });
+  }
+  
+  res.json({ received, pending, clawback, months });
+}));
+
+app.post('/api/admin/commissions', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { client_id, policy_id, product_name, insurer, commission_type, amount, expected_date, received_date, status, notes } = req.body;
+  if (!client_id) return res.status(400).json({ error: 'client_id required' });
+  const id = await dbRun(
+    `INSERT INTO commissions (client_id, policy_id, product_name, insurer, commission_type, amount, expected_date, received_date, status, notes) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    [client_id, policy_id || null, product_name || '', insurer || '', commission_type || 'first_year', amount || 0, expected_date || '', received_date || '', status || 'pending', notes || '']
+  );
+  res.json({ success: true, id });
+}));
+
+app.put('/api/admin/commissions/:id', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { client_id, policy_id, product_name, insurer, commission_type, amount, expected_date, received_date, status, notes } = req.body;
+  const fields = [], vals = [];
+  if (client_id !== undefined) { fields.push('client_id=?'); vals.push(client_id); }
+  if (policy_id !== undefined) { fields.push('policy_id=?'); vals.push(policy_id); }
+  if (product_name !== undefined) { fields.push('product_name=?'); vals.push(product_name); }
+  if (insurer !== undefined) { fields.push('insurer=?'); vals.push(insurer); }
+  if (commission_type !== undefined) { fields.push('commission_type=?'); vals.push(commission_type); }
+  if (amount !== undefined) { fields.push('amount=?'); vals.push(amount); }
+  if (expected_date !== undefined) { fields.push('expected_date=?'); vals.push(expected_date); }
+  if (received_date !== undefined) { fields.push('received_date=?'); vals.push(received_date); }
+  if (status !== undefined) { fields.push('status=?'); vals.push(status); }
+  if (notes !== undefined) { fields.push('notes=?'); vals.push(notes); }
+  if (!fields.length) return res.json({ success: true });
+  fields.push('updated_at=?'); vals.push(new Date().toISOString());
+  vals.push(req.params.id);
+  await dbRun(`UPDATE commissions SET ${fields.join(',')} WHERE id=?`, vals);
+  res.json({ success: true });
+}));
+
+app.delete('/api/admin/commissions/:id', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  await dbRun(`DELETE FROM commissions WHERE id=?`, [req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── Referral Stats ─────────────────────────────────────────────────────────────
+app.get('/api/admin/referrals/stats', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const clients = await dbAll(`SELECT id, name, referral_source, referred_by, deal_stage FROM clients WHERE role='client'`);
+  
+  // Sources breakdown
+  const sourceMap = {};
+  clients.forEach(c => {
+    const src = c.referral_source || 'Unknown';
+    if (!sourceMap[src]) sourceMap[src] = { source: src, count: 0, converted: 0 };
+    sourceMap[src].count++;
+    if (c.deal_stage === 'Closed Won') sourceMap[src].converted++;
+  });
+  const sources = Object.values(sourceMap).sort((a, b) => b.count - a.count);
+  
+  // Top referrers
+  const referrerMap = {};
+  clients.forEach(c => {
+    if (c.referred_by) {
+      if (!referrerMap[c.referred_by]) referrerMap[c.referred_by] = { name: c.referred_by, count: 0 };
+      referrerMap[c.referred_by].count++;
+    }
+  });
+  const topReferrers = Object.values(referrerMap).sort((a, b) => b.count - a.count).slice(0, 10);
+  
+  res.json({ sources, topReferrers });
 }));
 
 // ── Needs Analysis CRUD ────────────────────────────────────────────────────────
@@ -1238,6 +1734,109 @@ app.delete('/api/clients/:id/needs-analysis/:nid', authenticate, asyncRoute(asyn
   if (!guardClient(req, res)) return;
   await dbRun('DELETE FROM needs_analysis WHERE id=? AND client_id=?', [req.params.nid, req.params.id]);
   res.json({ success: true });
+}));
+
+// ── Documents (Secure Vault) ────────────────────────────────────────────────────────────────
+app.get('/api/clients/:id/documents', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const docs = await dbAll('SELECT * FROM documents WHERE client_id=? ORDER BY created_at DESC', [req.params.id]);
+  res.json(docs);
+}));
+
+app.post('/api/clients/:id/documents', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { name, file_type, file_size, category, notes } = req.body;
+  if (!name) return res.status(400).json({ error: 'Document name required' });
+  const id = await dbRun(
+    'INSERT INTO documents (client_id, name, file_type, file_size, category, notes, uploaded_by) VALUES (?,?,?,?,?,?,?)',
+    [req.params.id, name, file_type || 'pdf', file_size || 0, category || 'other', notes || '', req.user?.role || 'admin']
+  );
+  res.json({ success: true, id });
+}));
+
+app.delete('/api/clients/:id/documents/:did', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  await dbRun('DELETE FROM documents WHERE id=? AND client_id=?', [req.params.did, req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── AI Needs Analysis ──────────────────────────────────────────────────────────────────
+app.post('/api/admin/clients/:id/ai-analysis', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const clientId = req.params.id;
+  const client = await dbGet('SELECT * FROM clients WHERE id=?', [clientId]);
+  if (!client) return res.status(404).json({ error: 'Client not found' });
+
+  const policies = await dbAll('SELECT * FROM policies WHERE client_id=? AND status=?', [clientId, 'Active']);
+  const investments = await dbAll('SELECT * FROM investments WHERE client_id=?', [clientId]);
+  const needs = await dbAll('SELECT * FROM needs_analysis WHERE client_id=?', [clientId]);
+
+  const totalCoverage = policies.reduce((s, p) => s + (p.coverage || 0), 0);
+  const totalPremium = policies.reduce((s, p) => s + (p.premium || 0), 0);
+  const totalInvested = investments.reduce((s, i) => s + (i.invested || 0), 0);
+  const totalValue = investments.reduce((s, i) => s + (i.value_now || 0), 0);
+
+  const prompt = `You are a Singapore financial planning expert. Analyse this client and provide a structured needs analysis.
+
+Client Profile:
+- Name: ${client.name}, Age: ${client.age}, Gender: ${client.gender || '—'}
+- Occupation: ${client.occupation}, Annual Income: S$${(client.annual_income || 0).toLocaleString()}
+- Dependents: ${client.dependents || 0}
+
+Current Protection:
+- Total Life/TPD Coverage: S$${totalCoverage.toLocaleString()}
+- Annual Premium: S$${totalPremium.toLocaleString()}
+- Policy types: ${[...new Set(policies.map(p => p.type))].join(', ') || 'None'}
+
+Current Investments:
+- Total Invested: S$${totalInvested.toLocaleString()}
+- Portfolio Value: S$${totalValue.toLocaleString()}
+
+Needs Analysis Summary:
+${needs.length > 0 ? needs.map(n => `- ${n.coverage_type}: current S$${(n.current_amount || 0).toLocaleString()}, recommended S$${(n.recommended_amount || 0).toLocaleString()}, gap S$${(n.gap || 0).toLocaleString()}`).join('\n') : 'Not yet assessed'}
+
+Singapore context: MAS guidelines, CPF integration, relevant insurers (AIA, Prudential, Manulife, Great Eastern, NTUC Income, Aviva/Singlife).
+
+Provide a structured analysis in this JSON format:
+{
+  "overall_health": "good|fair|needs_attention",
+  "health_score": 0-100,
+  "summary": "2-3 sentence executive summary",
+  "strengths": ["list of 2-3 financial strengths"],
+  "gaps": [{"area": "coverage type", "severity": "critical|high|medium|low", "current": amount, "recommended": amount, "gap": amount, "action": "specific recommendation"}],
+  "recommendations": ["3-5 specific actionable recommendations"],
+  "next_steps": ["2-3 concrete next steps"]
+}`;
+
+  try {
+    const { Anthropic } = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY });
+    const msg = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const content = msg.content[0]?.text || '{}';
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : { summary: content };
+    res.json({ success: true, analysis, client: { name: client.name, id: client.id } });
+  } catch (e) {
+    // Fallback: rule-based analysis if AI unavailable
+    const income = client.annual_income || 50000;
+    const lifeNeeded = income * 10;
+    const lifeGap = Math.max(0, lifeNeeded - totalCoverage);
+    res.json({
+      success: true,
+      analysis: {
+        overall_health: totalCoverage >= lifeNeeded * 0.8 ? 'good' : totalCoverage >= lifeNeeded * 0.5 ? 'fair' : 'needs_attention',
+        health_score: Math.min(100, Math.round((totalCoverage / lifeNeeded) * 60 + (totalValue > 0 ? 40 : 0))),
+        summary: `${client.name} has S$${totalCoverage.toLocaleString()} in coverage against a recommended S$${lifeNeeded.toLocaleString()} (10x income). ${lifeGap > 0 ? `There is a coverage gap of S$${lifeGap.toLocaleString()}.` : 'Coverage appears adequate.'}`,
+        gaps: lifeGap > 0 ? [{ area: 'Life/TPD Coverage', severity: 'high', current: totalCoverage, recommended: lifeNeeded, gap: lifeGap, action: `Increase life and TPD coverage by S$${lifeGap.toLocaleString()}` }] : [],
+        recommendations: ['Review and update coverage annually', 'Consider supplementing CPF with voluntary top-ups', 'Diversify investment portfolio with DCA strategies'],
+        next_steps: ['Schedule annual policy review', 'Run CPF projection to check retirement readiness']
+      },
+      fallback: true
+    });
+  }
 }));
 
 // ── Investment Projection ──────────────────────────────────────────────────────
