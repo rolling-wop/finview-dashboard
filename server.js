@@ -8,6 +8,17 @@ const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
 const initSqlJs = require('sql.js');
+const multer = require('multer');
+const xlsx = require('xlsx');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.includes('spreadsheet') || file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls')) cb(null, true);
+    else cb(new Error('Only Excel files allowed'));
+  }
+});
 
 // ─── PostgreSQL / SQLite Dual-Mode Adapter ─────────────────────────────────────
 // When DATABASE_URL is set (Railway) → PostgreSQL (persistent)
@@ -263,6 +274,12 @@ async function initDb() {
     try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS irr FLOAT DEFAULT 0`); } catch {}
     try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS break_even_year INTEGER DEFAULT 0`); } catch {}
     try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS payout_start TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS payout_end TEXT DEFAULT ''`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS payout_monthly FLOAT DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS surrender_value FLOAT DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS total_paid FLOAT DEFAULT 0`); } catch {}
+    try { await _pgExec(`ALTER TABLE investments ADD COLUMN IF NOT EXISTS policy_number TEXT DEFAULT ''`); } catch {}
 
     // Documents table
     await _pgExec(`
@@ -299,6 +316,188 @@ async function initDb() {
         FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
       )
     `);
+    // Net Worth Items table
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS net_worth_items (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        category TEXT DEFAULT 'asset',
+        name TEXT DEFAULT '',
+        amount FLOAT DEFAULT 0,
+        as_of_date TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Financial Goals table
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS goals (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        name TEXT DEFAULT '',
+        target_amount FLOAT DEFAULT 0,
+        current_amount FLOAT DEFAULT 0,
+        target_date TEXT DEFAULT '',
+        category TEXT DEFAULT 'general',
+        notes TEXT DEFAULT '',
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Cashflow Entries table
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS cashflow_entries (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        type TEXT DEFAULT 'expense',
+        category TEXT DEFAULT 'other',
+        description TEXT DEFAULT '',
+        amount FLOAT DEFAULT 0,
+        entry_date TEXT DEFAULT '',
+        recurring INTEGER DEFAULT 0,
+        frequency TEXT DEFAULT 'monthly',
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Cashflow Analyses table (uploaded Excel files)
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS cashflow_analyses (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        filename TEXT DEFAULT '',
+        presentation_date TEXT DEFAULT '',
+        parsed_data JSONB,
+        uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Reviews table (PG)
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        review_date TEXT NOT NULL,
+        next_review_date TEXT,
+        meeting_type TEXT DEFAULT 'annual_review',
+        notes TEXT DEFAULT '',
+        action_items TEXT DEFAULT '',
+        created_by TEXT DEFAULT 'admin',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+    // Beneficiaries table (PG)
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS beneficiaries (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        policy_id INTEGER,
+        name TEXT NOT NULL,
+        relationship TEXT DEFAULT '',
+        percentage INTEGER DEFAULT 100,
+        ic_number TEXT DEFAULT '',
+        contact TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+    // Claims table (PG)
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS claims (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        policy_id INTEGER,
+        claim_date TEXT NOT NULL,
+        claim_type TEXT DEFAULT '',
+        amount_claimed FLOAT DEFAULT 0,
+        amount_approved FLOAT DEFAULT 0,
+        status TEXT DEFAULT 'pending',
+        notes TEXT DEFAULT '',
+        settled_date TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+    // Dependents table (PG)
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS dependents (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        relationship TEXT DEFAULT '',
+        age INTEGER DEFAULT 0,
+        has_coverage INTEGER DEFAULT 0,
+        coverage_notes TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+
+    // New holistic planning tables (PG)
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS client_profile_extended (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT UNIQUE NOT NULL,
+        date_of_birth TEXT DEFAULT '',
+        nationality TEXT DEFAULT 'Singaporean',
+        marital_status TEXT DEFAULT 'single',
+        spouse_name TEXT DEFAULT '',
+        spouse_age INTEGER DEFAULT 0,
+        spouse_occupation TEXT DEFAULT '',
+        spouse_income FLOAT DEFAULT 0,
+        children TEXT DEFAULT '[]',
+        parents_dependent INTEGER DEFAULT 0,
+        parent1_age INTEGER DEFAULT 0,
+        parent2_age INTEGER DEFAULT 0,
+        retirement_age INTEGER DEFAULT 62,
+        target_monthly_income FLOAT DEFAULT 3000,
+        life_expectancy INTEGER DEFAULT 85,
+        risk_tolerance INTEGER DEFAULT 3,
+        investment_philosophy TEXT DEFAULT 'balanced',
+        primary_objective TEXT DEFAULT 'protection',
+        has_will INTEGER DEFAULT 0,
+        cpf_nomination_done INTEGER DEFAULT 0,
+        policy_nomination_done INTEGER DEFAULT 0,
+        emergency_fund_months FLOAT DEFAULT 0,
+        property_owned INTEGER DEFAULT 0,
+        property_type TEXT DEFAULT '',
+        property_value FLOAT DEFAULT 0,
+        rental_income FLOAT DEFAULT 0,
+        education_plans TEXT DEFAULT '[]',
+        planner_notes TEXT DEFAULT '',
+        updated_at TEXT DEFAULT '',
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+    await _pgExec(`
+      CREATE TABLE IF NOT EXISTS income_streams (
+        id SERIAL PRIMARY KEY,
+        client_id TEXT NOT NULL,
+        label TEXT NOT NULL,
+        type TEXT DEFAULT 'rental',
+        amount FLOAT DEFAULT 0,
+        frequency TEXT DEFAULT 'monthly',
+        start_date TEXT DEFAULT '',
+        end_date TEXT DEFAULT '',
+        is_retirement_income INTEGER DEFAULT 0,
+        notes TEXT DEFAULT '',
+        created_at TEXT DEFAULT '',
+        FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      )
+    `);
+
     console.log('✅ PostgreSQL schema ready');
 
     // Reset sequences to avoid duplicate key errors after backup/restore
@@ -309,6 +508,34 @@ async function initDb() {
     try { await _pgExec(`SELECT setval('dca_entries_id_seq', COALESCE((SELECT MAX(id) FROM dca_entries), 0) + 1, false)`); } catch {}
     try { await _pgExec(`SELECT setval('commissions_id_seq', COALESCE((SELECT MAX(id) FROM commissions), 0) + 1, false)`); } catch {}
     try { await _pgExec(`SELECT setval('documents_id_seq', COALESCE((SELECT MAX(id) FROM documents), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('net_worth_items_id_seq', COALESCE((SELECT MAX(id) FROM net_worth_items), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('goals_id_seq', COALESCE((SELECT MAX(id) FROM goals), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('cashflow_entries_id_seq', COALESCE((SELECT MAX(id) FROM cashflow_entries), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('cashflow_analyses_id_seq', COALESCE((SELECT MAX(id) FROM cashflow_analyses), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('reviews_id_seq', COALESCE((SELECT MAX(id) FROM reviews), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('beneficiaries_id_seq', COALESCE((SELECT MAX(id) FROM beneficiaries), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('claims_id_seq', COALESCE((SELECT MAX(id) FROM claims), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('dependents_id_seq', COALESCE((SELECT MAX(id) FROM dependents), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('client_profile_extended_id_seq', COALESCE((SELECT MAX(id) FROM client_profile_extended), 0) + 1, false)`); } catch {}
+    try { await _pgExec(`SELECT setval('income_streams_id_seq', COALESCE((SELECT MAX(id) FROM income_streams), 0) + 1, false)`); } catch {}
+    // CPF balances table
+    await _pgExec(`CREATE TABLE IF NOT EXISTS cpf_balances (
+      id SERIAL PRIMARY KEY,
+      client_id TEXT UNIQUE NOT NULL,
+      oa_balance FLOAT DEFAULT 0,
+      sa_balance FLOAT DEFAULT 0,
+      ma_balance FLOAT DEFAULT 0,
+      ra_balance FLOAT DEFAULT 0,
+      oa_monthly_contrib FLOAT DEFAULT 0,
+      sa_monthly_contrib FLOAT DEFAULT 0,
+      ma_monthly_contrib FLOAT DEFAULT 0,
+      as_of_date TEXT DEFAULT '',
+      cpf_life_option TEXT DEFAULT 'standard',
+      projected_cpf_life_monthly FLOAT DEFAULT 0,
+      updated_at TEXT DEFAULT '',
+      FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    )`);
+    try { await _pgExec(`SELECT setval('cpf_balances_id_seq', COALESCE((SELECT MAX(id) FROM cpf_balances), 0) + 1, false)`); } catch {}
     console.log('✅ Sequences synced');
 
     // Seed admin
@@ -498,6 +725,185 @@ async function initDb() {
   try { db.run(`ALTER TABLE clients ADD COLUMN referral_source TEXT DEFAULT ''`); } catch {}
   try { db.run(`ALTER TABLE clients ADD COLUMN referred_by TEXT DEFAULT ''`); } catch {}
 
+  // Net Worth Items table (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS net_worth_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    category TEXT DEFAULT 'asset',
+    name TEXT DEFAULT '',
+    amount REAL DEFAULT 0,
+    as_of_date TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
+  // Financial Goals table (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    name TEXT DEFAULT '',
+    target_amount REAL DEFAULT 0,
+    current_amount REAL DEFAULT 0,
+    target_date TEXT DEFAULT '',
+    category TEXT DEFAULT 'general',
+    notes TEXT DEFAULT '',
+    status TEXT DEFAULT 'active',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
+  // Cashflow Analyses table (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS cashflow_analyses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    filename TEXT DEFAULT '',
+    presentation_date TEXT DEFAULT '',
+    parsed_data TEXT,
+    uploaded_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
+  // Cashflow Entries table (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS cashflow_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    type TEXT DEFAULT 'expense',
+    category TEXT DEFAULT 'other',
+    description TEXT DEFAULT '',
+    amount REAL DEFAULT 0,
+    entry_date TEXT DEFAULT '',
+    recurring INTEGER DEFAULT 0,
+    frequency TEXT DEFAULT 'monthly',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
+  // Reviews table (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    review_date TEXT NOT NULL,
+    next_review_date TEXT,
+    meeting_type TEXT DEFAULT 'annual_review',
+    notes TEXT DEFAULT '',
+    action_items TEXT DEFAULT '',
+    created_by TEXT DEFAULT 'admin',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+  // Beneficiaries table (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS beneficiaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    policy_id INTEGER,
+    name TEXT NOT NULL,
+    relationship TEXT DEFAULT '',
+    percentage INTEGER DEFAULT 100,
+    ic_number TEXT DEFAULT '',
+    contact TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+  // Claims table (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS claims (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    policy_id INTEGER,
+    claim_date TEXT NOT NULL,
+    claim_type TEXT DEFAULT '',
+    amount_claimed REAL DEFAULT 0,
+    amount_approved REAL DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    notes TEXT DEFAULT '',
+    settled_date TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+  // Dependents table (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS dependents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    relationship TEXT DEFAULT '',
+    age INTEGER DEFAULT 0,
+    has_coverage INTEGER DEFAULT 0,
+    coverage_notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
+  // Holistic planning tables (SQLite)
+  db.run(`CREATE TABLE IF NOT EXISTS client_profile_extended (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT UNIQUE NOT NULL,
+    date_of_birth TEXT DEFAULT '',
+    nationality TEXT DEFAULT 'Singaporean',
+    marital_status TEXT DEFAULT 'single',
+    spouse_name TEXT DEFAULT '',
+    spouse_age INTEGER DEFAULT 0,
+    spouse_occupation TEXT DEFAULT '',
+    spouse_income REAL DEFAULT 0,
+    children TEXT DEFAULT '[]',
+    parents_dependent INTEGER DEFAULT 0,
+    parent1_age INTEGER DEFAULT 0,
+    parent2_age INTEGER DEFAULT 0,
+    retirement_age INTEGER DEFAULT 62,
+    target_monthly_income REAL DEFAULT 3000,
+    life_expectancy INTEGER DEFAULT 85,
+    risk_tolerance INTEGER DEFAULT 3,
+    investment_philosophy TEXT DEFAULT 'balanced',
+    primary_objective TEXT DEFAULT 'protection',
+    has_will INTEGER DEFAULT 0,
+    cpf_nomination_done INTEGER DEFAULT 0,
+    policy_nomination_done INTEGER DEFAULT 0,
+    emergency_fund_months REAL DEFAULT 0,
+    property_owned INTEGER DEFAULT 0,
+    property_type TEXT DEFAULT '',
+    property_value REAL DEFAULT 0,
+    rental_income REAL DEFAULT 0,
+    education_plans TEXT DEFAULT '[]',
+    planner_notes TEXT DEFAULT '',
+    updated_at TEXT DEFAULT '',
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS income_streams (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    type TEXT DEFAULT 'rental',
+    amount REAL DEFAULT 0,
+    frequency TEXT DEFAULT 'monthly',
+    start_date TEXT DEFAULT '',
+    end_date TEXT DEFAULT '',
+    is_retirement_income INTEGER DEFAULT 0,
+    notes TEXT DEFAULT '',
+    created_at TEXT DEFAULT '',
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS cpf_balances (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id TEXT UNIQUE NOT NULL,
+    oa_balance REAL DEFAULT 0,
+    sa_balance REAL DEFAULT 0,
+    ma_balance REAL DEFAULT 0,
+    ra_balance REAL DEFAULT 0,
+    oa_monthly_contrib REAL DEFAULT 0,
+    sa_monthly_contrib REAL DEFAULT 0,
+    ma_monthly_contrib REAL DEFAULT 0,
+    as_of_date TEXT DEFAULT '',
+    cpf_life_option TEXT DEFAULT 'standard',
+    projected_cpf_life_monthly REAL DEFAULT 0,
+    updated_at TEXT DEFAULT '',
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+  )`);
+
   // Auto-seed admin
   const adminExists = await dbGet(`SELECT id FROM clients WHERE role='admin'`);
   if (!adminExists) {
@@ -622,6 +1028,7 @@ app.post('/api/admin/clients', authenticate, requireAdmin, async (req, res) => {
       [id, username, hash, name, age||0, gender||'', occupation||'', annual_income||0, dependents||0, email||'', phone||'', roleToCreate, referral_source||'', referred_by||'']);
     const newClient = await dbGet('SELECT id,username,name,age,gender,occupation,annual_income,email,phone,role,referral_source,referred_by FROM clients WHERE id=?', [id]);
     notionPushClient(newClient).catch(() => {});
+    sheetsPushClient(newClient).catch(() => {});
     res.json(newClient);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -824,7 +1231,14 @@ app.post('/api/clients/:id/policies', authenticate, asyncRoute(async (req, res) 
   const { type, product_name, policy_number, insurer, product_type, coverage_items, premium, start_date, end_date, status, recommended, notes, payment_frequency, cpf_medisave_amount, cash_amount, feature_flags } = req.body;
   const items = Array.isArray(coverage_items) ? coverage_items : [];
   // coverage_items can be [{type,coverage}] objects (new) or strings (legacy)
-  const totalCoverage = items.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
+  // Multi-pay CI can pay out multiple times (separate events) — sum is correct for those.
+  // All other policies: mutually exclusive benefits — coverage = max single-event payout.
+  const flags = Array.isArray(feature_flags) ? feature_flags : [];
+  const isMultiPay = flags.some(f => /multi.?pay/i.test(String(f))) ||
+    items.some(i => i && /multi.?pay/i.test(String(i.type || '')));
+  const totalCoverage = items.length === 0 ? 0 : (isMultiPay
+    ? items.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0)
+    : Math.max(0, ...items.map(i => parseFloat(i.coverage) || 0)));
   const primaryType = items.length > 0 ? (items[0].type || items[0]) : (type || '');
   const itemsJson = JSON.stringify(items);
   const flagsJson = JSON.stringify(Array.isArray(feature_flags) ? feature_flags : []);
@@ -846,8 +1260,15 @@ app.put('/api/clients/:id/policies/:pid', authenticate, asyncRoute(async (req, r
     const hasObjects = body.coverage_items.some(i => i !== null && typeof i === 'object' && 'coverage' in i);
     if (hasObjects) {
       // Modal format: [{type, coverage}] — update coverage totals
-      body.coverage = body.coverage_items.filter(i => i && typeof i === 'object').reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0);
-      body.type = body.coverage_items.find(i => i && typeof i === 'object')?.type || '';
+      const objectItems = body.coverage_items.filter(i => i && typeof i === 'object' && 'coverage' in i);
+      // Multi-pay CI stacks (separate events); all other policies: mutually exclusive = max payout
+      const putFlags = Array.isArray(body.feature_flags) ? body.feature_flags : [];
+      const putIsMultiPay = putFlags.some(f => /multi.?pay/i.test(String(f))) ||
+        objectItems.some(i => /multi.?pay/i.test(String(i.type || '')));
+      body.coverage = objectItems.length === 0 ? 0 : (putIsMultiPay
+        ? objectItems.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0)
+        : Math.max(0, ...objectItems.map(i => parseFloat(i.coverage) || 0)));
+      body.type = objectItems[0]?.type || '';
       body.coverage_items = JSON.stringify(body.coverage_items);
     } else {
       // String-only IDs (feature-flag checklist) — do NOT overwrite coverage/type
@@ -887,15 +1308,15 @@ app.get('/api/clients/:id/investments', authenticate, asyncRoute(async (req, res
 
 app.post('/api/clients/:id/investments', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
-  const { name, type, invested, value_now, target, goal_by, contribution, investment_subtype, payment_frequency, growth_rate_assumption, start_date, maturity_date, guaranteed_return, projected_return, premium_type, term_years, units_held, nav_price, fund_name, irr, break_even_year, notes } = req.body;
-  const id = await dbRun('INSERT INTO investments (client_id,name,type,invested,value_now,target,goal_by,contribution,investment_subtype,payment_frequency,growth_rate_assumption,start_date,maturity_date,guaranteed_return,projected_return,premium_type,term_years,units_held,nav_price,fund_name,irr,break_even_year,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-    [req.params.id, name||'', type||'', invested||0, value_now||0, target||0, goal_by||'', contribution||0, investment_subtype||'', payment_frequency||'annual', growth_rate_assumption||0, start_date||'', maturity_date||'', guaranteed_return||0, projected_return||0, premium_type||'regular', term_years||0, units_held||0, nav_price||0, fund_name||'', irr||0, break_even_year||0, notes||'']);
+  const { name, type, invested, value_now, target, goal_by, contribution, investment_subtype, payment_frequency, growth_rate_assumption, start_date, maturity_date, guaranteed_return, projected_return, premium_type, term_years, units_held, nav_price, fund_name, irr, break_even_year, notes, payout_start, payout_end, payout_monthly, surrender_value, total_paid, policy_number } = req.body;
+  const id = await dbRun('INSERT INTO investments (client_id,name,type,invested,value_now,target,goal_by,contribution,investment_subtype,payment_frequency,growth_rate_assumption,start_date,maturity_date,guaranteed_return,projected_return,premium_type,term_years,units_held,nav_price,fund_name,irr,break_even_year,notes,payout_start,payout_end,payout_monthly,surrender_value,total_paid,policy_number) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    [req.params.id, name||'', type||'', invested||0, value_now||0, target||0, goal_by||'', contribution||0, investment_subtype||'', payment_frequency||'annual', growth_rate_assumption||0, start_date||'', maturity_date||'', guaranteed_return||0, projected_return||0, premium_type||'regular', term_years||0, units_held||0, nav_price||0, fund_name||'', irr||0, break_even_year||0, notes||'', payout_start||'', payout_end||'', payout_monthly||0, surrender_value||0, total_paid||0, policy_number||'']);
   res.json(await dbGet('SELECT * FROM investments WHERE id=?', [id]));
 }));
 
 app.put('/api/clients/:id/investments/:iid', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
-  const f = ['name','type','invested','value_now','target','goal_by','contribution','investment_subtype','payment_frequency','growth_rate_assumption','start_date','maturity_date','guaranteed_return','projected_return','premium_type','term_years','units_held','nav_price','fund_name','irr','break_even_year','notes'];
+  const f = ['name','type','invested','value_now','target','goal_by','contribution','investment_subtype','payment_frequency','growth_rate_assumption','start_date','maturity_date','guaranteed_return','projected_return','premium_type','term_years','units_held','nav_price','fund_name','irr','break_even_year','notes','payout_start','payout_end','payout_monthly','surrender_value','total_paid','policy_number'];
   const sets = [], vals = [];
   f.forEach(k => { if (req.body[k] !== undefined) { sets.push(`${k}=?`); vals.push(req.body[k]); } });
   if (sets.length) { vals.push(req.params.iid, req.params.id); await dbRun(`UPDATE investments SET ${sets.join(',')} WHERE id=? AND client_id=?`, vals); }
@@ -1155,6 +1576,21 @@ function notionReq(method, p, body) {
     if (data) req.write(data);
     req.end();
   });
+}
+
+// ── Google Sheets Push ───────────────────────────────────────────────────────
+const { spawnSync: _spawnSync } = require('child_process');
+const SHEETS_SYNC_SCRIPT = '/Users/dylanho/.openclaw/workspace/scripts/finview-sheets-sync.js';
+
+async function sheetsPushClient(client) {
+  // Fire-and-forget: push new client to Google Sheets via sync script
+  try {
+    const state = (() => { try { return JSON.parse(require('fs').readFileSync('/Users/dylanho/.openclaw/workspace/scripts/finview-sheets-state.json','utf8')); } catch { return {}; } })();
+    if (!state.sheetId) return; // Sheet not initialised yet — skip silently
+    _spawnSync(process.execPath, [SHEETS_SYNC_SCRIPT, '--direction=to-sheets'], {
+      timeout: 30000, detached: true, stdio: 'ignore'
+    });
+  } catch {}
 }
 
 async function notionPushClient(client) {
@@ -1562,6 +1998,30 @@ app.post('/api/admin/restore', authenticate, requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Recalculate Coverage Totals ────────────────────────────────────────────────
+app.post('/api/admin/recalculate-coverage', authenticate, asyncRoute(async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const policies = await dbAll('SELECT id, coverage_items, feature_flags FROM policies', []);
+  let updated = 0, skipped = 0;
+  for (const pol of policies) {
+    let items = [];
+    try { items = JSON.parse(pol.coverage_items || '[]'); } catch { items = []; }
+    const hasObjects = Array.isArray(items) && items.some(i => i && typeof i === 'object' && 'coverage' in i);
+    if (!hasObjects) { skipped++; continue; }
+    let flags = [];
+    try { flags = JSON.parse(pol.feature_flags || '[]'); } catch { flags = []; }
+    const objectItems = items.filter(i => i && typeof i === 'object' && 'coverage' in i);
+    const isMultiPay = (Array.isArray(flags) && flags.some(f => /multi.?pay/i.test(String(f)))) ||
+      objectItems.some(i => /multi.?pay/i.test(String(i.type || '')));
+    const newCoverage = objectItems.length === 0 ? 0 : (isMultiPay
+      ? objectItems.reduce((s, i) => s + (parseFloat(i.coverage) || 0), 0)
+      : Math.max(0, ...objectItems.map(i => parseFloat(i.coverage) || 0)));
+    await dbRun('UPDATE policies SET coverage=? WHERE id=?', [newCoverage, pol.id]);
+    updated++;
+  }
+  res.json({ success: true, updated, skipped, total: policies.length });
+}));
+
 // ── Client Notes & Pipeline ──────────────────────────────────────────────────
 app.patch('/api/clients/:id/notes', authenticate, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
@@ -1757,6 +2217,252 @@ app.post('/api/clients/:id/documents', authenticate, asyncRoute(async (req, res)
 app.delete('/api/clients/:id/documents/:did', authenticate, asyncRoute(async (req, res) => {
   if (!guardClient(req, res)) return;
   await dbRun('DELETE FROM documents WHERE id=? AND client_id=?', [req.params.did, req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── Net Worth Tracker ────────────────────────────────────────────────────────────────
+app.get('/api/clients/:id/networth', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const items = await dbAll('SELECT * FROM net_worth_items WHERE client_id=? ORDER BY category, name', [req.params.id]);
+  const assets = items.filter(i => i.category === 'asset').reduce((s, i) => s + (i.amount || 0), 0);
+  const liabilities = items.filter(i => i.category === 'liability').reduce((s, i) => s + (i.amount || 0), 0);
+  res.json({ items, summary: { assets, liabilities, net_worth: assets - liabilities } });
+}));
+
+app.post('/api/clients/:id/networth', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { category = 'asset', name, amount = 0, as_of_date = '', notes = '' } = req.body;
+  const id = await dbRun(
+    'INSERT INTO net_worth_items (client_id, category, name, amount, as_of_date, notes) VALUES (?,?,?,?,?,?)',
+    [req.params.id, category, name || 'Unnamed', amount, as_of_date, notes]
+  );
+  res.json({ success: true, id });
+}));
+
+app.put('/api/clients/:id/networth/:nwid', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { category, name, amount, as_of_date, notes } = req.body;
+  const fields = [], vals = [];
+  if (category !== undefined) { fields.push(`category=?`); vals.push(category); }
+  if (name !== undefined) { fields.push(`name=?`); vals.push(name); }
+  if (amount !== undefined) { fields.push(`amount=?`); vals.push(amount); }
+  if (as_of_date !== undefined) { fields.push(`as_of_date=?`); vals.push(as_of_date); }
+  if (notes !== undefined) { fields.push(`notes=?`); vals.push(notes); }
+  if (!fields.length) return res.status(400).json({ error: 'No fields to update' });
+  fields.push(`updated_at=datetime('now')`);
+  vals.push(req.params.nwid, req.params.id);
+  await dbRun(`UPDATE net_worth_items SET ${fields.join(',')} WHERE id=? AND client_id=?`, vals);
+  res.json({ success: true });
+}));
+
+app.delete('/api/clients/:id/networth/:nwid', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  await dbRun('DELETE FROM net_worth_items WHERE id=? AND client_id=?', [req.params.nwid, req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── Financial Goals ───────────────────────────────────────────────────────────────────
+app.get('/api/clients/:id/goals', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const goals = await dbAll('SELECT * FROM goals WHERE client_id=? ORDER BY target_date', [req.params.id]);
+  res.json(goals);
+}));
+
+app.post('/api/clients/:id/goals', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { name, target_amount = 0, current_amount = 0, target_date = '', category = 'general', notes = '' } = req.body;
+  const id = await dbRun(
+    'INSERT INTO goals (client_id, name, target_amount, current_amount, target_date, category, notes) VALUES (?,?,?,?,?,?,?)',
+    [req.params.id, name || 'New Goal', target_amount, current_amount, target_date, category, notes]
+  );
+  res.json({ success: true, id });
+}));
+
+app.put('/api/clients/:id/goals/:gid', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { name, target_amount, current_amount, target_date, category, notes, status } = req.body;
+  const fields = [], vals = [];
+  if (name !== undefined) { fields.push(`name=?`); vals.push(name); }
+  if (target_amount !== undefined) { fields.push(`target_amount=?`); vals.push(target_amount); }
+  if (current_amount !== undefined) { fields.push(`current_amount=?`); vals.push(current_amount); }
+  if (target_date !== undefined) { fields.push(`target_date=?`); vals.push(target_date); }
+  if (category !== undefined) { fields.push(`category=?`); vals.push(category); }
+  if (notes !== undefined) { fields.push(`notes=?`); vals.push(notes); }
+  if (status !== undefined) { fields.push(`status=?`); vals.push(status); }
+  if (!fields.length) return res.status(400).json({ error: 'No fields to update' });
+  fields.push(`updated_at=datetime('now')`);
+  vals.push(req.params.gid, req.params.id);
+  await dbRun(`UPDATE goals SET ${fields.join(',')} WHERE id=? AND client_id=?`, vals);
+  res.json({ success: true });
+}));
+
+app.delete('/api/clients/:id/goals/:gid', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  await dbRun('DELETE FROM goals WHERE id=? AND client_id=?', [req.params.gid, req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── Cashflow Tracker ─────────────────────────────────────────────────────────────────
+app.get('/api/clients/:id/cashflow', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { month } = req.query; // YYYY-MM format
+  let sql = 'SELECT * FROM cashflow_entries WHERE client_id=?';
+  const params = [req.params.id];
+  if (month) { sql += ` AND entry_date LIKE ?`; params.push(`${month}%`); }
+  sql += ' ORDER BY entry_date DESC';
+  const entries = await dbAll(sql, params);
+  const income = entries.filter(e => e.type === 'income').reduce((s, e) => s + (e.amount || 0), 0);
+  const expenses = entries.filter(e => e.type === 'expense').reduce((s, e) => s + (e.amount || 0), 0);
+  res.json({ entries, summary: { income, expenses, net: income - expenses } });
+}));
+
+app.post('/api/clients/:id/cashflow', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { type = 'expense', category = 'other', description = '', amount = 0, entry_date = '', recurring = 0, frequency = 'monthly', notes = '' } = req.body;
+  const id = await dbRun(
+    'INSERT INTO cashflow_entries (client_id, type, category, description, amount, entry_date, recurring, frequency, notes) VALUES (?,?,?,?,?,?,?,?,?)',
+    [req.params.id, type, category, description, amount, entry_date, recurring ? 1 : 0, frequency, notes]
+  );
+  res.json({ success: true, id });
+}));
+
+app.put('/api/clients/:id/cashflow/:cfid', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const { type, category, description, amount, entry_date, recurring, frequency, notes } = req.body;
+  const fields = [], vals = [];
+  if (type !== undefined) { fields.push(`type=?`); vals.push(type); }
+  if (category !== undefined) { fields.push(`category=?`); vals.push(category); }
+  if (description !== undefined) { fields.push(`description=?`); vals.push(description); }
+  if (amount !== undefined) { fields.push(`amount=?`); vals.push(amount); }
+  if (entry_date !== undefined) { fields.push(`entry_date=?`); vals.push(entry_date); }
+  if (recurring !== undefined) { fields.push(`recurring=?`); vals.push(recurring ? 1 : 0); }
+  if (frequency !== undefined) { fields.push(`frequency=?`); vals.push(frequency); }
+  if (notes !== undefined) { fields.push(`notes=?`); vals.push(notes); }
+  if (!fields.length) return res.status(400).json({ error: 'No fields to update' });
+  fields.push(`updated_at=datetime('now')`);
+  vals.push(req.params.cfid, req.params.id);
+  await dbRun(`UPDATE cashflow_entries SET ${fields.join(',')} WHERE id=? AND client_id=?`, vals);
+  res.json({ success: true });
+}));
+
+app.delete('/api/clients/:id/cashflow/:cfid', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  await dbRun('DELETE FROM cashflow_entries WHERE id=? AND client_id=?', [req.params.cfid, req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── Cashflow Analysis (Excel Upload) ─────────────────────────────────────────────────
+
+function parseCashflowExcel(buffer) {
+  const wb = xlsx.read(buffer, { type: 'buffer' });
+
+  // Parse Comments sheet for structured data
+  const ws = wb.Sheets['Comments'] || wb.Sheets[wb.SheetNames[1]] || wb.Sheets[wb.SheetNames[0]];
+  const rows = xlsx.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+  const result = {
+    client: { name: '', dob: '', consultant: '', presentationDate: '', employmentStatus: '' },
+    income: [],
+    expenses: [],
+    loans: [],
+    insurance: [],
+    savings: [],
+    cpf: { oa: 0, sa: 0, ma: 0 },
+    summary: { netIncome: 0, totalInsurance: 0, totalSavings: 0, totalExpenses: 0, totalLoans: 0, netCashflow: 0 }
+  };
+
+  // Skip header row (row 0)
+  for (let i = 1; i < rows.length; i++) {
+    const [category, item, frequency, rawInput, monthly, annual, comment] = rows[i] || [];
+    if (!category) continue;
+    const cat = String(category).trim();
+    const monthlyVal = parseFloat(monthly) || 0;
+    const annualVal = parseFloat(annual) || 0;
+    const commentStr = comment ? String(comment).trim() : '';
+    const itemStr = item ? String(item).trim() : '';
+
+    if (cat === 'Client') {
+      if (itemStr === 'Client Name') result.client.name = commentStr;
+      else if (itemStr === 'Date of Birth') result.client.dob = commentStr;
+      else if (itemStr === 'Consultant') result.client.consultant = commentStr;
+      else if (itemStr === 'Presentation Date') result.client.presentationDate = commentStr;
+      else if (itemStr === 'Employment Status') result.client.employmentStatus = commentStr;
+    } else if (cat === 'Income') {
+      result.income.push({ item: itemStr, monthly: monthlyVal, annual: annualVal, comment: commentStr });
+    } else if (cat === 'Personal Expense') {
+      result.expenses.push({ item: itemStr, monthly: monthlyVal, annual: annualVal, comment: commentStr });
+    } else if (cat === 'Loan Liability') {
+      result.loans.push({ item: itemStr, monthly: monthlyVal, annual: annualVal, comment: commentStr });
+    } else if (cat === 'Insurance') {
+      result.insurance.push({ item: itemStr, monthly: monthlyVal, annual: annualVal, comment: commentStr });
+    } else if (cat === 'Savings Contribution') {
+      result.savings.push({ item: itemStr, monthly: monthlyVal, annual: annualVal, comment: commentStr });
+    }
+  }
+
+  // Parse CPF from Sheet1 (rows 8-11)
+  const ws1 = wb.Sheets['Sheet1'] || wb.Sheets[wb.SheetNames[0]];
+  if (ws1) {
+    const s1rows = xlsx.utils.sheet_to_json(ws1, { header: 1, defval: null });
+    for (let i = 0; i < s1rows.length; i++) {
+      const row = s1rows[i];
+      if (!row || row[0] == null) continue;
+      const label = String(row[0]).toLowerCase();
+      if (label.includes('ordinary')) result.cpf.oa = parseFloat(row[1]) || 0;
+      else if (label.includes('special')) result.cpf.sa = parseFloat(row[1]) || 0;
+      else if (label.includes('medisave')) result.cpf.ma = parseFloat(row[1]) || 0;
+    }
+  }
+
+  // Calculate summary
+  const totalIncome  = result.income.reduce((s, r) => s + r.monthly, 0);
+  const totalIns     = result.insurance.reduce((s, r) => s + r.monthly, 0);
+  const totalSav     = result.savings.reduce((s, r) => s + r.monthly, 0);
+  const totalExp     = result.expenses.reduce((s, r) => s + r.monthly, 0);
+  const totalLoans   = result.loans.reduce((s, r) => s + r.monthly, 0);
+  result.summary = {
+    netIncome: totalIncome,
+    totalInsurance: totalIns,
+    totalSavings: totalSav,
+    totalExpenses: totalExp,
+    totalLoans: totalLoans,
+    netCashflow: totalIncome - totalIns - totalSav - totalExp - totalLoans
+  };
+
+  return result;
+}
+
+// Upload cashflow Excel
+app.post('/api/clients/:id/cashflow/upload', authenticate, requireAdmin, upload.single('file'), asyncRoute(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const clientId = req.params.id;
+  const parsed = parseCashflowExcel(req.file.buffer);
+  const presentationDate = parsed.client.presentationDate || new Date().toISOString().slice(0, 10);
+
+  // Delete previous analysis for this client (keep only latest)
+  await dbRun('DELETE FROM cashflow_analyses WHERE client_id=?', [clientId]);
+
+  // Insert new
+  await dbRun(
+    'INSERT INTO cashflow_analyses (client_id, filename, presentation_date, parsed_data) VALUES (?,?,?,?)',
+    [clientId, req.file.originalname, presentationDate, JSON.stringify(parsed)]
+  );
+
+  res.json({ success: true, parsed });
+}));
+
+// Get cashflow analysis for client
+app.get('/api/clients/:id/cashflow/analysis', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const row = await dbGet('SELECT * FROM cashflow_analyses WHERE client_id=? ORDER BY uploaded_at DESC LIMIT 1', [req.params.id]);
+  if (!row) return res.json({ analysis: null });
+  const parsed = typeof row.parsed_data === 'string' ? JSON.parse(row.parsed_data) : row.parsed_data;
+  res.json({ analysis: { ...row, parsed_data: parsed } });
+}));
+
+// Delete cashflow analysis
+app.delete('/api/clients/:id/cashflow/analysis', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  await dbRun('DELETE FROM cashflow_analyses WHERE client_id=?', [req.params.id]);
   res.json({ success: true });
 }));
 
@@ -2231,6 +2937,332 @@ app.post('/api/prospects/:id/convert', authenticate, requireAdmin, async (req, r
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Reviews CRUD ────────────────────────────────────────────────────────────────
+app.get('/api/clients/:id/reviews', authenticate, asyncRoute(async (req, res) => {
+  const rows = await dbAll('SELECT * FROM reviews WHERE client_id=? ORDER BY review_date DESC', [req.params.id]);
+  res.json(rows);
+}));
+app.post('/api/clients/:id/reviews', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { review_date, next_review_date, meeting_type, notes, action_items } = req.body || {};
+  if (!review_date) return res.status(400).json({ error: 'review_date required' });
+  const id = await dbRun(
+    'INSERT INTO reviews (client_id,review_date,next_review_date,meeting_type,notes,action_items,created_by) VALUES (?,?,?,?,?,?,?)',
+    [req.params.id, review_date, next_review_date||null, meeting_type||'annual_review', notes||'', action_items||'', req.user.username||'admin']
+  );
+  res.json({ id });
+}));
+app.put('/api/clients/:id/reviews/:rid', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { review_date, next_review_date, meeting_type, notes, action_items } = req.body || {};
+  await dbRun(
+    'UPDATE reviews SET review_date=?,next_review_date=?,meeting_type=?,notes=?,action_items=? WHERE id=? AND client_id=?',
+    [review_date, next_review_date||null, meeting_type||'annual_review', notes||'', action_items||'', req.params.rid, req.params.id]
+  );
+  res.json({ ok: true });
+}));
+app.delete('/api/clients/:id/reviews/:rid', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  await dbRun('DELETE FROM reviews WHERE id=? AND client_id=?', [req.params.rid, req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── Beneficiaries CRUD ────────────────────────────────────────────────────────
+app.get('/api/clients/:id/beneficiaries', authenticate, asyncRoute(async (req, res) => {
+  const rows = await dbAll('SELECT * FROM beneficiaries WHERE client_id=? ORDER BY id', [req.params.id]);
+  res.json(rows);
+}));
+app.post('/api/clients/:id/beneficiaries', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { name, relationship, percentage, ic_number, contact, policy_id, notes } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const id = await dbRun(
+    'INSERT INTO beneficiaries (client_id,policy_id,name,relationship,percentage,ic_number,contact,notes) VALUES (?,?,?,?,?,?,?,?)',
+    [req.params.id, policy_id||null, name, relationship||'', percentage||100, ic_number||'', contact||'', notes||'']
+  );
+  res.json({ id });
+}));
+app.put('/api/clients/:id/beneficiaries/:bid', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { name, relationship, percentage, ic_number, contact, policy_id, notes } = req.body || {};
+  await dbRun(
+    'UPDATE beneficiaries SET name=?,relationship=?,percentage=?,ic_number=?,contact=?,policy_id=?,notes=? WHERE id=? AND client_id=?',
+    [name, relationship||'', percentage||100, ic_number||'', contact||'', policy_id||null, notes||'', req.params.bid, req.params.id]
+  );
+  res.json({ ok: true });
+}));
+app.delete('/api/clients/:id/beneficiaries/:bid', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  await dbRun('DELETE FROM beneficiaries WHERE id=? AND client_id=?', [req.params.bid, req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── Claims CRUD ───────────────────────────────────────────────────────────────
+app.get('/api/clients/:id/claims', authenticate, asyncRoute(async (req, res) => {
+  const rows = await dbAll('SELECT * FROM claims WHERE client_id=? ORDER BY claim_date DESC', [req.params.id]);
+  res.json(rows);
+}));
+app.post('/api/clients/:id/claims', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { claim_date, claim_type, amount_claimed, amount_approved, status, notes, settled_date, policy_id } = req.body || {};
+  if (!claim_date) return res.status(400).json({ error: 'claim_date required' });
+  const id = await dbRun(
+    'INSERT INTO claims (client_id,policy_id,claim_date,claim_type,amount_claimed,amount_approved,status,notes,settled_date) VALUES (?,?,?,?,?,?,?,?,?)',
+    [req.params.id, policy_id||null, claim_date, claim_type||'', amount_claimed||0, amount_approved||0, status||'pending', notes||'', settled_date||null]
+  );
+  res.json({ id });
+}));
+app.put('/api/clients/:id/claims/:cid', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { claim_date, claim_type, amount_claimed, amount_approved, status, notes, settled_date, policy_id } = req.body || {};
+  await dbRun(
+    'UPDATE claims SET claim_date=?,claim_type=?,amount_claimed=?,amount_approved=?,status=?,notes=?,settled_date=?,policy_id=? WHERE id=? AND client_id=?',
+    [claim_date, claim_type||'', amount_claimed||0, amount_approved||0, status||'pending', notes||'', settled_date||null, policy_id||null, req.params.cid, req.params.id]
+  );
+  res.json({ ok: true });
+}));
+app.delete('/api/clients/:id/claims/:cid', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  await dbRun('DELETE FROM claims WHERE id=? AND client_id=?', [req.params.cid, req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── Dependents CRUD ───────────────────────────────────────────────────────────
+app.get('/api/clients/:id/dependents', authenticate, asyncRoute(async (req, res) => {
+  const rows = await dbAll('SELECT * FROM dependents WHERE client_id=? ORDER BY id', [req.params.id]);
+  res.json(rows);
+}));
+app.post('/api/clients/:id/dependents', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { name, relationship, age, has_coverage, coverage_notes } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const id = await dbRun(
+    'INSERT INTO dependents (client_id,name,relationship,age,has_coverage,coverage_notes) VALUES (?,?,?,?,?,?)',
+    [req.params.id, name, relationship||'', age||0, has_coverage||0, coverage_notes||'']
+  );
+  res.json({ id });
+}));
+app.put('/api/clients/:id/dependents/:did', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { name, relationship, age, has_coverage, coverage_notes } = req.body || {};
+  await dbRun(
+    'UPDATE dependents SET name=?,relationship=?,age=?,has_coverage=?,coverage_notes=? WHERE id=? AND client_id=?',
+    [name, relationship||'', age||0, has_coverage||0, coverage_notes||'', req.params.did, req.params.id]
+  );
+  res.json({ ok: true });
+}));
+app.delete('/api/clients/:id/dependents/:did', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  await dbRun('DELETE FROM dependents WHERE id=? AND client_id=?', [req.params.did, req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── Extended Profile Routes ────────────────────────────────────────────────────
+app.get('/api/clients/:id/profile-extended', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const row = await dbGet('SELECT * FROM client_profile_extended WHERE client_id=?', [req.params.id]);
+  res.json({ profile: row || null });
+}));
+
+app.post('/api/clients/:id/profile-extended', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const cid = req.params.id;
+  const d = req.body;
+  const existing = await dbGet('SELECT id FROM client_profile_extended WHERE client_id=?', [cid]);
+  const fields = ['date_of_birth','nationality','marital_status','spouse_name','spouse_age','spouse_occupation','spouse_income','children','parents_dependent','parent1_age','parent2_age','retirement_age','target_monthly_income','life_expectancy','risk_tolerance','investment_philosophy','primary_objective','has_will','cpf_nomination_done','policy_nomination_done','emergency_fund_months','property_owned','property_type','property_value','rental_income','education_plans','planner_notes'];
+  const now = new Date().toISOString();
+  if (existing) {
+    const sets = fields.map(f => `${f}=?`).join(',') + ',updated_at=?';
+    const vals = [...fields.map(f => d[f] !== undefined ? d[f] : null), now, cid];
+    await dbRun(`UPDATE client_profile_extended SET ${sets} WHERE client_id=?`, vals);
+  } else {
+    const cols = ['client_id', ...fields, 'updated_at'].join(',');
+    const phs = Array(fields.length + 2).fill('?').join(',');
+    await dbRun(`INSERT INTO client_profile_extended (${cols}) VALUES (${phs})`, [cid, ...fields.map(f => d[f] !== undefined ? d[f] : null), now]);
+  }
+  res.json({ success: true });
+}));
+
+// ── Income Streams Routes ──────────────────────────────────────────────────────
+app.get('/api/clients/:id/income-streams', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const rows = await dbAll('SELECT * FROM income_streams WHERE client_id=? ORDER BY created_at DESC', [req.params.id]);
+  res.json(rows || []);
+}));
+
+app.post('/api/clients/:id/income-streams', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const cid = req.params.id;
+  const { label, type, amount, frequency, start_date, end_date, is_retirement_income, notes } = req.body;
+  const now = new Date().toISOString();
+  if (!label) return res.status(400).json({ error: 'label required' });
+  await dbRun('INSERT INTO income_streams (client_id, label, type, amount, frequency, start_date, end_date, is_retirement_income, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
+    [cid, label, type||'rental', amount||0, frequency||'monthly', start_date||'', end_date||'', is_retirement_income?1:0, notes||'', now]);
+  res.json({ success: true });
+}));
+
+app.put('/api/clients/:id/income-streams/:sid', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const { label, type, amount, frequency, start_date, end_date, is_retirement_income, notes } = req.body;
+  await dbRun('UPDATE income_streams SET label=?,type=?,amount=?,frequency=?,start_date=?,end_date=?,is_retirement_income=?,notes=? WHERE id=? AND client_id=?',
+    [label, type, amount||0, frequency, start_date||'', end_date||'', is_retirement_income?1:0, notes||'', req.params.sid, req.params.id]);
+  res.json({ success: true });
+}));
+
+app.delete('/api/clients/:id/income-streams/:sid', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  await dbRun('DELETE FROM income_streams WHERE id=? AND client_id=?', [req.params.sid, req.params.id]);
+  res.json({ success: true });
+}));
+
+// ── CPF Balances ──────────────────────────────────────────────────────────────
+function guardClient(req, res) {
+  const role = req.user?.role;
+  const uid = req.user?.id;
+  const cid = req.params.id;
+  if (role === 'admin') return true;
+  if (uid === cid) return true;
+  res.status(403).json({ error: 'Forbidden' });
+  return false;
+}
+
+app.get('/api/clients/:id/cpf-balances', authenticate, asyncRoute(async (req, res) => {
+  if (!guardClient(req, res)) return;
+  const row = await dbGet('SELECT * FROM cpf_balances WHERE client_id=?', [req.params.id]);
+  res.json({ cpf: row || null });
+}));
+
+app.post('/api/clients/:id/cpf-balances', authenticate, asyncRoute(async (req, res) => {
+  const role = req.user?.role;
+  if (role !== 'admin') { res.status(403).json({ error: 'Forbidden' }); return; }
+  const cid = req.params.id;
+  const d = req.body;
+  const now = new Date().toISOString();
+  const clientRow = await dbGet('SELECT age FROM clients WHERE id=?', [cid]);
+  const clientAge = clientRow?.age || 30;
+  const yearsTo65 = Math.max(0, 65 - clientAge);
+  const currentSA = parseFloat(d.sa_balance) || 0;
+  const saContrib = parseFloat(d.sa_monthly_contrib) || 0;
+  const r = 0.04 / 12;
+  const n = yearsTo65 * 12;
+  const projectedSA = n > 0 ? currentSA * Math.pow(1 + r, n) + saContrib * (Math.pow(1 + r, n) - 1) / r : currentSA;
+  const FRS_2025 = 205800;
+  const cpfLifeMonthly = Math.min(projectedSA, FRS_2025) / 240 + Math.max(0, projectedSA - FRS_2025) / 360;
+  const projectedCpfLife = Math.round(cpfLifeMonthly);
+  const existing = await dbGet('SELECT id FROM cpf_balances WHERE client_id=?', [cid]);
+  if (existing) {
+    await dbRun('UPDATE cpf_balances SET oa_balance=?,sa_balance=?,ma_balance=?,ra_balance=?,oa_monthly_contrib=?,sa_monthly_contrib=?,ma_monthly_contrib=?,as_of_date=?,cpf_life_option=?,projected_cpf_life_monthly=?,updated_at=? WHERE client_id=?',
+      [d.oa_balance||0, d.sa_balance||0, d.ma_balance||0, d.ra_balance||0, d.oa_monthly_contrib||0, d.sa_monthly_contrib||0, d.ma_monthly_contrib||0, d.as_of_date||now.slice(0,10), d.cpf_life_option||'standard', projectedCpfLife, now, cid]);
+  } else {
+    await dbRun('INSERT INTO cpf_balances (client_id,oa_balance,sa_balance,ma_balance,ra_balance,oa_monthly_contrib,sa_monthly_contrib,ma_monthly_contrib,as_of_date,cpf_life_option,projected_cpf_life_monthly,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      [cid, d.oa_balance||0, d.sa_balance||0, d.ma_balance||0, d.ra_balance||0, d.oa_monthly_contrib||0, d.sa_monthly_contrib||0, d.ma_monthly_contrib||0, d.as_of_date||now.slice(0,10), d.cpf_life_option||'standard', projectedCpfLife, now]);
+  }
+  res.json({ success: true, projectedCpfLife });
+}));
+
+// ── Pre-Meeting AI Brief ───────────────────────────────────────────────────────
+app.post('/api/admin/clients/:id/meeting-brief', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const cid = req.params.id;
+  const [client, policies, investments, reviews, goals, cashflowAnalysis, extProfile, cpfBalances, incomeStreams, beneficiaries, claims] = await Promise.all([
+    dbGet('SELECT * FROM clients WHERE id=?', [cid]),
+    dbAll('SELECT * FROM policies WHERE client_id=? ORDER BY start_date DESC', [cid]),
+    dbAll('SELECT * FROM investments WHERE client_id=?', [cid]),
+    dbAll('SELECT * FROM reviews WHERE client_id=? ORDER BY review_date DESC LIMIT 5', [cid]),
+    dbAll('SELECT * FROM goals WHERE client_id=?', [cid]),
+    dbGet('SELECT * FROM cashflow_analyses WHERE client_id=? ORDER BY uploaded_at DESC LIMIT 1', [cid]).catch(()=>null),
+    dbGet('SELECT * FROM client_profile_extended WHERE client_id=?', [cid]).catch(()=>null),
+    dbGet('SELECT * FROM cpf_balances WHERE client_id=?', [cid]).catch(()=>null),
+    dbAll('SELECT * FROM income_streams WHERE client_id=?', [cid]).catch(()=>[]),
+    dbAll('SELECT * FROM beneficiaries WHERE client_id=?', [cid]).catch(()=>[]),
+    dbAll('SELECT * FROM claims WHERE client_id=?', [cid]).catch(()=>[]),
+  ]);
+  if (!client) { res.status(404).json({ error: 'Client not found' }); return; }
+  const activePolicies = (policies||[]).filter(p => p.status === 'Active');
+  const expiringPolicies = (policies||[]).filter(p => {
+    if (!p.end_date) return false;
+    const days = Math.ceil((new Date(p.end_date) - new Date()) / 86400000);
+    return days >= 0 && days <= 180;
+  });
+  const lastReview = (reviews||[])[0];
+  const daysSinceReview = lastReview ? Math.ceil((new Date() - new Date(lastReview.review_date)) / 86400000) : null;
+  const today = new Date().toLocaleDateString('en-SG', { day: '2-digit', month: 'long', year: 'numeric' });
+  const prompt = `You are a CFP (Certified Financial Planner) helping Dylan Ho, a Prudential financial consultant in Singapore, prepare for a client meeting.
+
+Generate a concise, professional pre-meeting brief for this client. Be specific, data-driven, and actionable. Write as if briefing a senior advisor.
+
+CLIENT: ${client.name}
+Age: ${client.age} | Occupation: ${client.occupation || 'Unknown'} | Income: SGD ${(client.annual_income||0).toLocaleString()}/yr | Dependents: ${client.dependents || 0}
+
+LAST REVIEW: ${lastReview ? `${lastReview.review_date} (${daysSinceReview} days ago). Notes: ${lastReview.notes || 'None recorded'}` : 'No review on record'}
+
+ACTIVE POLICIES (${activePolicies.length}):
+${activePolicies.map(p => `- ${p.product_name || p.type}: ${p.coverage ? `$${p.coverage.toLocaleString()} coverage` : ''}, $${(p.premium || 0).toLocaleString()}/yr premium, ends ${p.end_date || 'ongoing'}`).join('\n') || 'None'}
+
+EXPIRING SOON:
+${expiringPolicies.map(p => `- ${p.product_name}: expires ${p.end_date} (${Math.ceil((new Date(p.end_date) - new Date()) / 86400000)} days)`).join('\n') || 'None in next 180 days'}
+
+INVESTMENTS:
+${(investments||[]).map(i => `- ${i.name}: invested $${(i.invested || 0).toLocaleString()}, current value $${(i.value_now || 0).toLocaleString()}`).join('\n') || 'None'}
+
+GOALS:
+${(goals||[]).map(g => `- ${g.name}: target $${(g.target_amount || 0).toLocaleString()}, saved $${(g.current_amount || 0).toLocaleString()} (${g.target_date ? 'due ' + g.target_date : 'no date'})`).join('\n') || 'None set'}
+
+CPF: ${cpfBalances ? `OA: $${(cpfBalances.oa_balance||0).toLocaleString()}, SA: $${(cpfBalances.sa_balance||0).toLocaleString()}, MA: $${(cpfBalances.ma_balance||0).toLocaleString()}. Projected CPF Life: ~$${(cpfBalances.projected_cpf_life_monthly||0).toLocaleString()}/mo` : 'Not recorded'}
+
+INCOME STREAMS: ${(incomeStreams||[]).length ? incomeStreams.map(s => `${s.label}: $${s.amount}/mo (${s.is_retirement_income ? 'retirement income' : 'current only'})`).join(', ') : 'None beyond employment'}
+
+CLAIMS HISTORY: ${(claims||[]).length ? claims.map(c => `${c.claim_type}: $${(c.amount_approved||0).toLocaleString()} (${c.status})`).join(', ') : 'No claims on record'}
+
+Generate a meeting brief with these EXACT sections:
+
+## 📋 Meeting Brief — ${client.name}
+**Prepared:** ${today} | **Meeting Type:** Annual Review
+
+### 🔍 Situation Summary (2-3 sentences)
+[Honest assessment of where this client stands financially]
+
+### ✅ What's Going Well
+[2-3 specific positives based on data]
+
+### ⚠️ Key Issues to Address
+[Top 3 specific concerns, numbered, with data to support each]
+
+### 💼 Recommended Discussion Points
+[3-4 specific topics to raise in this meeting, with talking points]
+
+### 🎯 Suggested Next Actions
+[2-3 concrete recommendations Dylan could propose today, with brief rationale]
+
+### ❓ Questions to Ask the Client
+[3-4 open questions to understand their current situation better]
+
+### 📝 Admin Reminders
+[Any policy renewals due, documentation gaps, beneficiary updates needed, etc.]
+
+Be direct, specific, and professional. No fluff. Write for an experienced FA.`;
+  const Anthropic = require('@anthropic-ai/sdk');
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 1500,
+    messages: [{ role: 'user', content: prompt }]
+  });
+  const brief = message.content[0].text;
+  res.json({ brief, clientName: client.name, generatedAt: new Date().toISOString() });
+}));
+
+// ── Client Priority Matrix ─────────────────────────────────────────────────────
+app.get('/api/admin/clients/priority-matrix', authenticate, requireAdmin, asyncRoute(async (req, res) => {
+  const clients = await dbAll('SELECT * FROM clients WHERE role != \'admin\'', []);
+  const expiryRows = await dbAll('SELECT client_id, end_date FROM policies WHERE end_date IS NOT NULL AND end_date != \'\'', []);
+  const reviewRows = await dbAll('SELECT client_id, review_date FROM reviews ORDER BY review_date DESC', []);
+  const lastReviews = {};
+  for (const r of reviewRows) { if (!lastReviews[r.client_id]) lastReviews[r.client_id] = r.review_date; }
+  const now = new Date();
+  const matrix = clients.map(c => {
+    let urgency = 0;
+    const clientExpiry = expiryRows.filter(p => p.client_id === c.id);
+    const expiryDays = clientExpiry.map(p => Math.ceil((new Date(p.end_date) - now) / 86400000)).filter(d => d >= 0);
+    const daysToExpiry = expiryDays.length ? Math.min(...expiryDays) : 999;
+    if (daysToExpiry <= 14) urgency += 40;
+    else if (daysToExpiry <= 30) urgency += 25;
+    else if (daysToExpiry <= 90) urgency += 10;
+    const lastReviewDate = lastReviews[c.id];
+    const daysSince = lastReviewDate ? Math.ceil((now - new Date(lastReviewDate)) / 86400000) : 999;
+    if (daysSince > 365) urgency += 40;
+    else if (daysSince > 180) urgency += 20;
+    else if (daysSince > 90) urgency += 10;
+    const value = Math.min(100, ((c.annual_premium || 0) / 500) + ((c.total_investments || 0) / 10000));
+    return { id: c.id, name: c.name, urgency: Math.min(100, urgency), value: Math.min(100, value), daysToExpiry, daysSince };
+  });
+  res.json(matrix);
+}));
+
+
 // ── Start ──────────────────────────────────────────────────────────────────────
 async function startServer() {
   // If DATABASE_URL is set, verify the connection first.
@@ -2255,6 +3287,70 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+// ── Prudential Fund Prices ────────────────────────────────────────────────────
+let _fundCache = null;
+let _fundCacheAt = 0;
+const FUND_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+async function scrapePruFunds(fundType = 'pl') {
+  const fetch = (await import('node-fetch')).default;
+  const url = `https://pruaccess.prudential.com.sg/prulinkfund/viewFundPricing.do${fundType !== 'pl' ? '?fundType=' + fundType : ''}`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+    timeout: 15000
+  });
+  const html = await res.text();
+  const cheerio = require('cheerio');
+  const $ = cheerio.load(html);
+
+  // Extract update date
+  const dateMatch = html.match(/Updated On <span>(.*?)<\/span>/);
+  const updatedOn = dateMatch ? dateMatch[1] : '';
+
+  const funds = [];
+  const typeLabel = fundType === 'ps' ? 'PruSelect' : 'PruLink';
+
+  $('#Table tbody tr').each((_, row) => {
+    const nameCell = $(row).find('td[data-input="inputFundName"]');
+    const bidCell = $(row).find('td[data-input="inputBidPrice"]');
+    const offerCell = $(row).find('td[data-input="inputOfferPrice"]');
+    const currCell = $(row).find('td[data-input="inputCurrencyCode"]');
+    const dateCell = $(row).find('td[data-input="inputFirstEffectiveDate"]');
+
+    const name = nameCell.text().trim();
+    if (!name) return;
+    const bidPrice = bidCell.find('span').first().text().trim() || bidCell.text().trim();
+    const offerPrice = offerCell.find('span').first().text().trim() || offerCell.text().trim() || bidPrice;
+    const currency = currCell.text().trim();
+    const firstEffectiveDate = dateCell.text().trim();
+    funds.push({ name, bidPrice, offerPrice, currency, firstEffectiveDate, type: typeLabel });
+  });
+
+  return { updatedOn, funds };
+}
+
+app.get('/api/fund-prices', asyncRoute(async (req, res) => {
+  const now = Date.now();
+  if (_fundCache && (now - _fundCacheAt) < FUND_CACHE_TTL) {
+    return res.json(_fundCache);
+  }
+  try {
+    const [pl, ps] = await Promise.all([scrapePruFunds('pl'), scrapePruFunds('ps')]);
+    const result = {
+      updatedOn: pl.updatedOn || ps.updatedOn,
+      cachedAt: new Date().toISOString(),
+      funds: [...pl.funds, ...ps.funds]
+    };
+    _fundCache = result;
+    _fundCacheAt = now;
+    res.json(result);
+  } catch (e) {
+    console.error('[fund-prices] scrape error:', e.message);
+    if (_fundCache) return res.json({ ..._fundCache, stale: true });
+    res.status(500).json({ error: 'Failed to fetch fund prices: ' + e.message });
+  }
+}));
 
 // ── Global Express error handler (MUST be last middleware) ─────────────────
 app.use((err, req, res, next) => {
