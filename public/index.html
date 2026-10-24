@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FinView">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
@@ -97,19 +98,19 @@ html,body{height:100%;font-family:'Plus Jakarta Sans','Inter',system-ui,sans-ser
 .sidebar-client-name{font-size:13px;font-weight:600;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sidebar-client-role{font-size:11px;color:var(--sidebar-text)}
 .sidebar-nav{flex:1;padding:8px;overflow-y:auto}
-.nav-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.28);padding:12px 8px 6px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;color:var(--sidebar-text);cursor:pointer;transition:all var(--transition);margin-bottom:1px;font-size:13px;font-weight:500;border:none;background:none;width:100%;text-align:left}
+.nav-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.25);padding:8px 8px 3px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;color:var(--sidebar-text);cursor:pointer;transition:all var(--transition);margin-bottom:1px;font-size:12.5px;font-weight:500;border:none;background:none;width:100%;text-align:left}
 .nav-item:hover{background:var(--sidebar-hover);color:#fff}
-.nav-item.active{background:linear-gradient(135deg,rgba(14,165,233,0.25),rgba(99,102,241,0.25));color:#fff;font-weight:600}
+.nav-item.active{background:linear-gradient(135deg,rgba(14,165,233,0.2),rgba(99,102,241,0.2));color:#fff;font-weight:700;border-left:3px solid rgba(255,255,255,0.6)}
 .nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
 .nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:99px;min-width:18px;text-align:center}
 .sidebar-footer{padding:10px 8px;border-top:1px solid rgba(255,255,255,0.06)}
 
 /* ── Main ── */
 .main{margin-left:var(--sidebar-width);flex:1;display:flex;flex-direction:column;min-width:0;min-height:100vh}
-.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;gap:12px;flex-wrap:nowrap}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40;gap:12px;flex-wrap:nowrap}
 .topbar-left{display:flex;flex-direction:column;min-width:0}
-.page-title{font-size:17px;font-weight:700;color:var(--text);white-space:nowrap}
+.page-title{font-size:16px;font-weight:700;color:var(--text);white-space:nowrap;letter-spacing:-0.2px}
 .page-sub{font-size:12px;color:var(--text-3);margin-top:1px}
 .topbar-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
 .content{padding:28px;flex:1}
@@ -129,11 +130,11 @@ html,body{height:100%;font-family:'Plus Jakarta Sans','Inter',system-ui,sans-ser
 .print-header p{font-size:12px;color:var(--text-2);margin-top:4px}
 
 /* ── Metric cards ── */
-.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
-.metric{background:var(--surface);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow-sm);border:1px solid var(--border);position:relative;overflow:hidden}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.metric{background:var(--surface);border-radius:var(--radius-lg);padding:18px 20px;box-shadow:var(--shadow-sm);border:1px solid var(--border);position:relative;overflow:hidden;transition:box-shadow 0.2s,transform 0.2s}.metric:hover{box-shadow:0 4px 20px rgba(0,0,0,0.08);transform:translateY(-1px)}
 .metric-accent{position:absolute;top:0;left:0;right:0;height:3px}
-.metric-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-3);margin-bottom:8px}
-.metric-value{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.metric-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-3);margin-bottom:6px}
+.metric-value{font-size:22px;font-weight:800;color:var(--text);line-height:1;letter-spacing:-0.5px;margin-top:4px}
 .metric-change{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;margin-top:6px;padding:2px 7px;border-radius:99px}
 .metric-change.up{background:var(--success-light);color:var(--success)}
 .metric-change.down{background:var(--danger-light);color:var(--danger)}
@@ -204,10 +205,10 @@ html,body{height:100%;font-family:'Plus Jakarta Sans','Inter',system-ui,sans-ser
 }
 
 .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
-.card-title{font-size:14px;font-weight:600;color:var(--text)}
+.card-title{font-size:13.5px;font-weight:700;color:var(--text);letter-spacing:-0.1px}
 .card-sub{font-size:12px;color:var(--text-3);margin-top:2px}
 .card-body{padding:20px}
-.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin-bottom:24px}
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px}
 .chart-wrap{height:240px;position:relative}
 
 /* ── Alerts ── */
@@ -220,7 +221,7 @@ html,body{height:100%;font-family:'Plus Jakarta Sans','Inter',system-ui,sans-ser
 .alert-body strong{display:block;margin-bottom:2px;font-weight:600}
 
 /* ── Coverage gauge ── */
-.coverage-row{display:grid;grid-template-columns:160px 1fr 44px;align-items:center;gap:12px;margin-bottom:10px}
+.coverage-row{display:grid;grid-template-columns:130px 1fr 80px 44px;align-items:center;gap:10px;margin-bottom:10px}
 .coverage-label{font-size:12px;color:var(--text-2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .coverage-track{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
 .coverage-fill{height:100%;border-radius:99px;transition:width 0.6s ease}
@@ -331,9 +332,9 @@ tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--surface-2)}
 
 /* ── Admin client table ── */
-.client-row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition)}
+.client-row{display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background var(--transition),box-shadow 0.15s}
 .client-row:last-child{border-bottom:none}
-.client-row:hover{background:var(--surface-2)}
+.client-row:hover{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--primary)}
 .client-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#6366F1);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
 .client-info{flex:1;min-width:0}
 .client-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -375,7 +376,7 @@ tr:hover td{background:var(--surface-2)}
 
 /* ── Empty ── */
 .empty{text-align:center;padding:48px 24px;color:var(--text-3)}
-.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-icon{font-size:36px;margin-bottom:10px;opacity:0.75}
 .empty-title{font-size:15px;font-weight:600;color:var(--text-2);margin-bottom:6px}
 .empty-sub{font-size:13px;margin-bottom:16px}
 
@@ -439,8 +440,8 @@ tr:hover td{background:var(--surface-2)}
 .nav-label-toggle:hover{color:rgba(255,255,255,0.7)!important}
 
 /* ── Quick Action Bar ── */
-.quick-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 28px;display:flex;gap:8px;align-items:center;flex-shrink:0}
-.quick-bar-label{font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.6px;white-space:nowrap}
+.quick-bar{background:linear-gradient(135deg,var(--surface) 0%,var(--surface-2) 100%);border-bottom:1px solid var(--border);padding:6px 24px;display:flex;gap:6px;align-items:center;flex-shrink:0}
+.quick-bar-label{font-size:9px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;margin-right:4px}
 
 /* ── Alerts tabs ── */
 .alerts-tab-content{display:none}
@@ -626,6 +627,37 @@ tr:hover td{background:var(--surface-2)}
   .sidebar-overlay { display: none !important; }
   #mobileMenuBtn { display: none !important; }
 }
+
+/* Hide bottom nav on login screen */
+#appRoot.hidden ~ #bottomTabs,
+.app.hidden ~ #bottomTabs { display: none !important; }
+
+/* Space Grotesk display font */
+.metric-value, .admin-stat-value { 
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif !important; 
+  font-weight: 800 !important; 
+  letter-spacing: -0.5px !important; 
+}
+.card-title, .page-title { 
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif !important; 
+}
+/* Card hover glow */
+.card { transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s ease, border-color 0.22s ease !important; }
+.card:hover { border-color: rgba(99,102,241,0.2) !important; box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 1px rgba(99,102,241,0.1) !important; transform: translateY(-2px) !important; }
+/* Metric hover */
+.metric:hover { border-color: rgba(99,102,241,0.2) !important; box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important; transform: translateY(-2px) !important; }
+/* Sidebar active */
+.nav-item.active { background: rgba(99,102,241,0.18) !important; border-left: 3px solid #6366F1 !important; }
+/* Modal blur */
+.modal-overlay { backdrop-filter: blur(6px) !important; }
+/* Input glow */
+.field input:focus, .field select:focus, .field textarea:focus { border-color: #6366F1 !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important; }
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 99px; }
+/* Selection */
+::selection { background: rgba(99,102,241,0.2); }
+
 </style>
 </head>
 <body>
@@ -732,7 +764,7 @@ const COLORS = ['#0EA5E9','#10B981','#F59E0B','#8B5CF6','#EF4444','#06B6D4','#EC
 const fmt = v => 'S$' + (parseFloat(v)||0).toLocaleString('en-SG',{minimumFractionDigits:0,maximumFractionDigits:0});
 const fmtPct = v => (parseFloat(v)||0).toFixed(1) + '%';
 const fmtDate = d => d ? new Date(d).toLocaleDateString('en-SG',{day:'2-digit',month:'short',year:'numeric'}) : '-';
-const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/`/g,'&#96;').replace(/\$\{/g,'&#36;{');
 const daysUntil = d => d ? Math.ceil((new Date(d)-new Date())/(1000*60*60*24)) : null;
 
 function toast(msg, type='success', dur=3500) {
@@ -924,6 +956,7 @@ async function doLogin() {
     S.token = res.token; S.role = res.role; S.user = res.client;
     document.getElementById('loginPage').classList.add('hidden');
     document.getElementById('appRoot').classList.remove('hidden');
+    const _bt = document.getElementById('bottomTabs'); if (_bt) _bt.style.display = '';
     document.getElementById('sidebarName').textContent = res.client.name;
     document.getElementById('sidebarRole').textContent = res.role === 'admin' ? '🔑 Admin' : res.role === 'prospect' ? '💎 Prospect' : '👤 Client';
     // Clean URL if came from invite link
@@ -943,6 +976,7 @@ function logout() {
   S.policies = []; S.investments = []; S.snapshots = [];
   document.getElementById('appRoot').classList.add('hidden');
   document.getElementById('loginPage').classList.remove('hidden');
+  const _btl = document.getElementById('bottomTabs'); if (_btl) _btl.style.display = 'none';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
   document.getElementById('loginBtn').disabled = false;
@@ -1033,6 +1067,20 @@ function navTo(page, ...args) {
 }
 
 // ── Admin Dashboard (Command Center) ─────────────────────────────────────────────
+
+function toggleOverviewMoreMenu(e) {
+  e.stopPropagation();
+  const m = document.getElementById('overviewMoreMenu');
+  if (!m) return;
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  if (m.style.display === 'block') {
+    setTimeout(() => document.addEventListener('click', closeOverviewMoreMenu, {once:true}), 0);
+  }
+}
+function closeOverviewMoreMenu() {
+  const m = document.getElementById('overviewMoreMenu');
+  if (m) m.style.display = 'none';
+}
 function showQuickBar() {
   const qb = document.getElementById('quickBar');
   if (!qb) return;
@@ -1057,7 +1105,7 @@ function globalSearch(q) {
   );
   const listEl = document.getElementById('recentClientsList');
   if (listEl) listEl.innerHTML = filtered.length
-    ? filtered.slice(0,10).map(c => clientRowHTML(c)).join('')
+    ? filtered.filter(cl => cl.role === 'client').slice(0,10).map(c => clientRowHTML(c)).join('')
     : `<div class="empty"><div class="empty-sub">No clients match "${q}"</div></div>`;
 }
 
@@ -1142,6 +1190,7 @@ async function renderAdminDashboard() {
       <div class="admin-stat-card">
         <div class="admin-stat-icon">📈</div><div class="admin-stat-value" style="font-size:18px">${fmt(stats.totalInvestments)}</div>
         <div class="admin-stat-label">Investments AUM</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">clients only · value/cost</div>
       </div>
     `;
     let alertHTML = '';
@@ -1176,7 +1225,8 @@ async function renderAdminDashboard() {
         });
       });
     }
-    document.getElementById('recentClientsList').innerHTML = clients.length ? clients.map(c => clientRowHTML(c)).join('') : `<div class="empty"><div class="empty-sub">No clients yet</div><button class="btn btn-primary" onclick="openCreateClientModal()">+ Add First Client</button></div>`;
+    const clientsOnly = clients.filter(cl => cl.role === 'client');
+    document.getElementById('recentClientsList').innerHTML = clientsOnly.length ? clientsOnly.map(c => clientRowHTML(c)).join('') : `<div class="empty"><div class="empty-sub">No clients yet</div><button class="btn btn-primary" onclick="openCreateClientModal()">+ Add First Client</button></div>`;
     // Priority Matrix
     renderPriorityMatrix(clients, expiry);
   } catch (e) { toast(e.message, 'error'); }
@@ -1634,8 +1684,10 @@ async function renderAdminClients() {
   `;
   try {
     const clients = await api.get('/admin/clients');
-    window._allClients = clients;
-    renderClientList(clients);
+    // Only show actual clients (not prospects) in this tab
+    const clientsOnly = clients.filter(c => c.role === 'client');
+    window._allClients = clientsOnly;
+    renderClientList(clientsOnly);
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -1657,7 +1709,7 @@ function clientRowHTML(c) {
       <div class="client-stats">
         <div class="client-stat"><div class="client-stat-label">Coverage</div><div class="client-stat-value">${fmt(c.totalCoverage)}</div></div>
         <div class="client-stat"><div class="client-stat-label">Investments</div><div class="client-stat-value">${fmt(c.totalInvestments)}</div></div>
-        <div class="client-stat"><div class="client-stat-label">Premium/yr</div><div class="client-stat-value">${fmt(c.totalPremium)}</div></div>
+        <div class="client-stat"><div class="client-stat-label">Premium/yr</div><div class="client-stat-value">${fmt(Math.round(c.totalPremium))}</div></div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
         ${waBtn}
@@ -1676,7 +1728,7 @@ function renderClientList(clients) {
 
 function filterClients() {
   const q = document.getElementById('clientSearch').value.toLowerCase();
-  renderClientList((window._allClients||[]).filter(c => c.name.toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q)));
+  renderClientList((window._allClients||[]).filter(c => c.role !== 'prospect' && (c.name.toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q) || (c.username||'').toLowerCase().includes(q))));
 }
 
 // ── Invite Link ────────────────────────────────────────────────────────────────
@@ -1719,20 +1771,24 @@ function openClientView(id, name) {
       ${esc(name)}
     </div>
     <button class="nav-item active" id="nav-overview" onclick="navClientPage('overview')"><span class="nav-icon">📊</span> Overview</button>
+    <div class="nav-label" style="margin-top:6px">Protection</div>
     <button class="nav-item" id="nav-insurance" onclick="navClientPage('insurance')"><span class="nav-icon">🛡️</span> Insurance</button>
-    <button class="nav-item" id="nav-investments" onclick="navClientPage('investments')"><span class="nav-icon">📈</span> Investments</button>
     <button class="nav-item" id="nav-gaps" onclick="navClientPage('gaps')"><span class="nav-icon">⚠️</span> Coverage Gaps</button>
-    <button class="nav-item" id="nav-docs" onclick="navClientPage('docs')"><span class="nav-icon">📁</span> Documents</button>
-    <button class="nav-item" id="nav-profile" onclick="navClientPage('profile')"><span class="nav-icon">🎯</span> My Profile</button>
-        <button class="nav-item" id="nav-networth" onclick="navClientPage('networth')"><span class="nav-icon">💰</span> Net Worth</button>
+    <div class="nav-label" style="margin-top:6px">Wealth</div>
+    <button class="nav-item" id="nav-investments" onclick="navClientPage('investments')"><span class="nav-icon">📈</span> Investments</button>
+    <button class="nav-item" id="nav-networth" onclick="navClientPage('networth')"><span class="nav-icon">💰</span> Net Worth</button>
     <button class="nav-item" id="nav-goals" onclick="navClientPage('goals')"><span class="nav-icon">🎯</span> Goals</button>
     <button class="nav-item" id="nav-cashflow" onclick="navClientPage('cashflow')"><span class="nav-icon">💸</span> Cashflow</button>
-    <button class="nav-item" id="nav-history" onclick="navClientPage('history')"><span class="nav-icon">🗓️</span> History</button>
-    <button class="nav-item" id="nav-fundPrices" onclick="navClientPage('fundPrices')"><span class="nav-icon">📈</span> Fund Prices</button>
-    <button class="nav-item" id="nav-reviews" onclick="navClientPage('reviews')"><span class="nav-icon">📋</span> Reviews</button>
+    <div class="nav-label" style="margin-top:6px">Client</div>
+    <button class="nav-item" id="nav-profile" onclick="navClientPage('profile')"><span class="nav-icon">👤</span> My Profile</button>
     <button class="nav-item" id="nav-beneficiaries" onclick="navClientPage('beneficiaries')"><span class="nav-icon">👨‍👩‍👧</span> Beneficiaries</button>
-    <button class="nav-item" id="nav-claims" onclick="navClientPage('claims')"><span class="nav-icon">📝</span> Claims</button>
+    <button class="nav-item" id="nav-docs" onclick="navClientPage('docs')"><span class="nav-icon">📁</span> Documents</button>
     <button class="nav-item" id="nav-factfind" onclick="navClientPage('factfind')"><span class="nav-icon">📋</span> Fact-Find</button>
+    <div class="nav-label" style="margin-top:6px">Activity</div>
+    <button class="nav-item" id="nav-history" onclick="navClientPage('history')"><span class="nav-icon">🗓️</span> History</button>
+    <button class="nav-item" id="nav-reviews" onclick="navClientPage('reviews')"><span class="nav-icon">📋</span> Reviews</button>
+    <button class="nav-item" id="nav-claims" onclick="navClientPage('claims')"><span class="nav-icon">📝</span> Claims</button>
+    <button class="nav-item" id="nav-fundPrices" onclick="navClientPage('fundPrices')"><span class="nav-icon">📈</span> Fund Prices</button>
   `;
   loadClientData(id).then(() => {
     navClientPage('overview');
@@ -1983,16 +2039,23 @@ function getPriorityAction(client, policies, investments) {
 }
 
 function renderOverview(clientId, isAdmin) {
+  hideQuickBar();
   const c = S.client;
   document.getElementById('pageTitle').textContent = `${c.name}'s Overview`;
   document.getElementById('pageSub').textContent = `${c.occupation||''} · Age ${c.age||'-'} · Income ${fmt(c.annual_income||0)}/yr`;
   document.getElementById('topbarActions').innerHTML = `
-    ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="openMeetingBrief('${clientId}')">📋 Meeting Brief</button>` : ''}
-    ${isAdmin ? `<button class="btn btn-secondary btn-sm" onclick="api.post('/sync/push/${clientId}',{}).then(()=>toast('Synced to Notion ✅')).catch(e=>toast(e.message,'error'))">🔄 Sync Notion</button>` : ''}
-    ${isAdmin ? `<button id="aiAnalysisBtn" class="btn btn-secondary btn-sm" onclick="runAiAnalysis('${clientId}')">🤖 AI Analysis</button>` : ''}
-    <button class="btn btn-warning btn-sm" onclick="openQuickAnalysis()">⚡ Quick Analysis</button>
-    <button class="btn btn-secondary btn-sm no-print" onclick="generateClientReport()">📄 Generate Report</button>
-    <button class="btn btn-primary btn-sm" onclick="autoSnapshot('${clientId}')">📸 Save Snapshot</button>
+    <button class="btn btn-secondary btn-sm no-print" onclick="generateClientReport()">📄 Report</button>
+    ${isAdmin ? `<button class="btn btn-primary btn-sm" onclick="autoSnapshot('${clientId}')">📸 Snapshot</button>` : ''}
+    ${isAdmin ? `<div style="position:relative;display:inline-block">
+      <button class="btn btn-secondary btn-sm" onclick="toggleOverviewMoreMenu(event)" title="More actions" style="padding:6px 10px;font-size:16px;line-height:1">⋯</button>
+      <div id="overviewMoreMenu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:200;min-width:180px;overflow:hidden">
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:flex-start;padding:10px 16px;border-radius:0;font-size:13px" onclick="closeOverviewMoreMenu();openMeetingBrief('${clientId}')">📋 Meeting Brief</button>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:flex-start;padding:10px 16px;border-radius:0;font-size:13px" onclick="closeOverviewMoreMenu();runAiAnalysis('${clientId}')">🤖 AI Analysis</button>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:flex-start;padding:10px 16px;border-radius:0;font-size:13px" onclick="closeOverviewMoreMenu();openQuickAnalysis()">⚡ Quick Analysis</button>
+        <hr style="margin:4px 0;border:none;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:flex-start;padding:10px 16px;border-radius:0;font-size:13px" onclick="closeOverviewMoreMenu();api.post('/sync/push/${clientId}',{}).then(()=>toast('Synced ✅')).catch(e=>toast(e.message,'error'))">🔄 Sync Notion</button>
+      </div>
+    </div>` : ''}
   `;
 
   // Feature 5: Onboarding empty state
@@ -2033,8 +2096,11 @@ function renderOverview(clientId, isAdmin) {
   const totalRecommended = (() => { const byT = {}; S.policies.forEach(p => { byT[p.type] = Math.max(byT[p.type]||0, p.recommended||0); }); return Object.values(byT).reduce((s,v) => s+v, 0); })();
   const totalPremium = S.policies.reduce((s, p) => s + (p.premium||0), 0);
   const totalInvested = S.investments.reduce((s, i) => s + (i.invested||0), 0);
-  const totalValue = S.investments.reduce((s, i) => s + (i.value_now||0), 0);
-  const gains = totalValue - totalInvested;
+  // Use value_now if set, otherwise fall back to invested (so cards show something meaningful)
+  const totalValue = S.investments.reduce((s, i) => s + (i.value_now || i.invested || 0), 0);
+  const hasValueNow = S.investments.some(i => (i.value_now||0) > 0);
+  const actualGains = S.investments.reduce((s, i) => s + (i.value_now||0), 0) - totalInvested;
+  const gains = actualGains;
   const snaps = [...S.snapshots].sort((a, b) => b.year - a.year);
   const covChange = snaps.length >= 2 ? snaps[0].total_coverage - snaps[1].total_coverage : null;
   const invChange = snaps.length >= 2 ? snaps[0].total_investment_value - snaps[1].total_investment_value : null;
@@ -2052,7 +2118,7 @@ function renderOverview(clientId, isAdmin) {
     ${!isAdmin ? (() => { const pa = getPriorityAction(c, S.policies, S.investments); return `<div class="card" style="margin-bottom:16px;border-left:4px solid ${pa.color};padding:16px 20px"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div style="display:flex;align-items:center;gap:14px"><div style="font-size:32px">${pa.icon}</div><div><div style="font-weight:700;font-size:15px">${pa.title}</div><div style="font-size:13px;color:var(--text-2);margin-top:2px">${pa.action}</div></div></div><a href="${pa.href}" target="_blank" class="btn btn-primary btn-sm">${pa.cta}</a></div></div>`; })() : ''}
     <div class="metrics-grid">
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#0EA5E9,#6366F1)"></div><div class="metric-label">Total Coverage <span title="Max single-event payout per policy. Multi-Pay CI stacks separately." style="cursor:help;font-size:10px;opacity:0.6">ⓘ</span></div><div class="metric-value">${fmt(totalCoverage)}</div>${covChange !== null ? `<span class="metric-change ${covChange >= 0 ? 'up' : 'down'}">${covChange >= 0 ? '↑' : '↓'} ${fmt(Math.abs(covChange))} YoY</span>` : ''}</div>
-      <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#10B981,#06B6D4)"></div><div class="metric-label">Investment Value</div><div class="metric-value">${fmt(totalValue)}</div><span class="metric-change ${gains >= 0 ? 'up' : 'down'}">${gains >= 0 ? '+' : ''}${fmtPct(totalInvested ? gains/totalInvested*100 : 0)} all-time</span></div>
+      <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#10B981,#06B6D4)"></div><div class="metric-label">Investment Value</div><div class="metric-value">${fmt(totalValue)}</div>${hasValueNow ? `<span class="metric-change ${gains >= 0 ? 'up' : 'down'}">${gains >= 0 ? '+' : ''}${fmtPct(totalInvested ? gains/totalInvested*100 : 0)} all-time</span>` : '<span class="metric-change neutral" style="color:var(--text-3)">Add current values to track gains</span>'}</div>
       <div class="metric"><div class="metric-accent" style="background:linear-gradient(90deg,#F59E0B,#EF4444)"></div><div class="metric-label">Annual Premium</div><div class="metric-value">${fmt(totalPremium)}</div><span class="metric-change neutral">${fmt(totalPremium/12)}/mo · ${S.policies.filter(p=>p.status==='Active').length} active</span></div>
       <div class="metric"><div class="metric-accent" style="background:${coverageGap > 0 ? 'linear-gradient(90deg,#EF4444,#F59E0B)' : 'linear-gradient(90deg,#10B981,#06B6D4)'}"></div><div class="metric-label">Coverage Gap</div><div class="metric-value">${fmt(coverageGap)}</div><span class="metric-change ${coverageGap === 0 ? 'up' : 'down'}">${coverageGap === 0 ? '✓ Fully covered' : '⚠ Underinsured'}</span></div>
     </div>
@@ -2061,9 +2127,9 @@ function renderOverview(clientId, isAdmin) {
   <div class="card-header">
     <div>
       <div class="card-title">👤 Client Profile</div>
-      <div class="card-sub">Click Edit to update client details</div>
+      <div class="card-sub">${[c.gender, c.occupation, c.email, c.phone].filter(Boolean).join(' · ') || 'Click Edit to fill in details'}</div>
     </div>
-    <button class="btn btn-secondary btn-sm" id="editProfileBtn" onclick="toggleProfileEdit()">✏️ Edit Details</button>
+    <button class="btn btn-secondary btn-sm" id="editProfileBtn" onclick="toggleProfileEdit()">✏️ Edit</button>
   </div>
   <div id="profileEditForm" class="card-body hidden">
     <div class="form-grid">
@@ -2128,30 +2194,45 @@ function renderOverview(clientId, isAdmin) {
   }
 
   const byType = getCoverageByType(S.policies);
+  const invWithData = S.investments.filter(i => (i.value_now||i.invested||0)>0 || (i.target||0)>0);
   requestAnimationFrame(() => {
-    if (Object.keys(byType).length) mkChart('chartCoverageDonut', {
-      type: 'doughnut',
-      data: {
-        labels: Object.keys(byType),
-        datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: 'var(--surface,#fff)', hoverOffset: 6 }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        animation: { duration: 500 },
-        cutout: '68%',
-        plugins: {
-          legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 14, usePointStyle: true } },
-          tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } }
+    const activePolicyTypes = [...new Set(S.policies.filter(p=>p.status==='Active').map(p=>p.type).filter(Boolean))];
+    if (Object.keys(byType).length) {
+      mkChart('chartCoverageDonut', {
+        type: 'doughnut',
+        data: {
+          labels: Object.keys(byType),
+          datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: 'var(--surface,#fff)', hoverOffset: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          animation: { duration: 500 },
+          cutout: '68%',
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 14, usePointStyle: true } },
+            tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)}` } }
+          }
         }
-      }
-    });
-    if (S.investments.length) mkChart('chartGoals', {
+      });
+    } else if (activePolicyTypes.length > 0) {
+      // Policies exist but no coverage amounts — show type tags
+      const el = document.getElementById('chartCoverageDonut');
+      if (el && el.parentElement) el.parentElement.innerHTML = `
+        <div style="padding:20px;text-align:center">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">📋 Policy Types on Record</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+            ${activePolicyTypes.map(t => `<span style="background:var(--surface-2);color:var(--text-2);padding:6px 14px;border-radius:99px;font-size:12px;font-weight:600">${t}</span>`).join('')}
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:12px">Add coverage amounts to each policy to see the donut chart</div>
+        </div>`;
+    }
+    if (invWithData.length) mkChart('chartGoals', {
       type: 'bar',
       data: {
-        labels: S.investments.map(i => i.name.length > 15 ? i.name.slice(0,13)+'…' : i.name),
+        labels: invWithData.map(i => i.name.length > 15 ? i.name.slice(0,13)+'…' : i.name),
         datasets: [
-          { label: 'Current', data: S.investments.map(i => i.value_now||0), backgroundColor: 'rgba(14,165,233,0.85)', borderRadius: 6, borderSkipped: false },
-          { label: 'Target', data: S.investments.map(i => i.target||0), backgroundColor: 'rgba(245,158,11,0.55)', borderRadius: 6, borderSkipped: false }
+          { label: 'Current', data: invWithData.map(i => i.value_now||i.invested||0), backgroundColor: 'rgba(14,165,233,0.85)', borderRadius: 6, borderSkipped: false },
+          { label: 'Target', data: invWithData.map(i => i.target||0), backgroundColor: 'rgba(245,158,11,0.55)', borderRadius: 6, borderSkipped: false }
         ]
       },
       options: {
@@ -2169,18 +2250,43 @@ function renderOverview(clientId, isAdmin) {
     });
   });
 
+  // Goals chart empty state
+  requestAnimationFrame(() => {
+    if (!invWithData || !invWithData.length) {
+      const gc = document.getElementById('chartGoals');
+      if (gc && gc.parentElement) gc.parentElement.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:160px;padding:24px;text-align:center;gap:8px"><div style="font-size:28px">🎯</div><div style="font-size:13px;font-weight:600;color:var(--text-2)">No investment targets set</div><div style="font-size:11px;color:var(--text-3)">Add investments with a target amount to track progress here</div></div>`;
+    }
+  });
+
   if (isAdmin) setTimeout(() => addNotesSection(clientId), 400);
   // Feature 10: Load family coverage card async
   setTimeout(() => loadFamilyCoverageCard(clientId, isAdmin), 500);
-  const byTypeArr = Object.entries(byType).map(([type, curr]) => {
-    const rec = Math.max(0, ...S.policies.map(p => p.recommended||0));
-    return { type, curr, rec };
+  // Build gauge from ALL active policy types (incl those with /bin/zsh coverage)
+  const allTypes = {};
+  S.policies.filter(p => p.status === 'Active').forEach(p => {
+    const t = p.type || 'Other';
+    if (!allTypes[t]) allTypes[t] = { curr: 0, rec: p.recommended || 0 };
+    allTypes[t].curr += (byType[t] || 0);
+    allTypes[t].rec = Math.max(allTypes[t].rec, p.recommended || 0);
   });
-  document.getElementById('coverageGauge').innerHTML = byTypeArr.map(({ type, curr, rec }) => {
-    const pct = rec > 0 ? Math.min(100, Math.round(curr/rec*100)) : 100;
-    const color = pct >= 100 ? '#10B981' : pct >= 60 ? '#F59E0B' : '#EF4444';
-    return `<div class="coverage-row"><div class="coverage-label" title="${esc(type)}">${esc(type)}</div><div class="coverage-track"><div class="coverage-fill" style="width:${pct}%;background:${color}"></div></div><div class="coverage-pct" style="color:${color}">${pct}%</div></div>`;
-  }).join('') || '<div class="empty"><div class="empty-sub">No policies yet</div></div>';
+  const gaugeTypes = Object.entries(allTypes);
+  if (gaugeTypes.length > 0) {
+    document.getElementById('coverageGauge').innerHTML = gaugeTypes.map(([type, { curr, rec }]) => {
+      const pct = rec > 0 ? Math.min(100, Math.round(curr/rec*100)) : (curr > 0 ? 100 : 0);
+      const color = pct >= 100 ? '#10B981' : pct >= 60 ? '#F59E0B' : '#EF4444';
+      const label = curr > 0 ? fmt(curr) : '—';
+      return `<div class="coverage-row">
+        <div class="coverage-label" title="${esc(type)}">${esc(type)}</div>
+        <div class="coverage-track"><div class="coverage-fill" style="width:${Math.max(pct,curr>0?2:0)}%;background:${color}"></div></div>
+        <div style="font-size:11px;color:var(--text-3);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</div>
+        <div class="coverage-pct" style="color:${color}">${pct}%</div>
+      </div>`;
+    }).join('');
+  } else if (S.policies.length > 0) {
+    document.getElementById('coverageGauge').innerHTML = '<div style="padding:16px;font-size:13px;color:var(--text-3)">⚠️ Policies exist but no coverage amounts set. Edit each policy to add coverage values.</div>';
+  } else {
+    document.getElementById('coverageGauge').innerHTML = '<div class="empty"><div class="empty-sub">No policies yet</div></div>';
+  }
 }
 
 // ── PDF Report ─────────────────────────────────────────────────────────────────
@@ -2212,7 +2318,8 @@ function generateClientReport() {
   const totalCoverage = policies.filter(p => p.status === 'Active').reduce((s, p) => s + (p.coverage || 0), 0);
   const totalPremium = policies.reduce((s, p) => s + (p.premium || 0), 0);
   const totalInvested = investments.reduce((s, i) => s + (i.invested || 0), 0);
-  const totalValue = investments.reduce((s, i) => s + (i.value_now || 0), 0);
+  const totalValue = investments.reduce((s, i) => s + (i.value_now || i.invested || 0), 0);
+  const hasValueNow = investments.some(i => (i.value_now||0) > 0);
   const gains = totalValue - totalInvested;
 
   // Health score calculation (reuse existing logic)
@@ -3481,10 +3588,12 @@ function renderInvestments(clientId, isAdmin) {
 
   const invs = S.investments;
   const totalInvested = invs.reduce((s, i) => s + (i.invested || 0), 0);
-  const totalValue    = invs.reduce((s, i) => s + (i.value_now || 0), 0);
+  const totalValue    = invs.reduce((s, i) => s + (i.value_now || i.invested || 0), 0);
   const totalTarget   = invs.reduce((s, i) => s + (i.target || 0), 0);
-  const gains    = totalValue - totalInvested;
-  const gainPct  = totalInvested > 0 ? (gains / totalInvested * 100) : 0;
+  const hasValueNow   = invs.some(i => (i.value_now || 0) > 0);
+  const actualGains   = invs.reduce((s, i) => s + (i.value_now || 0), 0) - totalInvested;
+  const gains    = hasValueNow ? actualGains : 0;
+  const gainPct  = hasValueNow && totalInvested > 0 ? (gains / totalInvested * 100) : 0;
   const progressPct = totalTarget > 0 ? Math.min(100, totalValue / totalTarget * 100) : 0;
 
   const monthlyDCA = invs
@@ -3551,7 +3660,7 @@ function renderInvestments(clientId, isAdmin) {
         <div class="inv-hero-kpi">
           <div class="inv-hero-kpi-label">Portfolio Value</div>
           <div class="inv-hero-kpi-val">${fmt(totalValue)}</div>
-          <div class="inv-hero-kpi-sub ${gains>=0?'pos':'neg'}">${gains>=0?'▲':'▼'} ${gains>=0?'+':''}${fmt(gains)} (${fmtPct(gainPct)})</div>
+          <div class="inv-hero-kpi-sub ${hasValueNow?(gains>=0?'pos':'neg'):'neutral'}">${hasValueNow?(gains>=0?'▲ +'+fmt(gains)+' ('+fmtPct(gainPct)+')':'▼ '+fmt(gains)+' ('+fmtPct(gainPct)+')'):'📝 Add current values'}</div>
         </div>
         <div class="inv-hero-kpi">
           <div class="inv-hero-kpi-label">Avg CAGR / yr</div>
@@ -3575,9 +3684,9 @@ function renderInvestments(clientId, isAdmin) {
     <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(155px,1fr))">
       <div class="metric"><div class="metric-accent" style="background:var(--primary)"></div>
         <div class="metric-label">Total Invested</div><div class="metric-value">${fmt(totalInvested)}</div></div>
-      <div class="metric"><div class="metric-accent" style="background:${gains>=0?'var(--success)':'var(--danger)'}"></div>
+      <div class="metric"><div class="metric-accent" style="background:${hasValueNow?(gains>=0?'var(--success)':'var(--danger)'):'var(--primary)'}"></div>
         <div class="metric-label">Portfolio Value</div><div class="metric-value">${fmt(totalValue)}</div>
-        <span class="metric-change ${gains>=0?'up':'down'}">${gains>=0?'+':''}${fmt(gains)} (${fmtPct(gainPct)})</span></div>
+        ${hasValueNow ? `<span class="metric-change ${gains>=0?'up':'down'}">${gains>=0?'+':''}${fmt(gains)} (${fmtPct(gainPct)})</span>` : '<span class="metric-change neutral" style="color:var(--text-3);font-size:11px">📝 Add current values</span>'}</div>
       <div class="metric"><div class="metric-accent" style="background:var(--warning)"></div>
         <div class="metric-label">Goal Target</div><div class="metric-value">${fmt(totalTarget)}</div>
         <span class="metric-change ${progressPct>=100?'up':'neutral'}">${Math.round(progressPct)}% funded</span></div>
@@ -3685,15 +3794,23 @@ function renderInvestments(clientId, isAdmin) {
 
   renderGrowthChart();
 
-  // Allocation donut
+  // Allocation donut — use value_now, fall back to invested amount so new investments always show
   const byType = {};
-  invs.forEach(i => { byType[i.type || 'Other'] = (byType[i.type || 'Other'] || 0) + (i.value_now || 0); });
-  if (Object.keys(byType).length) {
+  const byTypeBase = totalValue > 0 ? 'value_now' : 'invested';
+  invs.forEach(i => { byType[i.type || 'Other'] = (byType[i.type || 'Other'] || 0) + (i[byTypeBase] || i.value_now || i.invested || 0); });
+  const donutTotal = Object.values(byType).reduce((s, v) => s + v, 0);
+  if (Object.keys(byType).length && donutTotal > 0) {
     mkChart('chartPortfolio', {
       type: 'doughnut',
       data: { labels: Object.keys(byType), datasets: [{ data: Object.values(byType), backgroundColor: COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)} (${(c.parsed / (totalValue || 1) * 100).toFixed(1)}%)` } } } }
+      options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins:
+        { legend: { position: 'bottom' },
+          title: { display: byTypeBase === 'invested', text: '(Based on invested amount — update value now for live data)', color: '#94A3B8', font: { size: 11 } },
+          tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.parsed)} (${(c.parsed / (donutTotal || 1) * 100).toFixed(1)}%)` } } } }
     });
+  } else if (invs.length > 0) {
+    const canvas = document.getElementById('chartPortfolio');
+    if (canvas) { const ctx = canvas.getContext('2d'); ctx.font = '13px sans-serif'; ctx.fillStyle = '#94A3B8'; ctx.textAlign = 'center'; ctx.fillText('Add value/invested amounts to see chart', canvas.width/2, canvas.height/2); }
   }
 
   // CAGR bar chart vs benchmark
@@ -3810,7 +3927,7 @@ function renderInvestmentCard(inv) {
         
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px">
           <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Premium Paid</div><div style="font-size:18px;font-weight:700">${fmt(inv.invested)}</div></div>
-          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Current Value</div><div style="font-size:18px;font-weight:700;color:${g>=0?'var(--success)':'var(--danger)'}">${fmt(inv.value_now)}</div><div style="font-size:11px;color:${g>=0?'var(--success)':'var(--danger)'}">${g>=0?'+':''}${fmt(g)} (${fmtPct(gPct)})</div></div>
+          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Current Value</div>${(inv.value_now||0) === 0 ? `<div style="font-size:15px;font-weight:600;color:var(--text-3)">📝 Not yet set</div><div style="font-size:11px;color:var(--text-3)">(click ✏️ to add current value)</div>` : `<div style="font-size:18px;font-weight:700;color:${g>=0?'var(--success)':'var(--danger)'}">${fmt(inv.value_now)}</div><div style="font-size:11px;color:${g>=0?'var(--success)':'var(--danger)'}">${g>=0?'+':''}${fmt(g)} (${fmtPct(gPct)})</div>`}</div>
           ${inv.guaranteed_return > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Guaranteed Maturity</div><div style="font-size:18px;font-weight:700;color:var(--success)">${fmt(inv.guaranteed_return)}</div>${guaranteedIRR ? `<div style="font-size:11px;color:var(--text-3)">${guaranteedIRR}% IRR</div>` : ''}</div>` : ''}
           ${inv.projected_return > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Projected Maturity</div><div style="font-size:18px;font-weight:700;color:var(--primary)">${fmt(inv.projected_return)}</div>${projectedIRR ? `<div style="font-size:11px;color:var(--text-3)">${projectedIRR}% IRR</div>` : ''}</div>` : ''}
           ${yearsLeft !== null ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Time to Maturity</div><div style="font-size:18px;font-weight:700">${yearsLeftStr}</div>${maturityYear ? `<div style="font-size:11px;color:var(--text-3)">in ${maturityYear}</div>` : ''}</div>` : ''}
@@ -3830,7 +3947,7 @@ function renderInvestmentCard(inv) {
       <div class="calc-box" style="margin:0 20px 20px">
         <div class="calc-title">📊 Projection Calculator</div>
         <div class="calc-grid">
-          <div class="field" style="margin:0"><label>Principal (S$)</label><input type="number" id="cp-${inv.id}" value="${inv.value_now||0}" style="padding:8px 12px"></div>
+          <div class="field" style="margin:0"><label>Principal (S$)</label><input type="number" id="cp-${inv.id}" value="${inv.value_now||inv.invested||0}" style="padding:8px 12px"></div>
           <div class="field" style="margin:0"><label>Rate (%/yr)</label><input type="number" id="cr-${inv.id}" value="${inv.growth_rate_assumption||4}" step="0.1" style="padding:8px 12px"></div>
           <div class="field" style="margin:0"><label>Years</label><input type="number" id="cy-${inv.id}" value="${termYears||10}" min="1" style="padding:8px 12px"></div>
           <div class="field" style="margin:0"><label>Top-up (S$/yr)</label><input type="number" id="cc-${inv.id}" value="0" style="padding:8px 12px"></div>
@@ -3884,8 +4001,8 @@ function renderInvestmentCard(inv) {
         
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px">
           <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Total Invested</div><div style="font-size:18px;font-weight:700">${fmt(inv.invested)}</div></div>
-          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Current Value</div><div style="font-size:18px;font-weight:700;color:${g>=0?'var(--success)':'var(--danger)'}">${fmt(inv.value_now)}</div></div>
-          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Gain / Loss</div><div style="font-size:18px;font-weight:700;color:${g>=0?'var(--success)':'var(--danger)'}">${g>=0?'+':''}${fmt(g)}</div><div style="font-size:11px;color:${g>=0?'var(--success)':'var(--danger)'}">${fmtPct(gPct)}</div></div>
+          <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Current Value</div>${(inv.value_now||0) === 0 ? `<div style="font-size:15px;font-weight:600;color:var(--text-3)">📝 Not yet set</div><div style="font-size:11px;color:var(--text-3)">(click ✏️ to add current value)</div>` : `<div style="font-size:18px;font-weight:700;color:${g>=0?'var(--success)':'var(--danger)'}">${fmt(inv.value_now)}</div>`}</div>
+          ${(inv.value_now||0) > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Gain / Loss</div><div style="font-size:18px;font-weight:700;color:${g>=0?'var(--success)':'var(--danger)'}">${g>=0?'+':''}${fmt(g)}</div><div style="font-size:11px;color:${g>=0?'var(--success)':'var(--danger)'}">${fmtPct(gPct)}</div></div>` : ''}
           ${avgCost !== null ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Avg Cost/Unit</div><div style="font-size:18px;font-weight:700">S$${avgCost.toFixed(4)}</div><div style="font-size:11px;color:var(--text-3)">${inv.units_held.toLocaleString('en-SG',{maximumFractionDigits:2})} units</div></div>` : ''}
           ${inv.nav_price > 0 ? `<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-3);margin-bottom:3px">Current NAV</div><div style="font-size:18px;font-weight:700">S$${inv.nav_price.toFixed(4)}</div>${avgCost ? `<div style="font-size:11px;color:${inv.nav_price>=avgCost?'var(--success)':'var(--danger)'}">${inv.nav_price>=avgCost?'▲':'▼'} ${((inv.nav_price/avgCost-1)*100).toFixed(2)}% vs avg</div>` : ''}</div>` : ''}
         </div>
@@ -3908,7 +4025,7 @@ function renderInvestmentCard(inv) {
       <div class="calc-box" style="margin:0 20px 20px">
         <div class="calc-title">📊 DCA Projection Calculator</div>
         <div class="calc-grid">
-          <div class="field" style="margin:0"><label>Current Value (S$)</label><input type="number" id="cp-${inv.id}" value="${inv.value_now||0}" style="padding:8px 12px"></div>
+          <div class="field" style="margin:0"><label>Current Value (S$)</label><input type="number" id="cp-${inv.id}" value="${inv.value_now||inv.invested||0}" style="padding:8px 12px"></div>
           <div class="field" style="margin:0"><label>Rate (%/yr)</label><input type="number" id="cr-${inv.id}" value="${inv.growth_rate_assumption||6}" step="0.1" style="padding:8px 12px"></div>
           <div class="field" style="margin:0"><label>Years</label><input type="number" id="cy-${inv.id}" value="10" min="1" style="padding:8px 12px"></div>
           <div class="field" style="margin:0"><label>${freqLabel} Contribution (S$)</label><input type="number" id="cc-${inv.id}" value="${inv.contribution||0}" style="padding:8px 12px"></div>
@@ -3946,7 +4063,8 @@ function renderGrowthChart() {
       fill: false, tension: 0.4, borderWidth: 2.5, pointRadius: 3,
       data: labels.map((_, y) => {
         const r = rate;
-        const p = inv.value_now || 0;
+        // Use value_now if available, fall back to invested (lump-sum already deployed capital)
+        const p = inv.value_now || inv.invested || 0;
         if (inv.premium_type === 'single') {
           return Math.round(p * Math.pow(1 + r, y));
         } else {
@@ -5207,7 +5325,8 @@ async function renderClientProfile(clientId, isAdmin) {
     const proj = calcRetirementProjection(c, ep, investments, incomeStreams);
     const retireScore = proj.score;
     // Education
-    const children = JSON.parse(ep.children || '[]');
+    let children;
+    try { children = JSON.parse(ep.children || '[]'); } catch(e) { children = []; }
     let eduScore = 100;
     if (children.length > 0) {
       const eduGoals = goals.filter(g => g.category === 'education');
@@ -5261,7 +5380,8 @@ async function renderClientProfile(clientId, isAdmin) {
 
   const scores = calcGrade(policies, investments, ep, incomeStreams);
   const proj = calcRetirementProjection(c, ep, investments, incomeStreams);
-  const children = JSON.parse(ep.children || '[]');
+  let children;
+  try { children = JSON.parse(ep.children || '[]'); } catch(e) { children = []; }
 
   const fmt = n => 'S$' + (parseFloat(n) || 0).toLocaleString('en-SG', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   const fmtD = n => 'S$' + (parseFloat(n) || 0).toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -5804,7 +5924,12 @@ async function saveIncomeStream(clientId) {
     }
     document.getElementById('incomeStreamModal').style.display = 'none';
     toast('Income stream saved ✅');
-    renderClientProfile(clientId, true);
+    // Refresh cashflow if on cashflow tab, otherwise refresh profile
+    if (S.page === 'cashflow' || document.getElementById('cf-analysis-content')) {
+      renderCashflowAnalysis(clientId);
+    } else {
+      renderClientProfile(clientId, true);
+    }
   } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
@@ -5969,38 +6094,22 @@ async function renderAdminProspects() {
           <tbody>${prospects.length === 0 ? '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-3)">No prospects yet</td></tr>' :
             prospects.map(p => {
               const sb = p.deal_stage==='Closed Won'?'badge-success':p.deal_stage==='Cold'?'badge-gray':'badge-info';
-              return `<tr><td><div style="font-weight:600">${esc(p.name)}</div><div style="font-size:11px;color:var(--text-3)">${esc(p.occupation||'')}</div></td><td><div style="font-size:12px">${esc(p.email||'')}</div><div style="font-size:12px;color:var(--text-3)">${esc(p.phone||'')}</div></td><td><span class="badge ${sb}" style="font-size:10px">${p.deal_stage||'New'}</span></td><td style="font-size:12px;color:var(--text-3)">${p.created_at ? new Date(p.created_at).toLocaleDateString('en-SG') : '-'}</td><td><div style="display:flex;gap:6px">${p.phone ? `<a href="https://wa.me/65${(p.phone||'').replace(/\D/g,'')}" target="_blank" class="btn btn-ghost btn-sm">💬</a>` : ''}<button class="btn btn-success btn-sm" onclick="convertProspect('${p.id}','${esc(p.name)}')"✅</button><button class="btn btn-ghost btn-sm" onclick="showInviteLink('${p.id}','${esc(p.name)}')">🔗</button></div></td></tr>`;
+              return `<tr style="cursor:pointer" onclick="openClientView('${p.id}','${esc(p.name)}')">
+                <td><div style="font-weight:600">${esc(p.name)}</div><div style="font-size:11px;color:var(--text-3)">${esc(p.occupation||'')}</div></td>
+                <td><div style="font-size:12px">${esc(p.email||'')}</div><div style="font-size:12px;color:var(--text-3)">${esc(p.phone||'')}</div></td>
+                <td><span class="badge ${sb}" style="font-size:10px">${p.deal_stage||'New'}</span></td>
+                <td style="font-size:12px;color:var(--text-3)">${p.created_at ? new Date(p.created_at).toLocaleDateString('en-SG') : '-'}</td>
+                <td><div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+                  ${p.phone ? `<a href="https://wa.me/65${(p.phone||'').replace(/\D/g,'')}" target="_blank" class="btn btn-ghost btn-sm">💬</a>` : ''}
+                  <button class="btn btn-secondary btn-sm" onclick="openClientView('${p.id}','${esc(p.name)}');event.stopPropagation()">👁 View</button>
+                  <button class="btn btn-success btn-sm" onclick="convertProspect('${p.id}','${esc(p.name)}');event.stopPropagation()">✅ Convert</button>
+                  <button class="btn btn-ghost btn-sm" onclick="showInviteLink('${p.id}','${esc(p.name)}');event.stopPropagation()">🔗</button>
+                </div></td>
+              </tr>`;
             }).join('')}</tbody></table></div></div>`;
   } catch(e) { document.getElementById('mainContent').innerHTML = `<div class="alert alert-danger">${e.message}</div>`; }
 }
 
-async function convertProspect(id, name) {
-  if (!confirm(`Convert ${name} to client?`)) return;
-  try {
-    await api.put(`/admin/clients/${id}`, { role: 'client' });
-    toast(`${name} converted ✅`);
-    renderAdminProspects();
-  } catch(e) { toast(e.message, 'error'); }
-}
-
-function openProspectModal() {
-  showModal('Add Prospect', `<div class="form-grid">
-      <div class="field"><label>Full Name *</label><input id="pm-name" type="text" placeholder="Jane Tan"></div>
-      <div class="field"><label>Username *</label><input id="pm-username" type="text" placeholder="jane.tan"></div>
-      <div class="field"><label>Password *</label><input id="pm-password" type="password" placeholder="Min 8 chars"></div>
-      <div class="field"><label>Email</label><input id="pm-email" type="email" placeholder="jane@email.com"></div>
-      <div class="field"><label>Phone (SG)</label><input id="pm-phone" type="tel" placeholder="91234567"></div>
-      <div class="field"><label>Age</label><input id="pm-age" type="number" placeholder="30" min="18" max="80"></div>
-      <div class="field"><label>Occupation</label><input id="pm-occupation" type="text" placeholder="Software Engineer"></div>
-      <div class="field"><label>Annual Income</label><input id="pm-income" type="number" placeholder="60000"></div>
-    </div>`, async () => {
-    const body = { name: document.getElementById('pm-name')?.value, username: document.getElementById('pm-username')?.value, password: document.getElementById('pm-password')?.value, email: document.getElementById('pm-email')?.value, phone: document.getElementById('pm-phone')?.value, age: parseInt(document.getElementById('pm-age')?.value)||0, occupation: document.getElementById('pm-occupation')?.value, annual_income: parseFloat(document.getElementById('pm-income')?.value)||0, role: 'prospect' };
-    if (!body.name || !body.username || !body.password) { toast('Name, username and password required','error'); return false; }
-    try { await api.post('/admin/clients', body); toast(`Prospect ${body.name} added ✅`); closeModal(); renderAdminProspects(); } catch(e) { toast(e.message,'error'); return false; }
-  }, 'Add Prospect');
-}
-
-// ── COMMISSIONS TRACKER ──────────────────────────────────────────────────────
 async function renderCommissions() {
   document.getElementById('pageTitle').textContent = 'Commissions';
   document.getElementById('pageSub').textContent = 'Track your earnings';
@@ -7118,8 +7227,13 @@ async function renderCashflowAnalysis(clientId) {
   if (!el) return;
   el.innerHTML = `<div style="padding:30px;text-align:center;color:var(--text-3)"><div style="font-size:24px;margin-bottom:8px">⏳</div>Loading analysis...</div>`;
 
-  const data = await api.get(`/clients/${clientId}/cashflow/analysis`);
+  // Fetch analysis + income streams in parallel for full integration
+  const [data, streamsRaw] = await Promise.all([
+    api.get(`/clients/${clientId}/cashflow/analysis`).catch(() => null),
+    api.get(`/clients/${clientId}/income-streams`).catch(() => [])
+  ]);
   const analysis = data?.analysis;
+  const streams = Array.isArray(streamsRaw) ? streamsRaw : [];
 
   if (!analysis) {
     el.innerHTML = `
@@ -7134,6 +7248,36 @@ async function renderCashflowAnalysis(clientId) {
           <input type="file" accept=".xlsx,.xls" style="display:none" onchange="uploadCashflowAnalysis(event, '${clientId}')">
         </label>` : '<div style="font-size:13px;color:var(--text-3)">Your consultant will upload your cashflow analysis here.</div>'}
       </div>`;
+    // Show income streams even without cashflow Excel
+    api.get(`/clients/${clientId}/income-streams`).then(streams => {
+      const streamsDiv = document.createElement('div');
+      streamsDiv.style.marginTop = '24px';
+      const fmtL = n => 'S$' + (parseFloat(n)||0).toLocaleString('en-SG', {minimumFractionDigits:0});
+      const getM = s => { const a=parseFloat(s.amount)||0; if(s.frequency==='quarterly') return a/3; if(s.frequency==='annual') return a/12; return a; };
+      const typeIcon = {rental:'\uD83C\uDFE0',business:'\uD83D\uDCBC',dividend:'\uD83D\uDCCA',investment:'\uD83D\uDCB0',parttime:'\u23F0',freelance:'\uD83D\uDD27',cpf_life:'\uD83C\uDFDB\uFE0F',annuity:'\uD83D\uDCCB',other:'\uD83D\uDD39'};
+      streamsDiv.innerHTML = `
+        <div class="card" style="border-left:4px solid #10B981">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div><div class="card-title">\uD83D\uDCB0 Additional Income Streams</div><div style="font-size:12px;color:var(--text-3)">Rental, business, dividends \u2014 included in retirement projection</div></div>
+            ${S.role==='admin' ? `<button class="btn btn-primary btn-sm" onclick="openCfIncomeStreamModal('${clientId}')">+ Add Stream</button>` : ''}
+          </div>
+          <div class="card-body" style="padding:0">
+            ${(Array.isArray(streams) && streams.length === 0)
+              ? '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px">No income streams yet. Add rental, CPF Life, annuity, or business income \u2014 they feed into the retirement planner.</div>'
+              : `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:10px 16px;text-align:left">Source</th><th style="padding:10px 16px;text-align:left">Type</th><th style="padding:10px 16px;text-align:right">Monthly</th><th style="padding:10px 16px;text-align:center">Retirement \u2713</th></tr></thead><tbody>
+              ${(Array.isArray(streams)?streams:[]).map(st => `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 16px;font-weight:500">${(typeIcon[st.type]||'\uD83D\uDD39')} ${esc(st.label||'')}</td>
+                <td style="padding:10px 16px;color:var(--text-3)">${st.type||'other'}</td>
+                <td style="padding:10px 16px;text-align:right;color:var(--success);font-weight:700">${fmtL(getM(st))}/mo</td>
+                <td style="padding:10px 16px;text-align:center">${parseInt(st.is_retirement_income)?'\uD83C\uDDD6\uFE0F':'\u2014'}</td>
+              </tr>`).join('')}
+              <tr style="background:var(--surface-2);font-weight:700"><td colspan="2" style="padding:10px 16px">Total Additional</td><td style="padding:10px 16px;text-align:right;color:var(--success)">${fmtL((Array.isArray(streams)?streams:[]).reduce((t,s)=>t+getM(s),0))}/mo</td><td></td></tr>
+              </tbody></table>`
+            }
+          </div>
+        </div>`;
+      el.appendChild(streamsDiv);
+    }).catch(()=>{});
     return;
   }
 
@@ -7142,11 +7286,18 @@ async function renderCashflowAnalysis(clientId) {
   const fmt  = n => 'S$' + (parseFloat(n)||0).toLocaleString('en-SG', {minimumFractionDigits:0, maximumFractionDigits:0});
   const fmtD = n => 'S$' + (parseFloat(n)||0).toLocaleString('en-SG', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-  const savRate = s.netIncome > 0 ? ((s.totalSavings / s.netIncome) * 100).toFixed(1) : 0;
-  const expRate = s.netIncome > 0 ? ((s.totalExpenses / s.netIncome) * 100).toFixed(1) : 0;
-  const insRate = s.netIncome > 0 ? ((s.totalInsurance / s.netIncome) * 100).toFixed(1) : 0;
-  const cfColor = s.netCashflow >= 0 ? 'var(--success)' : 'var(--danger)';
-  const cfPct   = s.netIncome > 0 ? ((s.netCashflow / s.netIncome) * 100).toFixed(0) : 0;
+  // Income streams integration — compute total monthly from streams
+  const getStreamMonthly = st => { const a = parseFloat(st.amount)||0; if (st.frequency==='quarterly') return a/3; if (st.frequency==='annual') return a/12; return a; };
+  const totalStreamMonthly = streams.reduce((t, st) => t + getStreamMonthly(st), 0);
+  const totalMonthlyIncome = (s.netIncome||0) + totalStreamMonthly;
+  const totalOthers = s.totalOthers || 0;
+
+  const savRate = totalMonthlyIncome > 0 ? ((s.totalSavings / totalMonthlyIncome) * 100).toFixed(1) : 0;
+  const expRate = totalMonthlyIncome > 0 ? (((s.totalExpenses + (s.totalLoans||0) + totalOthers) / totalMonthlyIncome) * 100).toFixed(1) : 0;
+  const insRate = totalMonthlyIncome > 0 ? ((s.totalInsurance / totalMonthlyIncome) * 100).toFixed(1) : 0;
+  const netCashflow = totalMonthlyIncome - s.totalInsurance - s.totalSavings - s.totalExpenses - (s.totalLoans||0) - totalOthers;
+  const cfColor = netCashflow >= 0 ? 'var(--success)' : 'var(--danger)';
+  const cfPct   = totalMonthlyIncome > 0 ? ((netCashflow / totalMonthlyIncome) * 100).toFixed(0) : 0;
 
   el.innerHTML = `
     <!-- Header strip -->
@@ -7193,8 +7344,8 @@ async function renderCashflowAnalysis(clientId) {
       </div>
       <div class="metric" style="border-left:3px solid ${cfColor}">
         <div class="metric-label">✅ Net Cashflow</div>
-        <div class="metric-value" style="color:${cfColor}">${fmtD(s.netCashflow)}</div>
-        <div style="font-size:11px;color:var(--text-3);margin-top:2px">${cfPct}% surplus · ${fmt(s.netCashflow*12)}/yr</div>
+        <div class="metric-value" style="color:${cfColor}">${fmtD(netCashflow)}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:2px">${cfPct}% surplus · ${fmt(netCashflow*12)}/yr</div>
       </div>
     </div>
 
@@ -7202,16 +7353,17 @@ async function renderCashflowAnalysis(clientId) {
     <div class="card" style="margin-bottom:16px">
       <div class="card-header"><div class="card-title">💧 Where Does the Money Go Each Month?</div></div>
       <div class="card-body" style="padding:16px 20px">
-        ${s.netIncome > 0 ? (() => {
+        ${totalMonthlyIncome > 0 ? (() => {
           const bars = [
             { label: 'Insurance Premiums', val: s.totalInsurance, color: '#EF4444' },
             { label: 'Savings & Investments', val: s.totalSavings, color: '#6366F1' },
             { label: 'Living Expenses', val: s.totalExpenses, color: '#F59E0B' },
             { label: 'Loan Repayments', val: s.totalLoans || 0, color: '#8B5CF6' },
-            { label: 'Free Cashflow', val: Math.max(0, s.netCashflow), color: '#10B981' }
+            { label: 'Others / Misc', val: totalOthers || 0, color: '#94A3B8' },
+            { label: 'Free Cashflow', val: Math.max(0, netCashflow), color: '#10B981' }
           ].filter(b => b.val > 0);
           return bars.map(b => {
-            const pct = (b.val / s.netIncome * 100).toFixed(1);
+            const pct = (b.val / totalMonthlyIncome * 100).toFixed(1);
             return `<div style="margin-bottom:12px">
               <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
                 <span style="color:var(--text-2);font-weight:500">${b.label}</span>
@@ -7368,87 +7520,108 @@ async function renderCashflowAnalysis(clientId) {
       </div>
     </div>
 
+    <!-- Others / Misc section -->
+    ${(p.others||[]).length > 0 ? `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">🔹 Other / Miscellaneous Items</div></div>
+      <div class="card-body" style="padding:0">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:10px 16px;text-align:left;color:var(--text-3);font-weight:600">Item</th>
+            <th style="padding:10px 16px;text-align:right;color:var(--text-3);font-weight:600">Monthly</th>
+            <th style="padding:10px 16px;text-align:right;color:var(--text-3);font-weight:600">Annual</th>
+          </tr></thead>
+          <tbody>
+            ${p.others.filter(r=>r.monthly>0||r.annual>0).map(r => `<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:10px 16px;color:var(--text)">${r.item}${r.comment?`<br><span style="font-size:11px;color:var(--text-3)">${r.comment.substring(0,60)}</span>`:''}</td>
+              <td style="padding:10px 16px;text-align:right;font-weight:600;color:#94A3B8">${r.monthly>0?fmtD(r.monthly):'—'}</td>
+              <td style="padding:10px 16px;text-align:right;color:var(--text-2)">${r.annual>0?fmt(r.annual):'—'}</td>
+            </tr>`).join('')}
+            <tr style="background:var(--surface-2)">
+              <td style="padding:10px 16px;font-weight:700;color:var(--text)">Total Others</td>
+              <td style="padding:10px 16px;text-align:right;font-weight:700;color:#94A3B8">${fmtD(totalOthers)}</td>
+              <td style="padding:10px 16px;text-align:right;font-weight:700;color:var(--text-2)">${fmt(totalOthers*12)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}
+
     <!-- Financial Health Insight -->
-    <div class="card" style="border-left:4px solid ${s.netCashflow>=3000?'var(--success)':s.netCashflow>=0?'#F59E0B':'var(--danger)'}">
+    <div class="card" style="border-left:4px solid ${netCashflow>=3000?'var(--success)':netCashflow>=0?'#F59E0B':'var(--danger)'}">
       <div class="card-body" style="padding:18px 20px">
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px">
-          ${s.netCashflow>=3000 ? '✅ Strong Cashflow Position' : s.netCashflow>=0 ? '⚠️ Cashflow is Tight but Positive' : '🚨 Cashflow Deficit — Needs Attention'}
+          ${netCashflow>=3000 ? '✅ Strong Cashflow Position' : netCashflow>=0 ? '⚠️ Cashflow is Tight but Positive' : '🚨 Cashflow Deficit — Needs Attention'}
         </div>
         <div style="font-size:13px;color:var(--text-2);line-height:1.6">
-          ${s.netCashflow>=3000
-            ? `${p.client.name ? p.client.name.split(' ').pop() : 'Your client'} has <strong>${fmtD(s.netCashflow)}/mo</strong> in free cashflow — a healthy <strong>${cfPct}% surplus</strong> after all commitments. This is an excellent position to grow wealth or enhance protection coverage.`
-            : s.netCashflow>=0
-            ? `Cashflow is positive but lean at <strong>${fmtD(s.netCashflow)}/mo</strong>. Review discretionary spending and explore whether coverage can be optimised for better value.`
-            : `Monthly outflows exceed income by <strong>${fmtD(Math.abs(s.netCashflow))}</strong>. Immediate review of financial commitments recommended.`
+          ${netCashflow>=3000
+            ? `${p.client.name ? p.client.name.split(' ').pop() : 'Your client'} has <strong>${fmtD(netCashflow)}/mo</strong> in free cashflow — a healthy <strong>${cfPct}% surplus</strong> after all commitments.${streams.length > 0 ? ' Includes additional income streams.' : ''} This is an excellent position to grow wealth or enhance protection coverage.`
+            : netCashflow>=0
+            ? `Cashflow is positive but lean at <strong>${fmtD(netCashflow)}/mo</strong>. Review discretionary spending and explore whether coverage can be optimised for better value.`
+            : `Monthly outflows exceed income by <strong>${fmtD(Math.abs(netCashflow))}</strong>. Immediate review of financial commitments recommended.`
           }
         </div>
       </div>
     </div>
 
-    <!-- Additional Income Streams Card -->
+    <!-- Additional Income Streams Card (pre-rendered since already fetched at top) -->
     <div id="cf-income-streams-card" style="margin-top:16px"></div>
   `;
 
-  // Load income streams and append
-  api.get(`/clients/${clientId}/income-streams`).then(streams => {
+  // Render income streams synchronously (already fetched above)
+  {
     const card = document.getElementById('cf-income-streams-card');
-    if (!card) return;
-    const getMonthly = s => {
-      const a = parseFloat(s.amount) || 0;
-      if (s.frequency === 'quarterly') return a / 3;
-      if (s.frequency === 'annual') return a / 12;
-      return a;
-    };
-    const fmtL = n => 'S$' + (parseFloat(n)||0).toLocaleString('en-SG', {minimumFractionDigits:0, maximumFractionDigits:0});
-    const totalStreamMonthly = streams.reduce((t, s) => t + getMonthly(s), 0);
-    const typeIcon = { rental:'🏠', business:'💼', dividend:'📊', investment:'💰', parttime:'⏰', freelance:'🔧', cpf_life:'🏛️', annuity:'📋', other:'🔹' };
-    const totalMonthlyIncome = (s.netIncome || 0) + totalStreamMonthly;
-
-    card.innerHTML = `
-      <div class="card" style="border-left:4px solid #10B981">
-        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div class="card-title">💰 Additional Income Streams</div>
-          ${S.role === 'admin' ? `<button class="btn btn-sm btn-primary" onclick="openCfIncomeStreamModal('${clientId}')">+ Add Stream</button>` : ''}
-        </div>
-        <div class="card-body" style="padding:0">
-          ${streams.length === 0
-            ? '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px">No additional income streams. Add rental, business, or dividend income.</div>'
-            : `<table style="width:100%;border-collapse:collapse;font-size:13px">
-                <thead><tr style="border-bottom:1px solid var(--border)">
-                  <th style="padding:10px 16px;text-align:left;color:var(--text-3);font-weight:600">Income Source</th>
-                  <th style="padding:10px 16px;text-align:left;color:var(--text-3);font-weight:600">Type</th>
-                  <th style="padding:10px 16px;text-align:right;color:var(--text-3);font-weight:600">Amount</th>
-                  <th style="padding:10px 16px;text-align:center;color:var(--text-3);font-weight:600">Frequency</th>
-                  <th style="padding:10px 16px;text-align:right;color:var(--text-3);font-weight:600">Monthly</th>
-                  <th style="padding:10px 16px;text-align:center;color:var(--text-3);font-weight:600">Retirement</th>
-                </tr></thead>
-                <tbody>
-                ${streams.map(st => {
-                  const monthly = getMonthly(st);
-                  const ico = typeIcon[st.type] || '🔹';
-                  const retBadge = parseInt(st.is_retirement_income) ? '<span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">🏖️ Retirement</span>' : '—';
-                  return `<tr style="border-bottom:1px solid var(--border)">
-                    <td style="padding:10px 16px;font-weight:500;color:var(--text)">${ico} ${esc(st.label || '')}${st.notes ? `<br><span style="font-size:11px;color:var(--text-3)">${esc(st.notes.substring(0,40))}</span>` : ''}</td>
-                    <td style="padding:10px 16px;color:var(--text-2)">${st.type || 'other'}</td>
-                    <td style="padding:10px 16px;text-align:right;color:var(--text)">${fmtL(st.amount)}</td>
-                    <td style="padding:10px 16px;text-align:center;color:var(--text-3)">${st.frequency || 'monthly'}</td>
-                    <td style="padding:10px 16px;text-align:right;font-weight:700;color:var(--success)">${fmtL(monthly)}/mo</td>
-                    <td style="padding:10px 16px;text-align:center">${retBadge}</td>
-                  </tr>`;
-                }).join('')}
-                <tr style="background:var(--surface-2);font-weight:700">
-                  <td colspan="4" style="padding:10px 16px;color:var(--text)">Total Additional Monthly</td>
-                  <td style="padding:10px 16px;text-align:right;color:var(--success)">${fmtL(totalStreamMonthly)}/mo</td>
-                  <td></td>
-                </tr>
-                </tbody></table>
-              <div style="padding:12px 16px;background:#F0FDF4;border-top:1px solid #BBF7D0">
-                <div style="font-size:13px;font-weight:700;color:#166534">Combined Monthly Income (Excel + Streams): ${fmtL(totalMonthlyIncome)}/mo</div>
-              </div>`
-          }
-        </div>
-      </div>`;
-  }).catch(() => {});
+    if (card) {
+      const fmtL = n => 'S$' + (parseFloat(n)||0).toLocaleString('en-SG', {minimumFractionDigits:0, maximumFractionDigits:0});
+      const typeIcon = { rental:'🏠', business:'💼', dividend:'📊', investment:'💰', parttime:'⏰', freelance:'🔧', cpf_life:'🏛️', annuity:'📋', other:'🔹' };
+      card.innerHTML = `
+        <div class="card" style="border-left:4px solid #10B981">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div class="card-title">💰 Additional Income Streams</div>
+            ${S.role === 'admin' ? `<button class="btn btn-sm btn-primary" onclick="openCfIncomeStreamModal('${clientId}')">+ Add Stream</button>` : ''}
+          </div>
+          <div class="card-body" style="padding:0">
+            ${streams.length === 0
+              ? '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px">No additional income streams added. Add rental, business, or dividend income via the Profile tab — these are factored into your total cashflow above.</div>'
+              : `<table style="width:100%;border-collapse:collapse;font-size:13px">
+                  <thead><tr style="border-bottom:1px solid var(--border)">
+                    <th style="padding:10px 16px;text-align:left;color:var(--text-3);font-weight:600">Income Source</th>
+                    <th style="padding:10px 16px;text-align:left;color:var(--text-3);font-weight:600">Type</th>
+                    <th style="padding:10px 16px;text-align:right;color:var(--text-3);font-weight:600">Amount</th>
+                    <th style="padding:10px 16px;text-align:center;color:var(--text-3);font-weight:600">Frequency</th>
+                    <th style="padding:10px 16px;text-align:right;color:var(--text-3);font-weight:600">Monthly</th>
+                    <th style="padding:10px 16px;text-align:center;color:var(--text-3);font-weight:600">Retirement</th>
+                  </tr></thead>
+                  <tbody>
+                  ${streams.map(st => {
+                    const m = getStreamMonthly(st);
+                    const ico = typeIcon[st.type] || '🔹';
+                    const retBadge = parseInt(st.is_retirement_income) ? '<span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700">🏖️ Retirement</span>' : '—';
+                    return `<tr style="border-bottom:1px solid var(--border)">
+                      <td style="padding:10px 16px;font-weight:500;color:var(--text)">${ico} ${esc(st.label || '')}${st.notes ? `<br><span style="font-size:11px;color:var(--text-3)">${esc(st.notes.substring(0,40))}</span>` : ''}</td>
+                      <td style="padding:10px 16px;color:var(--text-2)">${st.type || 'other'}</td>
+                      <td style="padding:10px 16px;text-align:right;color:var(--text)">${fmtL(st.amount)}</td>
+                      <td style="padding:10px 16px;text-align:center;color:var(--text-3)">${st.frequency || 'monthly'}</td>
+                      <td style="padding:10px 16px;text-align:right;font-weight:700;color:var(--success)">${fmtL(m)}/mo</td>
+                      <td style="padding:10px 16px;text-align:center">${retBadge}</td>
+                    </tr>`;
+                  }).join('')}
+                  <tr style="background:var(--surface-2);font-weight:700">
+                    <td colspan="4" style="padding:10px 16px;color:var(--text)">Total Additional Monthly</td>
+                    <td style="padding:10px 16px;text-align:right;color:var(--success)">${fmtL(totalStreamMonthly)}/mo</td>
+                    <td></td>
+                  </tr>
+                  </tbody></table>
+                <div style="padding:12px 16px;background:#F0FDF4;border-top:1px solid #BBF7D0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                  <div style="font-size:13px;font-weight:700;color:#166534">✔ Total Monthly Income (Base + Streams): ${fmtL(totalMonthlyIncome)}/mo</div>
+                  <div style="font-size:12px;color:#166534">→ Net Cashflow: ${fmtL(netCashflow)}/mo (${cfPct}% surplus)</div>
+                </div>`
+            }
+          </div>
+        </div>`;
+    }
+  }
+}
 
 async function uploadCashflowAnalysis(event, clientId) {
   const file = event.target.files[0];
@@ -7482,12 +7655,68 @@ async function deleteCashflowAnalysis(clientId) {
 
 // Open the income stream modal from within the cashflow page
 function openCfIncomeStreamModal(clientId) {
-  // Re-use the profile modal if it exists, otherwise navigate to profile tab
-  if (document.getElementById('incomeStreamModal')) {
-    openIncomeStreamModal(clientId);
-  } else {
-    toast('Open the Profile tab to manage income streams', 'info');
+  // Inject modal into body if it doesn't exist (profile tab not rendered)
+  if (!document.getElementById('incomeStreamModal')) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div id="incomeStreamModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center">
+        <div style="background:white;border-radius:14px;padding:24px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto">
+          <div style="font-size:16px;font-weight:800;margin-bottom:16px;color:#0F172A" id="isModalTitle">Add Income Stream</div>
+          <input type="hidden" id="isModalId">
+          <div style="display:grid;gap:12px">
+            <div><label class="label">Label *</label><input class="input" id="is-label" placeholder="e.g. Pasir Ris HDB rental"></div>
+            <div><label class="label">Type</label><select class="input" id="is-type">
+              <option value="rental">🏠 Rental</option>
+              <option value="business">💼 Business</option>
+              <option value="dividend">📊 Dividend</option>
+              <option value="investment">💰 Investment</option>
+              <option value="parttime">⏰ Part-time</option>
+              <option value="freelance">🔧 Freelance</option>
+              <option value="cpf_life">🏦 CPF Life</option>
+              <option value="annuity">📋 Annuity</option>
+              <option value="other">🔹 Other</option>
+            </select></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="label">Amount (S$)</label><input class="input" id="is-amount" type="number" placeholder="0"></div>
+              <div><label class="label">Frequency</label><select class="input" id="is-frequency">
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="annual">Annual</option>
+              </select></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="label">Start Date</label><input class="input" id="is-start" type="date"></div>
+              <div><label class="label">End Date (optional)</label><input class="input" id="is-end" type="date"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="checkbox" id="is-retirement" style="width:16px;height:16px">
+              <label for="is-retirement" style="font-size:13px;color:#0F172A;cursor:pointer">🏖️ This income continues into retirement</label>
+            </div>
+            <div><label class="label">Notes</label><input class="input" id="is-notes" placeholder="Optional notes"></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="btn btn-primary" id="isModalSaveBtn">Save</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('incomeStreamModal').style.display='none'">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap.firstElementChild);
   }
+  // Wire up the save button with refreshing cashflow after save
+  const modal = document.getElementById('incomeStreamModal');
+  document.getElementById('isModalTitle').textContent = 'Add Income Stream';
+  document.getElementById('isModalId').value = '';
+  ['is-label','is-amount','is-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['is-type','is-frequency'].forEach(id => { const el = document.getElementById(id); if(el) el.selectedIndex = 0; });
+  ['is-start','is-end'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const retEl = document.getElementById('is-retirement'); if(retEl) retEl.checked = false;
+  const saveBtn = document.getElementById('isModalSaveBtn');
+  if (saveBtn) saveBtn.onclick = async () => {
+    await saveIncomeStream(clientId);
+    // Refresh the cashflow analysis after saving (since we came from cashflow tab)
+    setTimeout(() => renderCashflowAnalysis(clientId), 300);
+  };
+  modal.style.display = 'flex';
 }
 
 function switchCfTab(tab, clientId) {

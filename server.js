@@ -4,6 +4,8 @@ const { seedIfEmpty } = require('./seed');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
@@ -111,7 +113,8 @@ async function testPgConnection() {
 
 const app = express();
 const PORT = process.env.PORT || 3847;
-const JWT_SECRET = process.env.JWT_SECRET || 'dylan-findb-secret-2026-!@#';
+if (!process.env.JWT_SECRET) { console.error('FATAL: JWT_SECRET env var is required'); process.exit(1); }
+const JWT_SECRET = process.env.JWT_SECRET;
 const DB_PATH = path.join(__dirname, 'data', 'dashboard.db');
 
 // ── Dylan Contact Info (for CTAs, booking) ─────────────────────────────────────
@@ -948,7 +951,31 @@ function dbRun(sql, params = []) {
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
 app.use(express.json());
-app.use(cors());
+// Security: helmet headers
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Security: CORS locked to known origins
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://finview-dashboard.up.railway.app',
+  'http://localhost:3847'
+].filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('CORS: origin not allowed'));
+  },
+  credentials: true
+}));
+
+// Security: rate limit login endpoint
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { error: 'Too many login attempts, try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // PWA manifest
@@ -968,6 +995,10 @@ app.get('/manifest.json', (req, res) => {
     ]
   });
 });
+
+// Favicon / icon placeholders to avoid 404s
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+app.get('/icon-192.png', (req, res) => res.status(204).end());
 
 // Version / health ping — update this to confirm new deploys
 app.get('/api/ping', (req, res) => res.json({ ok: true, version: 'v11-2026-06-10', anthropicEnabled: !!process.env.ANTHROPIC_API_KEY, routes: ['expiry-alerts','coverage-gaps','invite','gaps-per-client','coverage-items','needs-analysis','projection','notion-crm-export','pull-from-notion','import-b2b-leads','rolling-dollar'] }));
@@ -990,7 +1021,7 @@ function requireNotAdmin(req, res, next) {
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
-app.post('/api/auth/login', asyncRoute(async (req, res) => {
+app.post('/api/auth/login', loginLimiter, asyncRoute(async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Missing credentials' });
   const client = await dbGet('SELECT * FROM clients WHERE username = ?', [username]);
@@ -1010,8 +1041,8 @@ app.get('/api/admin/clients', authenticate, requireAdmin, asyncRoute(async (req,
     const r1 = await dbGet('SELECT COUNT(*) as cnt FROM policies WHERE client_id=?', [c.id]);
     const r2 = await dbGet('SELECT SUM(coverage) as total FROM policies WHERE client_id=? AND status=?', [c.id, 'Active']);
     const r3 = await dbGet('SELECT SUM(premium) as total FROM policies WHERE client_id=?', [c.id]);
-    const r4 = await dbGet('SELECT SUM(value_now) as total FROM investments WHERE client_id=?', [c.id]);
-    return { ...c, policyCount: r1?.cnt || 0, totalCoverage: r2?.total || 0, totalPremium: r3?.total || 0, totalInvestments: r4?.total || 0 };
+    const r4 = await dbGet('SELECT SUM(CASE WHEN value_now > 0 THEN value_now ELSE invested END) as total FROM investments WHERE client_id=?', [c.id]);
+    return { ...c, policyCount: r1?.cnt || 0, totalCoverage: r2?.total || 0, totalPremium: Math.round((r3?.total || 0) * 100) / 100, totalInvestments: r4?.total || 0 };
   }));
   res.json(enriched);
 }));
@@ -1074,8 +1105,8 @@ app.get('/api/admin/stats', authenticate, requireAdmin, asyncRoute(async (req, r
   const totalClients = Number((await dbGet(`SELECT COUNT(*) as cnt FROM clients WHERE role='client'`))?.cnt || 0);
   const totalPolicies = Number((await dbGet('SELECT COUNT(*) as cnt FROM policies'))?.cnt || 0);
   const totalCoverage = Number((await dbGet(`SELECT SUM(p.coverage) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client' AND p.status='Active'`))?.total || 0);
-  const totalPremium = Number((await dbGet(`SELECT SUM(p.premium) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client'`))?.total || 0);
-  const totalInvestments = Number((await dbGet(`SELECT SUM(i.value_now) as total FROM investments i JOIN clients c ON i.client_id=c.id WHERE c.role='client'`))?.total || 0);
+  const totalPremium = Math.round(Number((await dbGet(`SELECT SUM(p.premium) as total FROM policies p JOIN clients c ON p.client_id=c.id WHERE c.role='client'`))?.total || 0) * 100) / 100;
+  const totalInvestments = Number((await dbGet(`SELECT SUM(CASE WHEN i.value_now > 0 THEN i.value_now ELSE i.invested END) as total FROM investments i JOIN clients c ON i.client_id=c.id WHERE c.role='client'`))?.total || 0);
   res.json({ totalClients, totalPolicies, totalCoverage, totalPremium, totalInvestments });
 }));
 
@@ -2367,8 +2398,9 @@ function parseCashflowExcel(buffer) {
     loans: [],
     insurance: [],
     savings: [],
+    others: [],
     cpf: { oa: 0, sa: 0, ma: 0 },
-    summary: { netIncome: 0, totalInsurance: 0, totalSavings: 0, totalExpenses: 0, totalLoans: 0, netCashflow: 0 }
+    summary: { netIncome: 0, totalInsurance: 0, totalSavings: 0, totalExpenses: 0, totalLoans: 0, totalOthers: 0, netCashflow: 0 }
   };
 
   // Skip header row (row 0)
@@ -2397,6 +2429,8 @@ function parseCashflowExcel(buffer) {
       result.insurance.push({ item: itemStr, monthly: monthlyVal, annual: annualVal, comment: commentStr });
     } else if (cat === 'Savings Contribution') {
       result.savings.push({ item: itemStr, monthly: monthlyVal, annual: annualVal, comment: commentStr });
+    } else if (['Other', 'Others', 'Miscellaneous', 'Misc', 'Other Income', 'Other Expense', 'Other Expenses', 'Miscellaneous Income', 'Miscellaneous Expense'].includes(cat)) {
+      result.others.push({ item: itemStr, monthly: monthlyVal, annual: annualVal, comment: commentStr });
     }
   }
 
@@ -2420,13 +2454,15 @@ function parseCashflowExcel(buffer) {
   const totalSav     = result.savings.reduce((s, r) => s + r.monthly, 0);
   const totalExp     = result.expenses.reduce((s, r) => s + r.monthly, 0);
   const totalLoans   = result.loans.reduce((s, r) => s + r.monthly, 0);
+  const totalOthers  = result.others.reduce((s, r) => s + r.monthly, 0);
   result.summary = {
     netIncome: totalIncome,
     totalInsurance: totalIns,
     totalSavings: totalSav,
     totalExpenses: totalExp,
     totalLoans: totalLoans,
-    netCashflow: totalIncome - totalIns - totalSav - totalExp - totalLoans
+    totalOthers: totalOthers,
+    netCashflow: totalIncome - totalIns - totalSav - totalExp - totalLoans - totalOthers
   };
 
   return result;

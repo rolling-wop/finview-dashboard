@@ -3,3 +3,5 @@ data/
 *.db
 .env
 .DS_Store
+railway-backup-7clients.json
+*.backup.json
