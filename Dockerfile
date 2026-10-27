@@ -1,10 +1,9 @@
 FROM node:20-alpine
-# cache-bust: v1773817231
+# cache-bust: 1793110034
 WORKDIR /app
-COPY package.json ./
+COPY package*.json ./
 RUN npm install --omit=dev
-# Force full copy every time by copying a timestamp file
 COPY . .
-RUN mkdir -p data && echo "built-at: $(date)" > /app/build-info.txt
-EXPOSE 3847
+RUN mkdir -p data
+EXPOSE 8080
 CMD ["node", "server.js"]
