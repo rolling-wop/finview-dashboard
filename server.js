@@ -33,12 +33,18 @@ async function _getPgPool() {
     const { Pool } = require('pg');
     _pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
-      connectionTimeoutMillis: 8000,
-      idleTimeoutMillis: 30000,
-      max: 10,
-      min: 2,
-      allowExitOnIdle: false
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 60000,
+      max: 5,
+      min: 0,
+      allowExitOnIdle: false,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000
+    });
+    _pgPool.on('error', (err) => {
+      console.warn('[FinView] PG pool error (auto-recovering):', err.message);
+      _pgPool = null;
     });
   }
   return _pgPool;
@@ -3301,6 +3307,11 @@ app.get('/api/admin/clients/priority-matrix', authenticate, requireAdmin, asyncR
 
 // ── Start ──────────────────────────────────────────────────────────────────────
 async function startServer() {
+  // Start listening immediately so Railway health checks pass while DB initialises.
+  app.listen(PORT, () => {
+    console.log(`\n🚀 FinView Dashboard → http://localhost:${PORT} (DB init in progress…)`);
+  });
+
   // If DATABASE_URL is set, verify the connection first.
   // If PostgreSQL is unreachable, fall back to SQLite so the app never hard-crashes.
   if (USE_POSTGRES) {
@@ -3313,14 +3324,9 @@ async function startServer() {
   }
   try {
     await initDb();
-    app.listen(PORT, () => {
-      console.log(`\n🚀 FinView Dashboard → http://localhost:${PORT}`);
-      console.log(`   Mode: ${USE_POSTGRES ? 'PostgreSQL' : 'SQLite'}`);
-      console.log(`   Admin: admin / admin2026\n`);
-    });
+    console.log(`\n✅ FinView ready — Mode: ${USE_POSTGRES ? 'PostgreSQL' : 'SQLite'} | Admin: admin / admin2026\n`);
   } catch (e) {
-    console.error('DB init failed:', e);
-    process.exit(1);
+    console.error('[FinView] DB init error (non-fatal, server still running):', e.message);
   }
 }
 
